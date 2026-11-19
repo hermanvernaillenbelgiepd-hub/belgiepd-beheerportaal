@@ -266,8 +266,15 @@ function line(root,heading,detail,meta){
  if(meta){const small=document.createElement('small');small.textContent=meta;box.append(small)}
  root.append(box);
 }
-function selectKind(){const sanction=$('kind').value==='sanctie';$('sanctionFields').hidden=!sanction;
- $('limitedSpecialty').hidden=!sanction||$('sanctionType').value!=='Tijdelijke beperking'}
+function selectKind(){
+ const type=$('kind').value,sanction=type==='sanctie';
+ $('sanctionFields').hidden=!sanction;
+ $('promotionFields').hidden=type!=='promotievoorstel';
+ $('movementFields').hidden=type!=='personeelsbeweging';
+ $('proposedRank').required=type==='promotievoorstel';
+ $('movementType').required=type==='personeelsbeweging';
+ $('limitedSpecialty').hidden=!sanction||$('sanctionType').value!=='Tijdelijke beperking';
+}
 $('kind').onchange=selectKind;$('sanctionType').onchange=selectKind;
 // The server provides redacted views; the browser never infers permissions
 // from the target's callsign, from hidden fields, or from a Discord role name.
@@ -371,9 +378,65 @@ function cards(root,items,heading,text,metadata){
   root.append(card);
  }
 }
+function displayFirePromotionProposals(data){
+ const root=$('promotionRecords');root.replaceChildren();
+ const proposals=data.promotionProposals||[];
+ $('overviewPromotionCount').textContent=proposals.length+
+   ' promotievoorstel(len)'+(data.visibility==='identity'?' door jou ingediend':' in dit dossier');
+ if(!proposals.length){
+  const p=document.createElement('p');p.className='muted';
+  p.textContent='Er zijn nog geen zichtbare promotievoorstellen.';
+  root.append(p);return;
+ }
+ const displayDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?
+  d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):d||'—';
+ for(const entry of proposals){
+  const card=document.createElement('div');card.className='record';
+  const title=document.createElement('h3');
+  title.textContent=displayDate(entry.eventDate)+' · Voorgestelde graad: '+entry.proposedRank;
+  const note=document.createElement('p');note.textContent=entry.details||'—';
+  const meta=document.createElement('small');
+  meta.textContent='Voorsteller: '+(entry.registeredBy||'Onbekend')+
+   ' · Status: in behandeling · '+entry.opinionCount+' advies/adviezen';
+  card.append(title,note,meta);
+  for(const advice of entry.opinions||[]){
+    const summary=document.createElement('p');
+    summary.className='muted';
+    summary.textContent=(advice.actorCall||'')+' '+(advice.actorName||'Officier')+
+      ' · '+(advice.opinion||'')+' · '+(advice.reason||'');
+    card.append(summary);
+  }
+  if(data.canAdvisePromotion===true){
+    const form=document.createElement('form');form.className='fieldgrid';
+    const opinion=document.createElement('select');opinion.required=true;
+    opinion.append(new Option('Kies je advies',''),new Option('Positief','positief'),
+      new Option('Negatief','negatief'),new Option('Onthouding','onthouding'));
+    const reason=document.createElement('textarea');reason.minLength=15;
+    reason.maxLength=500;reason.required=true;reason.rows=2;
+    reason.placeholder='Motivering voor je advies (minstens 15 tekens)';
+    const btn=document.createElement('button');btn.type='submit';
+    btn.textContent='Mijn advies registreren';
+    form.append(opinion,reason,btn);
+    form.onsubmit=async event=>{
+      event.preventDefault();btn.disabled=true;
+      try{
+        await api(endpoint+'/promotions/'+encodeURIComponent(entry.id)+'/opinion',
+          'POST',{opinion:opinion.value,reason:reason.value.trim()});
+        mark('Promotieadvies geregistreerd met audit; graad blijft onveranderd.');
+        await load();showTab('promoties');
+      }catch(error){mark('Advies niet opgeslagen: '+error.message,true)}
+      finally{btn.disabled=false}
+    };
+    card.append(form);
+  }
+  root.append(card);
+ }
+}
 function setAvailableTabs(data){
  allowedTabs.clear();
  for(const tab of ['overzicht','gegevens','verlof'])allowedTabs.add(tab);
+ if(data.canProposePromotion===true||data.canAdvisePromotion===true||
+   (data.promotionProposals||[]).length)allowedTabs.add('promoties');
  if(data.visibility==='leadership'||data.visibility==='full')
   for(const tab of ['specialisaties','observaties','basisnotities','notities','sancties','opleidingen','historiek'])
    allowedTabs.add(tab);
@@ -404,6 +467,7 @@ async function load(){
  try{
   if(!/^[0-9]{15,22}$/.test(id))throw Error('Ongeldige dossierverwijzing');
   const data=await api(endpoint);current=data;
+  displayFirePromotionProposals(data);
   try{
     const access=await api('/api/dossier-retirement/access?dept=brandweer&discordId='+
       encodeURIComponent(id));
@@ -420,6 +484,9 @@ async function load(){
   $('fireManualLeaveForm').hidden=data.canLogManualLeave!==true;
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
+  document.querySelector('[data-sheet-tile="promotions"]').hidden=
+   !(data.canProposePromotion===true||data.canAdvisePromotion===true||
+      (data.promotionProposals||[]).length);
   const scopes={
    identity:'Brandweer Middenkader: basisgegevens, goedgekeurde verlofperiodes en observaties. Vertrouwelijke registraties zijn niet beschikbaar.',
    leadership:'Brandweerleiding: uitgebreide dossierinzage bij de toegelaten personeelsleden.',
@@ -482,7 +549,8 @@ async function load(){
    $('overviewTrainingCount').textContent=
      (data.trainings||[]).length+' gekoppelde opleidingen';
    $('overviewHistoryCount').textContent=
-     (data.dossierHistory||[]).length+' administratieve wijzigingen';
+     ((data.dossierHistory||[]).length+entries.filter(x=>x.type==='personeelsbeweging').length)+
+     ' administratieve wijzigingen of personeelsbewegingen';
    const label={observatie:'Observatie',notitie:'Belangrijke notitie',sanctie:'Sanctie'};
    $('overviewRecent').textContent=entries.slice(0,5)
      .map(x=>(label[x.type]||x.type)+' · '+(x.eventDate||'—')).join(' | ')
@@ -510,9 +578,13 @@ async function load(){
    cards($('trainings'),data.trainings||[],
      x=>x.courseName||'Opleiding',x=>x.result||'Geen resultaat',
      x=>x.eventDate||'—');
-   cards($('history'),data.dossierHistory||[],
-     x=>x.action||'Dossierwijziging',x=>x.reason||'Administratieve registratie',
-     x=>(x.at||'').slice(0,16)+' · '+(x.byDiscordId||''));
+   cards($('history'),[
+     ...entries.filter(x=>x.type==='personeelsbeweging'),
+     ...(data.dossierHistory||[])
+   ],
+     x=>x.movement?'Personeelsbeweging · '+x.movement:x.action||'Dossierwijziging',
+     x=>x.details||x.reason||'Administratieve registratie',
+     x=>x.eventDate||((x.at||'').slice(0,16)+' · '+(x.byDiscordId||'')));
    $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+
      encodeURIComponent(id);
    void loadFireCheckrides();
@@ -540,7 +612,8 @@ async function load(){
   $('kind').replaceChildren();
   for(const x of data.canWrite||[])
    $('kind').append(new Option(({observatie:'Observatie',basisnotitie:'Basisnotitie',
-     notitie:'Belangrijke notitie',sanctie:'Sanctie'})[x]||x,x));
+     notitie:'Belangrijke notitie',sanctie:'Sanctie',
+     personeelsbeweging:'Personeelsbeweging',promotievoorstel:'Promotievoorstel'})[x]||x,x));
   for(const option of $('sanctionType').querySelectorAll('option'))
     option.disabled=!(data.sanctionTypes||[]).includes(option.value);
   const firstAllowed=[...$('sanctionType').options].find(o=>!o.disabled);
@@ -579,7 +652,12 @@ $('entryForm').onsubmit=async ev=>{
  try{
   const type=$('kind').value;
   const data={type,eventDate:$('date').value,details:$('details').value,
-   reason:$('reason').value,score:5};
+   reason:$('reason').value,score:5,
+   ...(type==='promotievoorstel'?{proposedRank:$('proposedRank').value}:{}),
+   ...(type==='personeelsbeweging'?{
+     movement:$('movementType').value,previousRank:$('movementPreviousRank').value,
+     newRank:$('movementNewRank').value
+   }:{} )};
   if(type==='sanctie'){data.sanctionType=$('sanctionType').value;
    data.severity=Number($('severity').value);
    data.sanctionReason=$('sanctionReason').value;
@@ -589,7 +667,8 @@ $('entryForm').onsubmit=async ev=>{
    }}
   await api(endpoint+'/entries','POST',data);
   $('entryForm').reset();$('date').value=new Date().toLocaleDateString('en-CA');
-  await load();mark('Registratie beveiligd opgeslagen en gelogd.');
+  await load();mark('Registratie beveiligd opgeslagen en gelogd. '+
+    (type==='promotievoorstel'?'Voorstel is uitsluitend adviserend, geen rangwijziging.':''));
  }catch(e){mark('Opslaan mislukt: '+e.message,true)}
  finally{btn.disabled=false}
 };
