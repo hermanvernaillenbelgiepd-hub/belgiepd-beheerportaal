@@ -19,7 +19,7 @@ const ALIGNS=['left','center','right'];
 const SHADOWS=['none','subtle','medium','strong'];
 const COLUMNS=['auto','1','2','3','4'];
 const HEX=/^#[a-fA-F0-9]{6}$/;
-const SLOT=/^(?:page|block:(?:0|[1-9][0-9]?)|id:[A-Za-z][A-Za-z0-9_-]{0,63})$/;
+const SLOT=/^(?:page|block:(?:0|[1-9][0-9]{0,2})|id:[A-Za-z][A-Za-z0-9_-]{0,63})$/;
 const LIMIT=120;
 const error=(message,status=400)=>Object.assign(Error(message),{status});
 export function validDesignPageKey(key){
