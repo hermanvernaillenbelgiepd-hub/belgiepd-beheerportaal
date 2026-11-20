@@ -16,7 +16,7 @@
   for(const [key,options] of Object.entries(allowed))
     clean[key]=options.includes(v[key])?v[key]:defaults[key];
   clean.fontScale=Number.isSafeInteger(v.fontScale)&&
-    v.fontScale>=90&&v.fontScale<=120?v.fontScale:100;
+    v.fontScale>=90&&v.fontScale<=120&&v.fontScale%5===0?v.fontScale:100;
   return clean;
  }
  function stylesheet(){
