@@ -8,11 +8,13 @@ export const DOSSIER_COLLEAGUE_SORT_MODES=Object.freeze({
  politie:'series-desc',brandweer:'brandweer',
  ambulance:'ambulance',depannage:'depannage',burger:'name-asc'
 });
-export function sortDossierColleagues(people,comparePersonnel){
+export function sortDossierColleagues(people,comparePersonnel,department=null){
  if(typeof comparePersonnel!=='function')throw new TypeError('Vergelijkingsfunctie ontbreekt');
+ if(department!==null&&!DOSSIER_COLLEAGUE_DEPARTMENTS.includes(department))return [];
  const order=new Map(DOSSIER_COLLEAGUE_DEPARTMENTS.map((dept,i)=>[dept,i]));
  const entries=Array.isArray(people)?people.filter(person=>
-  person&&person.canOpenDossier===true):[];
+  person&&person.canOpenDossier===true&&
+  (department===null||person.dept===department)):[];
  return [...entries].sort((a,b)=>{
   const left=order.get(a.dept)??99,right=order.get(b.dept)??99;
   if(left!==right)return left-right;
