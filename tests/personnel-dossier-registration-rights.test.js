@@ -447,3 +447,23 @@ test('Opleidingscentrum toont geen interne machtigingsvariabelen in de interface
   assert.ok(script);
   assertModuleSyntax(script);
 });
+
+test('nevendiensten tonen geen politionele registratie of algemene personeelswijziging',()=>{
+ const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1]||'';
+ assertModuleSyntax(script);
+ const choices=script.slice(script.indexOf('function availablePersonnelRegistrationKinds()'),
+   script.indexOf('function displaySelectedRegistration()'));
+ assert.match(choices,/dept!=='politie'&&\['naamswijziging','inactiviteitsping'\]\.includes\(type\)/);
+ assert.match(choices,/dept==='politie'&&registrationManualLeave/);
+ const depannage=choices.slice(choices.indexOf("if(dept==='depannage')"),choices.indexOf('if(formalPermissions?.writesEnabled',choices.indexOf('return kinds;')));
+ assert.doesNotMatch(depannage,/kinds\.push\(\['leave'/);
+ const edit=script.slice(script.indexOf('function updateGeneralPersonnelInfoDisplay()'),
+   script.indexOf('function sheetDossierProfile('));
+ assert.match(edit,/const police=selected\?\.dept==='politie'/);
+ assert.match(edit,/const canCore=Boolean\(police&&/);
+ assert.match(edit,/const canProfile=police&&/);
+ const archive=script.slice(script.indexOf('async function loadPersonnelLifecycle('),
+   script.indexOf('async function archiveServiceMembership('));
+ assert.match(archive,/\$\('personnelGlobalArchiveAction'\)\.hidden=true;/);
+});
