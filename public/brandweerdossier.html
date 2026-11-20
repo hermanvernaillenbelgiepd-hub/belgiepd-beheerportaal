@@ -412,18 +412,14 @@ function cards(root,items,heading,text,metadata){
    noun:root.id==='leavePeriods'?'verlofperiodes':'registraties'});
 }
 function displayFirePromotionProposals(data){
- const root=$('promotionRecords');root.replaceChildren();
+ const root=$('promotionRecords');
  const proposals=data.promotionProposals||[];
  $('overviewPromotionCount').textContent=proposals.length+
    ' promotievoorstel(len)'+(data.visibility==='identity'?' door jou ingediend':' in dit dossier');
- if(!proposals.length){
-  const p=document.createElement('p');p.className='muted';
-  p.textContent='Er zijn nog geen zichtbare promotievoorstellen.';
-  root.append(p);return;
- }
+
  const displayDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?
   d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):d||'—';
- for(const entry of proposals){
+ renderRecentDossierEntries(root,proposals,(mount,entry)=>{
   const card=document.createElement('div');card.className='record';
   const title=document.createElement('h3');
   title.textContent=displayDate(entry.eventDate)+' · Voorgestelde graad: '+entry.proposedRank;
@@ -432,12 +428,16 @@ function displayFirePromotionProposals(data){
   meta.textContent='Voorsteller: '+(entry.registeredBy||'Onbekend')+
    ' · Status: in behandeling · '+entry.opinionCount+' advies/adviezen';
   card.append(title,note,meta);
+  attachExpandableDossierText(card,note,note.textContent,{
+    label:'Lees volledig promotievoorstel'});
   for(const advice of entry.opinions||[]){
     const summary=document.createElement('p');
     summary.className='muted';
     summary.textContent=(advice.actorCall||'')+' '+(advice.actorName||'Officier')+
       ' · '+(advice.opinion||'')+' · '+(advice.reason||'');
     card.append(summary);
+   attachExpandableDossierText(card,summary,summary.textContent,{
+     label:'Lees volledige motivering'});
   }
   if(data.canAdvisePromotion===true){
     const form=document.createElement('form');form.className='fieldgrid';
@@ -462,8 +462,9 @@ function displayFirePromotionProposals(data){
     };
     card.append(form);
   }
-  root.append(card);
- }
+  mount.append(card);
+ },{empty:'Er zijn nog geen zichtbare promotievoorstellen.',
+   noun:'promotievoorstellen'});
 }
 function setAvailableTabs(data){
  allowedTabs.clear();
