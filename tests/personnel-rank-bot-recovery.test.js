@@ -49,7 +49,7 @@ test('personnel form offers secure OAuth re-verification without storing secrets
  assert.match(page,/Bewaar je motivering voordat je opnieuw aanmeldt/);
  const oauth=read('src/discord-oauth.js');
  assert.match(oauth,/u\.searchParams\.set\('scope','identify guilds\.members\.read'\)/);
- assert.match(oauth,/const member=await discordJson\('https:\/\/discord\.com\/api\/v10\/users\/@me\/guilds\/\+'/);
+ assert.match(oauth,/const member=await discordJson\('https:\/\/discord\.com\/api\/v10\/users\/@me\/guilds\/'\+/);
  assert.match(oauth,/verifiedAt:now/);
  const gateway=read('src/server.js');
  assert.match(gateway,/actor\.discordPoliceRank=verifiedPoliceRank\(discordMember,process\.env\.DISCORD_GUILD_ID\)/);
