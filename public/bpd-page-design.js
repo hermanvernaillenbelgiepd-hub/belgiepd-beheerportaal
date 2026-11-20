@@ -73,7 +73,7 @@
    }
    if(entry.target==='grid'){
     if(NUMBERS.minColumnWidth.includes(values.minColumnWidth))
-     rules.push(base+':root{--bpd-page-grid-min:'+values.minColumnWidth+'px}');
+     rules.push('html[data-bpd-design-page="'+file+'"]{--bpd-page-grid-min:'+values.minColumnWidth+'px}');
     if(['one','two','three','four'].includes(values.columns))
      geometry.push('grid-template-columns:repeat('+({one:1,two:2,three:3,four:4})[values.columns]+',minmax(0,1fr))!important');
    }
