@@ -497,3 +497,91 @@ html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading {
 html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading:first-child {
   margin-top:2px;padding-top:3px;border-top:0;
 }
+
+
+/* Fluid home dashboard — TEST 2026-11-20
+ * Fix: using a viewport breakpoint to force 2 columns left a narrow content
+ * strip on wide/zoomed displays. The card count now follows available width.
+ * No protected or operational data/role logic is changed. */
+html.bpd-reference-ui .portal {
+  width:100%;
+  min-width:0;
+  max-width:none;
+}
+html.bpd-reference-ui .portal > .surface {
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+html.bpd-reference-ui .portal > .surface > main {
+  width:100%;
+  max-width:none;
+  min-width:0;
+  box-sizing:border-box;
+  margin-inline:0;
+  padding-inline:clamp(12px,2vw,34px);
+}
+html.bpd-reference-ui .portal #staffDashboard,
+html.bpd-reference-ui .portal #zoneDashboard,
+html.bpd-reference-ui .portal #ambulanceDashboard {
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+html.bpd-reference-ui .portal #staffDashboard .grid,
+html.bpd-reference-ui .portal #zoneDashboard .grid,
+html.bpd-reference-ui .portal #ambulanceDashboard .grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));
+  gap:clamp(10px,1.1vw,18px);
+  align-items:stretch;
+  width:100%;
+  max-width:none;
+  min-width:0;
+}
+html.bpd-reference-ui .portal #staffDashboard .grid > .module,
+html.bpd-reference-ui .portal #zoneDashboard .grid > .module,
+html.bpd-reference-ui .portal #ambulanceDashboard .grid > .module {
+  display:flex;
+  min-width:0;
+  width:auto;
+  max-width:100%;
+  height:100%;
+}
+html.bpd-reference-ui .portal .bottom {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));
+  width:100%;
+  gap:clamp(10px,1.1vw,18px);
+}
+/* The hamburger menu already becomes a drawer at 1280px.
+ * Respect that state and let the workspace use the full page width. */
+html.bpd-reference-ui .portal.bpd-home-nav-drawer {
+  width:100%;
+  display:block;
+}
+html.bpd-reference-ui .portal.bpd-home-nav-drawer > .surface {
+  width:100%;
+}
+/* At true desktop widths keep a stable sidebar, not a squeezed content grid. */
+@media (min-width:1281px) {
+  html.bpd-reference-ui .portal:not(.bpd-home-nav-drawer) {
+    display:grid;
+    grid-template-columns:244px minmax(0,1fr);
+    align-items:stretch;
+  }
+}
+/* On narrow screens the cards stack naturally; no sideways card scroll. */
+@media (max-width:580px) {
+  html.bpd-reference-ui .portal #staffDashboard .grid,
+  html.bpd-reference-ui .portal #zoneDashboard .grid,
+  html.bpd-reference-ui .portal #ambulanceDashboard .grid,
+  html.bpd-reference-ui .portal .bottom {
+    grid-template-columns:minmax(0,1fr);
+  }
+  html.bpd-reference-ui .portal > .surface > main {
+    padding-inline:12px;
+  }
+}
