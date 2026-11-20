@@ -464,8 +464,14 @@ $('saveTraining').onclick=async()=>{
   button.disabled=true;
   try{
     const d=await api(url,{method,body:JSON.stringify(values)});
+    const keepSession=d.saved&&!editing?values.lessonSessionId:null;
     $('trainingNote').textContent=d.saved?(editing?'Wijziging met audit bewaard.':'Geregistreerd.')+' Discord en Google Sheets zijn niet gewijzigd.':'Niet opgeslagen';
-    cancelEdit();await showRecords();
+    cancelEdit();
+    if(keepSession&&[...$('lessonSession').options].some(o=>o.value===keepSession)){
+      $('lessonSession').value=keepSession;
+      applySelectedLesson();
+    }
+    await showRecords();
   }catch(e){$('trainingNote').textContent='Fout: '+e.message}
   finally{button.disabled=!profile?.trainingWritesEnabled}
 };
