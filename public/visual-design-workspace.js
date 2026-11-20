@@ -196,7 +196,12 @@ function setTab(id){
   button.setAttribute('aria-selected',String(button.dataset.tab===id));
 }
 async function boot(){
- if(!auth?.currentUser){$('work').hidden=true;notice('Meld je aan via Discord of je bestaande portaalaccount.');return}
+ if(!auth?.currentUser){
+  $('work').hidden=true;
+  if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
+  notice('Meld je aan via Discord of je bestaande portaalaccount.');
+  return;
+ }
  try{
   const data=await api('/api/visual-design/pages/catalog');
   catalog=data.pages||[];
@@ -210,16 +215,22 @@ async function boot(){
   if(!initialized){
    initialized=true;
    globalEditor=setupVisualDesignEditor({api,$});
-   if(data.canDelegate){
-    grantsEditor=setupVisualDesignGrantsEditor({api,$});
-    // Use a separate visible rights tab, not a hidden subsection of the global editor.
-    $('rightsTab').append($('visualGrantPanel'));
-   }
   }
   if(data.canDelegate){
+   if(!grantsEditor){
+    grantsEditor=setupVisualDesignGrantsEditor({api,$});
+    // Keep the rights tab separate from general design settings.
+    $('rightsTab').append($('visualGrantPanel'));
+   }
    $('rightsHint').textContent='Je bent geverifieerd als Technisch Beheer. Hier kun je vormgevingsrechten tijdelijk geven en op elk moment intrekken.';
-   void grantsEditor?.load().catch(e=>{$('rightsHint').textContent='Machtigingen laden mislukt: '+e.message});
+   void grantsEditor.load().catch(e=>{
+    $('visualGrantPanel').hidden=true;
+    $('rightsHint').textContent='Machtigingen laden mislukt: '+e.message;
+   });
   }else{
+   // Hide any previous technical session grants when the active profile
+   // changes; only the server can read/modify grants.
+   if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
    $('rightsHint').textContent='Machtigingen uitdelen of intrekken kan uitsluitend met het profiel Technisch Beheer. Schakel dit zo nodig in via Mijn profiel. Als Officierenkader kun je wel de vormgeving beheren, maar geen machtigingen toekennen.';
   }
   void globalEditor?.load().catch(e=>notice('Algemene vormgeving tijdelijk niet beschikbaar: '+e.message,true));
