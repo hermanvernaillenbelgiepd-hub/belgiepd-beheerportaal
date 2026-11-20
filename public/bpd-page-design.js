@@ -85,8 +85,23 @@
  }
  const selector='main :is(.card,.panel,.tile,.module,.surface,.dossier-pane,.config-block)';
  let observer=null,queued=false;
+ function labelRosterColumns(){
+  if(file!=='personeelsbeheer.html')return;
+  const table=document.querySelector('.staff-roster-table');if(!table)return;
+  const headers=[...table.querySelectorAll('thead th')].map((th,i)=>
+   String(th.getAttribute('title')||th.textContent||'Kolom '+(i+1)).replace(/\\s+/g,' ').trim().slice(0,50));
+  if(!headers.length)return;
+  for(const row of table.querySelectorAll('tbody tr:not(.police-kader-divider)')){
+   const cells=[...row.children].filter(el=>el.tagName==='TD');
+   for(let i=0;i<cells.length;i++){
+    const label=headers[i]||'Kolom '+(i+1);
+    if(cells[i].dataset.bpdColumn!==label)cells[i].dataset.bpdColumn=label;
+   }
+  }
+ }
  function labelCards(){
   const main=document.querySelector('main');if(!main)return;
+  labelRosterColumns();
   const cards=[...main.querySelectorAll(':is(.card,.panel,.tile,.module,.surface,.dossier-pane,.config-block)')].slice(0,60);
   for(let index=0;index<cards.length;index++)
    cards[index].dataset.bpdDesignCard=String(index+1);
