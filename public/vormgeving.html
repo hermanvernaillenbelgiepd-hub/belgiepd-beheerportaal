@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>BelgiëPD · Vormgevingsstudio</title>
+<style>
+:root{font:14px/1.5 Inter,system-ui,sans-serif;color-scheme:dark;
+ --page:#0a172b;--panel:#142640;--text:#eef5ff;--muted:#b2c6df;--border:#385274;
+ --field:#0b1e36;--accent:#9ec5ff;--button:#3067cc;--buttonText:#ffffff}
+html[data-bpd-theme="light"]{color-scheme:light;--page:#f3f6fc;--panel:#ffffff;--text:#1c2a40;
+ --muted:#52657c;--border:#bac9df;--field:#f3f6fc;--accent:#2252ae;--button:#2252ae}
+*{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--text);font-family:inherit}
+header{border-bottom:1px solid var(--border);padding:17px max(18px,calc((100vw - 1250px)/2));
+ display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--panel)}
+header h1{font-size:23px;margin:0}header nav{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+a{color:var(--accent)}main{max-width:1280px;margin:0 auto;padding:23px 20px 55px}
+h2{font-size:18px;margin:0 0 8px}h3{font-size:15px;margin:0 0 8px}
+small,.muted{font-size:12px;color:var(--muted)}
+.panel,.card,.config-block{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:19px;margin:15px 0}
+.notice{background:var(--field);border-left:3px solid var(--accent);border-radius:9px;padding:13px 15px;margin-bottom:15px}
+.bad{color:#ffb2bf!important}html[data-bpd-theme="light"] .bad{color:#a31333!important}
+button,.button{border:1px solid var(--border);border-radius:9px;cursor:pointer;font:inherit;
+ padding:10px 14px;background:var(--button);color:var(--buttonText);font-weight:650}
+button.secondary,.button.secondary{background:var(--field);color:var(--text)}
+button:disabled{opacity:.56;cursor:wait}
+input,select,textarea{width:100%;font:inherit;background:var(--field);color:var(--text);border:1px solid var(--border);
+ padding:9px 10px;border-radius:8px;min-width:0}
+input[type="checkbox"]{width:18px;height:18px;accent-color:var(--button)}
+input[type="color"]{width:64px;height:36px;padding:2px}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600}
+.toolbar,.buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar>*{min-width:0}
+.studioMainGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.8fr);gap:16px}
+.fieldGrid,.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.colorGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.colorRow{border:1px solid var(--border);border-radius:9px;padding:9px}
+.colorPair{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.colorPair input[type="checkbox"]{flex:0 0 auto}.colorPair input[type="color"]{flex:0 0 auto}
+#studioTarget{max-width:100%}
+.sampleFrame{border:1px dashed var(--border);padding:14px;border-radius:11px;background:var(--field)}
+.sampleCard{border:2px solid var(--border);padding:16px;border-radius:12px;background:var(--panel)}
+.sampleCard h3{margin:0 0 7px}.sampleCard p{margin:5px 0 12px}
+.sampleGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:15px}
+.sampleGrid div{padding:12px;border:1px solid var(--border);border-radius:8px}
+#studioPreviewButton{margin-top:6px}
+#studioGridFields[hidden],#studioEditor[hidden],#visualDesign[hidden]{display:none!important}
+#visualGrantRows{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px}
+#visualGrantRows .tile{border:1px solid var(--border);padding:12px;border-radius:10px}
+#visualGrantRows .tile p{font-size:12px}
+@media(max-width:850px){.studioMainGrid{grid-template-columns:1fr}}
+@media(max-width:590px){main{padding:14px 12px 34px}.colorGrid{grid-template-columns:1fr}
+ .fieldGrid,.form-grid{grid-template-columns:1fr}header{padding:13px}header h1{font-size:20px}}
+</style></head>
+<body><header><div><small>BelgiëPD · Beheercentrum</small><h1>🎨 Vormgevingsstudio</h1></div>
+<nav><a href="/beheercentrum.html">Beheercentrum</a><a href="/discord-status.html">Mijn profiel</a><a href="/">Startpagina</a>
+<button type="button" id="login">Aanmelden</button></nav></header>
+<main>
+<div id="studioAccess" class="notice" role="status">Controleer je portaalaccount om de Vormgevingsstudio te openen.</div>
+<section id="studioEditor" hidden>
+<section class="panel"><h2>Vormgeving per pagina</h2>
+<p class="muted">Kies elke portaalpagina afzonderlijk, daarna een volledig onderdeel of één genummerd kader.
+De wijzigingen blijven in een voorbeeld totdat je ze publiceert. De rechten van medewerkers, statuskleuren en het operationele TO-bord worden niet aangepast.</p>
+<div class="fieldGrid">
+<label for="studioPage">Portaalpagina<select id="studioPage"></select></label>
+<label for="studioTarget">Te wijzigen onderdeel<select id="studioTarget">
+<option value="page">Volledige pagina / achtergrond</option>
+<option value="cards">Alle kaders en tegels</option>
+<option value="buttons">Knoppen</option>
+<option value="headings">Hoofdingen en titels</option>
+<option value="fields">Invoervelden en keuzelijsten</option>
+<option value="grid">Kolommen en roosters</option>
+<optgroup label="Individuele kaders"><option value="card-1">Kader 1 (apart)</option>
+<option value="card-2">Kader 2 (apart)</option>
+<option value="card-3">Kader 3 (apart)</option>
+<option value="card-4">Kader 4 (apart)</option>
+<option value="card-5">Kader 5 (apart)</option>
+<option value="card-6">Kader 6 (apart)</option>
+<option value="card-7">Kader 7 (apart)</option>
+<option value="card-8">Kader 8 (apart)</option>
+<option value="card-9">Kader 9 (apart)</option>
+<option value="card-10">Kader 10 (apart)</option>
+<option value="card-11">Kader 11 (apart)</option>
+<option value="card-12">Kader 12 (apart)</option>
+<option value="card-13">Kader 13 (apart)</option>
+<option value="card-14">Kader 14 (apart)</option>
+<option value="card-15">Kader 15 (apart)</option>
+<option value="card-16">Kader 16 (apart)</option>
+<option value="card-17">Kader 17 (apart)</option>
+<option value="card-18">Kader 18 (apart)</option>
+<option value="card-19">Kader 19 (apart)</option>
+<option value="card-20">Kader 20 (apart)</option>
+<option value="card-21">Kader 21 (apart)</option>
+<option value="card-22">Kader 22 (apart)</option>
+<option value="card-23">Kader 23 (apart)</option>
+<option value="card-24">Kader 24 (apart)</option>
+<option value="card-25">Kader 25 (apart)</option>
+<option value="card-26">Kader 26 (apart)</option>
+<option value="card-27">Kader 27 (apart)</option>
+<option value="card-28">Kader 28 (apart)</option>
+<option value="card-29">Kader 29 (apart)</option>
+<option value="card-30">Kader 30 (apart)</option>
+<option value="card-31">Kader 31 (apart)</option>
+<option value="card-32">Kader 32 (apart)</option>
+<option value="card-33">Kader 33 (apart)</option>
+<option value="card-34">Kader 34 (apart)</option>
+<option value="card-35">Kader 35 (apart)</option>
+<option value="card-36">Kader 36 (apart)</option>
+<option value="card-37">Kader 37 (apart)</option>
+<option value="card-38">Kader 38 (apart)</option>
+<option value="card-39">Kader 39 (apart)</option>
+<option value="card-40">Kader 40 (apart)</option>
+<option value="card-41">Kader 41 (apart)</option>
+<option value="card-42">Kader 42 (apart)</option>
+<option value="card-43">Kader 43 (apart)</option>
+<option value="card-44">Kader 44 (apart)</option>
+<option value="card-45">Kader 45 (apart)</option>
+<option value="card-46">Kader 46 (apart)</option>
+<option value="card-47">Kader 47 (apart)</option>
+<option value="card-48">Kader 48 (apart)</option>
+<option value="card-49">Kader 49 (apart)</option>
+<option value="card-50">Kader 50 (apart)</option>
+<option value="card-51">Kader 51 (apart)</option>
+<option value="card-52">Kader 52 (apart)</option>
+<option value="card-53">Kader 53 (apart)</option>
+<option value="card-54">Kader 54 (apart)</option>
+<option value="card-55">Kader 55 (apart)</option>
+<option value="card-56">Kader 56 (apart)</option>
+<option value="card-57">Kader 57 (apart)</option>
+<option value="card-58">Kader 58 (apart)</option>
+<option value="card-59">Kader 59 (apart)</option>
+<option value="card-60">Kader 60 (apart)</option></optgroup>
+</select></label>
+<label for="studioTheme">Te bewerken thema<select id="studioTheme"><option value="light">Lichte modus</option><option value="dark">Donkere modus</option></select></label>
+</div>
+<div class="buttons" style="margin-top:14px">
+<a id="studioInspect" class="button secondary" href="/" target="_blank" rel="noopener">Genummerde kaders bekijken</a>
+<a id="studioOpenPage" class="button secondary" href="/" target="_blank" rel="noopener">Pagina openen</a>
+<button id="studioReload" type="button" class="secondary">Wijzigingen opnieuw laden</button></div>
+<p class="muted">Gebruik 'Genummerde kaders bekijken' om op de echte pagina het nummer van elk kader te zien. Die markeringen zijn tijdelijk en veranderen niets aan de gegevens.</p>
+</section>
+<div class="studioMainGrid">
+<section class="panel"><h2>Vorm en kleuren aanpassen</h2>
+<h3>Kleuren in het geselecteerde thema</h3>
+<div class="colorGrid"><label class="colorRow"><span>Achtergrond</span><div class="colorPair"><input type="checkbox" id="studio-BgActive" aria-label="Achtergrond overschrijven"><input type="color" id="studio-Bg" aria-label="Achtergrond kiezen" value="#ffffff" disabled></div></label>
+<label class="colorRow"><span>Tekstkleur</span><div class="colorPair"><input type="checkbox" id="studio-TextActive" aria-label="Tekstkleur overschrijven"><input type="color" id="studio-Text" aria-label="Tekstkleur kiezen" value="#ffffff" disabled></div></label>
+<label class="colorRow"><span>Randkleur</span><div class="colorPair"><input type="checkbox" id="studio-BorderActive" aria-label="Randkleur overschrijven"><input type="color" id="studio-Border" aria-label="Randkleur kiezen" value="#ffffff" disabled></div></label></div>
+<p class="muted">Vink een kleur aan om ze zelf te kiezen. Zonder vinkje behoudt het element zijn normale kleur. Als je een achtergrond kiest, wordt zonder aparte tekstkleur automatisch een leesbare tekstkleur ingesteld.</p>
+<h3>Afmetingen, lettertypes en indeling</h3>
+<div class="fieldGrid"><label for="studio-radius">Hoekafronding (px)<select id="studio-radius"><option value="">— Standaardinstelling —</option><option value="0">0</option><option value="4">4</option><option value="8">8</option><option value="12">12</option><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="28">28</option><option value="32">32</option></select></label>
+<label for="studio-padding">Binnenruimte (px)<select id="studio-padding"><option value="">— Standaardinstelling —</option><option value="0">0</option><option value="4">4</option><option value="8">8</option><option value="12">12</option><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="36">36</option><option value="40">40</option></select></label>
+<label for="studio-fontSize">Tekstgrootte (px)<select id="studio-fontSize"><option value="">— Standaardinstelling —</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="20">20</option><option value="22">22</option><option value="24">24</option><option value="26">26</option><option value="28">28</option><option value="30">30</option><option value="32">32</option></select></label>
+<label for="studio-fontFamily">Lettertype<select id="studio-fontFamily"><option value="">— Standaardinstelling —</option><option value="inherit">Overnemen</option><option value="inter">inter</option><option value="system">system</option><option value="arial">arial</option><option value="georgia">georgia</option><option value="verdana">verdana</option><option value="trebuchet">trebuchet</option><option value="tahoma">tahoma</option></select></label>
+<label for="studio-fontWeight">Tekstdikte<select id="studio-fontWeight"><option value="">— Standaardinstelling —</option><option value="inherit">Overnemen</option><option value="normal">Normaal</option><option value="medium">Halfvet</option><option value="bold">Vet</option></select></label>
+<label for="studio-width">Breedte<select id="studio-width"><option value="">— Standaardinstelling —</option><option value="default">Standaard</option><option value="narrow">Smal</option><option value="regular">Normaal</option><option value="wide">Breed</option><option value="full">Volledig</option></select></label>
+<label for="studio-gridGap">Ruimte tussen kolommen (px)<select id="studio-gridGap"><option value="">— Standaardinstelling —</option><option value="0">0</option><option value="4">4</option><option value="8">8</option><option value="12">12</option><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="36">36</option><option value="40">40</option></select></label>
+<label for="studio-minColumnWidth">Minimum kolombreedte (px)<select id="studio-minColumnWidth"><option value="">— Standaardinstelling —</option><option value="140">140</option><option value="160">160</option><option value="180">180</option><option value="200">200</option><option value="220">220</option><option value="240">240</option><option value="260">260</option><option value="280">280</option><option value="300">300</option><option value="320">320</option><option value="360">360</option><option value="400">400</option></select></label>
+<label for="studio-columns">Kolomindeling<select id="studio-columns"><option value="">— Standaardinstelling —</option><option value="auto">Automatisch aanpassen</option><option value="one">1 kolom</option><option value="two">2 kolommen</option><option value="three">3 kolommen</option><option value="four">4 kolommen</option></select></label></div>
+<p id="studioPageWidthHint" class="muted"></p>
+<div id="studioGridFields" class="muted" hidden>Het aantal kolommen past zich op smalle schermen automatisch aan. De ingestelde minimumkolombreedte bepaalt wanneer kaders onder elkaar verschijnen.</div>
+<div class="buttons" style="margin-top:16px">
+<button id="studioClearTarget" type="button" class="secondary">Dit onderdeel herstellen</button>
+<button id="studioClearPage" type="button" class="secondary">Hele pagina herstellen</button></div>
+</section>
+<section class="panel"><h2>Voorbeeld vóór publicatie</h2>
+<p id="studioPreviewCaption" class="muted">De huidige opmaak</p>
+<div id="studioPreviewAreaOuter" class="sampleFrame"><div id="studioPreviewCard" class="sampleCard">
+<h3 id="studioPreviewHeading">Titel van een kader</h3><p>Voorbeeldtekst voor leesbaarheid, lettertype, kleuren, ruimte en vormen.</p>
+<button id="studioPreviewButton" type="button">Voorbeeld van een knop</button>
+<div id="studioPreviewArea" class="sampleGrid"><div>Kolom A</div><div>Kolom B</div><div>Kolom C</div></div></div></div>
+<p class="muted">Dit is een veilige voorbeeldweergave. Bekijk na publiceren ook de echte pagina op desktop, tablet en mobiel.</p>
+<hr style="border:0;border-top:1px solid var(--border);margin:20px 0">
+<h3>Publiceren en geschiedenis</h3>
+<p class="muted"><span id="studioRevision">Pagina-versie 0</span> · <span id="studioChangeCount">0</span> aangepaste onderdelen</p>
+<label for="studioReason">Motivering (verplicht)<textarea id="studioReason" rows="3" minlength="10" maxlength="240" placeholder="Waarom wordt de vormgeving aangepast?"></textarea></label>
+<div class="buttons" style="margin-top:12px"><button type="button" id="studioSave">Geselecteerde paginavormgeving publiceren</button></div>
+<p id="studioStatus" class="muted" role="status" aria-live="polite"></p>
+</section>
+</div>
+</section>
+<section id="visualDesign" class="panel" hidden>
+<h2>🔐 Tijdelijke vormgevingsrechten</h2>
+<p>Deze machtiging is <strong>uitsluitend voor lay-out en vormgeving</strong>. Ze geeft geen algemene beheerrechten, geen toegang tot personeelsdossiers en geen beheer van Discord-rollen.</p>
+</section>
+<section class="panel" id="studioRightsHelp">
+<h2>Wie kan tijdelijke vormgevingsrechten toekennen?</h2>
+<p>Alleen een geverifieerd account met het actieve <strong>Technisch Beheer</strong>-profiel kan iemand toegang geven of intrekken.
+Officierenkader of Korpsleiding alleen is hiervoor niet voldoende. Je kunt je profiel bekijken via
+<a href="/discord-status.html">Mijn profiel</a>.</p>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+let auth=null,editor=null,grantsEditor=null,latest=0;
+const access=(message,error=false)=>{$('studioAccess').textContent=message;$('studioAccess').classList.toggle('bad',error)};
+async function api(path,method='GET',payload){
+ if(!auth?.currentUser)throw Error('Aanmelden vereist');
+ const token=await auth.currentUser.getIdToken();
+ const response=await fetch(path,{method,cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(payload?{'Content-Type':'application/json'}:{})},
+  ...(payload?{body:JSON.stringify(payload)}:{}),credentials:'same-origin'});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Serverfout '+response.status);
+ return data;
+}
+const {setupVisualPageEditor}=await import('/visual-page-editor.js');
+const {setupVisualDesignGrantsEditor}=await import('/visual-design-grants-editor.js');
+async function load(){
+ const seq=++latest;
+ $('studioEditor').hidden=true;$('visualDesign').hidden=true;
+ if(!auth?.currentUser){access('Meld je aan om de Vormgevingsstudio te openen.');return}
+ try{
+  if(!editor)editor=setupVisualPageEditor({api,$});
+  await editor.initialize();
+  if(seq!==latest)return;
+  access('Vormgevingsstudio beschikbaar. Je kunt per pagina en per afzonderlijk kader wijzigingen voorbereiden.');
+  let config;
+  try{config=await api('/api/visual-design/admin')}catch{}
+  if(seq!==latest)return;
+  if(config?.canDelegate===true){
+   $('visualDesign').hidden=false;
+   if(!grantsEditor)grantsEditor=setupVisualDesignGrantsEditor({api,$});
+   await grantsEditor.load().catch(error=>access('Vormgeving geladen, maar machtigingen konden niet worden opgehaald: '+error.message,true));
+  }
+ }catch(error){
+  if(seq!==latest)return;
+  $('studioEditor').hidden=true;
+  access('Geen toegang tot Vormgevingsstudio: '+error.message+'. Controleer je profiel of de toegekende vormgevingsmachtiging.',true);
+ }
+}
+async function init(){
+ try{
+  const c=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
+  if(!c.enabled)throw Error('Firebase is niet ingesteld');
+  const appSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  const authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=appSdk.getApps()[0]||appSdk.initializeApp(c.firebaseConfig);
+  auth=authSdk.getAuth(app);
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authSdk,config:c,
+   onError:error=>access('Aanmelding mislukt: '+error.message,true)});
+  authSdk.onAuthStateChanged(auth,user=>{
+   $('login').textContent=user?'Afmelden':'Aanmelden';
+   void load();
+  });
+ }catch(error){access('De aanmelding kon niet starten: '+error.message,true)}
+}
+void init();
+</script>
+<script defer src="/bpd-navigation.js"></script>
+</body></html>
