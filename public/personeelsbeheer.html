@@ -4396,28 +4396,26 @@ async function loadStaffCheckrides(p,key){
       encodeURIComponent(p.discordId));
     if(!same())return;
     const records=data.evaluations||[];
-    preview.replaceChildren();detail.replaceChildren();
-    if(!records.length){
-      preview.textContent=detail.textContent='Nog geen stage- of koppelritevaluaties geregistreerd.';
-      return;
-    }
-    for(const e of records.slice(0,5)){
+    renderRecentDossierEntries(preview,records,(mount,e)=>{
       const row=document.createElement('div');row.className='sheet-record';
       row.textContent=(e.eventDate||'—')+' · '+e.trackLabel+' · '+(e.average??'—')+
         '/5 · '+(e.outcome||'—');
-      preview.append(row);
-    }
-    for(const e of records.slice(0,50)){
+      mount.append(row);
+    },{empty:'Nog geen stage- of koppelritevaluaties geregistreerd.',
+      limited:data.limited,noun:'evaluaties'});
+    renderRecentDossierEntries(detail,records,(mount,e)=>{
       const row=document.createElement('div');row.className='note-item';
       const title=document.createElement('strong');
       title.textContent=(e.eventDate||'—')+' · '+e.trackLabel+' · '+(e.average??'—')+'/5';
       const meta=document.createElement('span');meta.className='subtle';
       meta.textContent=(e.outcome||'—')+' · Beoordelaar: '+(e.evaluatorDiscordId||'—');
       const note=document.createElement('p');note.textContent=e.notes||'—';
-      row.append(title,meta,note);detail.append(row);
-    }
-    if(data.limited||records.length>50)
-      detail.append(document.createTextNode(' Meer evaluaties kunnen beschikbaar zijn in de opleidingshistoriek.'));
+      row.append(title,meta,note);
+      attachExpandableDossierText(row,note,note.textContent,{
+        label:'Lees volledige evaluatie'});
+      mount.append(row);
+    },{empty:'Nog geen stage- of koppelritevaluaties geregistreerd.',
+      limited:data.limited,noun:'evaluaties'});
   }catch(e){if(same()){
     preview.textContent='Evaluatiegegevens niet beschikbaar voor deze dossierbevoegdheid.';
     detail.textContent='Evaluatiehistoriek niet beschikbaar ('+e.message+').';
