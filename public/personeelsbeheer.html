@@ -4693,7 +4693,7 @@ async function loadStaffLeave(p,key){
     const overviewLeaves=leaves.filter(x=>x.status==='approved')
       .sort((a,b)=>order[periodState(a)]-order[periodState(b)]||
         String(b.startDate||'').localeCompare(String(a.startDate||'')))
-      .slice(0,5);
+;
     sheetSetRows('leave',overviewLeaves,x=>[
       displayLeaveDate(x.startDate),displayLeaveDate(x.endDate),periodState(x),
       (Number(x.days)||'—')+' dagen',
@@ -4711,9 +4711,7 @@ async function loadStaffLeave(p,key){
         'Nog niet goedgekeurd; beslissing door bevoegd Officierenkader of Korpsleiding.';
       $('sheetLeave').append(reminder);
     }
-    root.replaceChildren();
-    if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
-    for(const item of leaves){
+    renderRecentDossierEntries(root,leaves,(mount,item)=>{
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
       title.textContent=displayLeaveDate(item.startDate)+' tot '+displayLeaveDate(item.endDate)+
@@ -4722,6 +4720,8 @@ async function loadStaffLeave(p,key){
       const reason=document.createElement('p');
       reason.textContent='Reden: '+(item.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
       div.append(title,reason);
+      attachExpandableDossierText(div,reason,reason.textContent,{
+        label:'Lees volledige verlofreden'});
       if(item.historicalImport){
         const audit=document.createElement('p');
         audit.textContent='Historische overname · oorspronkelijk: '+
@@ -4748,9 +4748,9 @@ async function loadStaffLeave(p,key){
           div.append(button);
         }
       }
-      root.append(div);
-    }
-    if(info.limited)root.append(document.createTextNode(' Niet alle oudere periodes worden getoond.'));
+      mount.append(div);
+    },{empty:'Geen geregistreerde verlofperiodes.',
+      limited:info.limited,noun:'verlofperiodes'});
   }catch(e){if(same()){
     root.textContent='Verlofgegevens niet beschikbaar: '+e.message;
     $('sheetLeave').textContent='Verlofgegevens niet beschikbaar.';
