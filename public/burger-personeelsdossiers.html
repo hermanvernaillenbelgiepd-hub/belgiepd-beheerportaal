@@ -311,11 +311,11 @@ async function api(url,method='GET',payload){
   if(!response.ok)throw Error(data.error||'Dossier niet beschikbaar');
   return data;
 }
-const line=(container,title,details,meta)=>{
+const line=(container,title,details,meta,{expand=true}={})=>{
   const node=document.createElement('div');node.className='record';
   const h=document.createElement('strong');h.textContent=title;node.append(h);
   if(details){const p=document.createElement('p');p.textContent=details;node.append(p);
-    attachExpandableDossierText(node,p,details,{label:'Lees volledige tekst'})}
+    if(expand)attachExpandableDossierText(node,p,details,{label:'Lees volledige tekst'})}
   if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
   container.append(node);return node;
 };
@@ -408,7 +408,8 @@ function renderPerson(data){
     const disclosure=isObservation?createObservationDisclosure({
       title,score:e.score,details:e.details||'—',attribution
     }):null;
-    const record=disclosure?disclosure.element:line(root,title,e.details,attribution);
+    const record=disclosure?disclosure.element:
+      line(root,title,e.details,attribution,{expand:false});
     if(disclosure)root.append(record);
     else{
       const description=record.querySelector('p');
@@ -439,177 +440,17 @@ function renderPerson(data){
     'Evaluatiehistoriek is tijdelijk niet beschikbaar.';
   if(data.evaluationsLimited)$('citizenCheckrides').append(
     document.createTextNode(' Mogelijk zijn oudere evaluaties niet getoond.'));
-  fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    renderRegistration(root,e,'Historische registratie · volwaardig sinds '+dateBE(e.eventDate)));
-  for(const edit of data.profileHistory||[])
-    line($('promotions'),'Burgergegevens aangepast · '+(edit.role||'Rol'),
-      'Volwaardig sinds: '+dateBE(edit.volwaardigSince)+' · Reden: '+edit.reason,
-      fmt(edit.at)+' · door '+(edit.byDiscordId||'onbekend'));
-  fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
-    'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
-    'Reden: '+e.reason,
-    fmt(e.at)+' · verwijderd door '+(e.byDiscordId||'onbekend')));
-  const writable=data.canWrite===true;
-  $('formCard').hidden=!writable;
-  $('quickAdd').hidden=!writable;
-  $('writeNotice').hidden=writable;
-  $('detail').hidden=false;$('overview').hidden=true;
-}
-async function openPerson(id){
-  selectedId=id;mark('Dossier laden…');
-  try{
-    const data=await api('/api/citizen-staff/'+encodeURIComponent(id));
-    if(selectedId!==id)return;
-    renderPerson(data);
-    history.replaceState(null,'','?discordId='+encodeURIComponent(id));
-    mark('Burgerdossier geopend · alle wijzigingen worden gelogd');
-  }catch(e){mark(e.message,true)}
-}
-async function load(){
-  $('overview').hidden=true;$('detail').hidden=true;selectedId=null;
-  if(!auth?.currentUser){mark('Meld je aan met een bevoegd Burgerraad-, Korpsleiding- of technisch-beheeraccount');return}
-  try{
-    await api('/api/citizen-staff/access');
-    const data=await api('/api/citizen-staff/overview');
-    rows=data.rows||[];renderRoster();populateCitizenPickers();$('overview').hidden=false;
-    mark(rows.length+' burgerdossiers beschikbaar');
-    const target=new URLSearchParams(location.search).get('discordId');
-    if(target&&rows.some(p=>p.discordId===target))await openPerson(target);
-  }catch(e){mark(e.message,true)}
-}
-$('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
-$('search').oninput=renderRoster;
-for(const id of ['citizenPicker','citizenColleague'])
-  $(id).onchange=()=>{const chosen=$(id).value;
-    if(chosen&&rows.some(p=>p.discordId===chosen))void openPerson(chosen);
-  };
-function syncCitizenProfileDate(){
-  const trainee=$('profileRole').value==='bio';
-  $('profileSince').disabled=trainee;
-  if(trainee)$('profileSince').value='';
-}
-$('profileRole').onchange=syncCitizenProfileDate;
-$('citizenProfileForm').onsubmit=async event=>{
-  event.preventDefault();if(!selectedId)return;
-  const targetId=selectedId,button=$('profileSave');
-  button.disabled=true;$('profileSaveStatus').textContent='Burgergegevens opslaan…';
-  let saved=false;
-  try{
-    const payload={role:$('profileRole').value,
-      volwaardigSince:$('profileRole').value==='burger'?
-        $('profileSince').value||null:null,
-      reason:$('profileReason').value.trim(),expectedRevision:profileRevision};
-    const response=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+
-      '/profile','POST',payload);
-    if(response.saved!==true)throw Error('De server heeft geen opslag bevestigd');
-    saved=true;
-    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
-    if(fresh.profileRevision!==response.revision)
-      throw Error('De nieuwe dossierrevisie kon niet teruggelezen worden');
-    if(selectedId===targetId){
-      renderPerson(fresh);
-      renderRoster();
-      $('profileSaveStatus').textContent='Burgergegevens gecontroleerd opgeslagen.';
-    }
-    mark('Burgerrol en datum zijn opgeslagen met revisiecontrole en audit.');
-  }catch(e){
-    const warning=saved?
-      'Opgeslagen, maar nacontrole mislukte. Vernieuw het dossier.':
-      'Opslaan mislukt: '+e.message;
-    $('profileSaveStatus').textContent=warning;mark(warning,true);
-  }finally{button.disabled=false}
-};
-$('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
-  selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
-  history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
-$('refresh').onclick=load;
-$('quickAdd').onclick=()=>$('formCard').scrollIntoView({behavior:'smooth',block:'start'});
-$('print').onclick=()=>window.print();
-function beginDelete(personId,entry,title){
-  if(selectedId!==personId||!entry?.id)return;
-  deleteTarget={personId,entryId:entry.id};
-  $('deleteTargetLabel').textContent=title+' · '+entry.eventDate+
-    ' · registratie '+entry.id;
-  $('deleteReason').value='';
-  $('deleteStatus').textContent='Geef een concrete reden voor deze verwijdering.';
-  $('confirmDelete').disabled=false;
-  $('deleteDialog').showModal();
-}
-$('cancelDelete').onclick=()=>{$('deleteDialog').close();deleteTarget=null};
-$('deleteDialog').addEventListener('close',()=>{deleteTarget=null});
-$('deleteForm').onsubmit=async event=>{
-  event.preventDefault();
-  if(!deleteTarget||selectedId!==deleteTarget.personId)return;
-  const target={...deleteTarget},button=$('confirmDelete');
-  button.disabled=true;
-  $('deleteStatus').textContent='Verwijdering en auditlog opslaan in Firebase…';
-  let confirmed=false;
-  try{
-    const result=await api('/api/citizen-staff/'+encodeURIComponent(target.personId)+
-      '/entries/'+encodeURIComponent(target.entryId),'DELETE',
-      {reason:$('deleteReason').value.trim()});
-    if(result.deleted!==true||result.id!==target.entryId)
-      throw Error('De server heeft de verwijdering niet bevestigd');
-    confirmed=true;
-    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(target.personId));
-    if(fresh.entries?.some(e=>e.id===target.entryId)||
-      !fresh.deletionLog?.some(e=>e.entryId===target.entryId))
-      throw Error('De verwijdering is nog niet volledig teruggelezen');
-    if(selectedId===target.personId)renderPerson(fresh);
-    $('deleteDialog').close();
-    mark('Registratie verwijderd uit het actieve dossier. Reden en uitvoerder zijn gelogd.');
-  }catch(e){
-    const warning=confirmed
-      ?'De server heeft de verwijdering bevestigd, maar de nacontrole mislukte. '+
-        'Vernieuw eerst het dossier en probeer niet opnieuw te verwijderen.'
-      :'Verwijderen mislukt: '+e.message;
-    $('deleteStatus').textContent=warning;
-    mark(warning,true);
-    if(!confirmed)button.disabled=false;
-  }
-};
-$('entryForm').onsubmit=async event=>{
-  event.preventDefault();if(!selectedId)return;
-  const targetId=selectedId,button=$('citizenEntrySave');
-  button.disabled=true;$('saveStatus').textContent='Bezig met opslaan in Firebase…';
-  let savedId=null;
-  try{
-    const kind=$('kind').value;
-    const payload={kind,eventDate:$('eventDate').value,details:$('details').value.trim()};
-    if(kind==='observatie')payload.score=Number($('score').value);
-    const result=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+'/entries','POST',payload);
-    if(result.saved!==true||!result.id)throw Error('De server heeft geen bevestiging gegeven');
-    savedId=result.id;
-    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
-    if(!fresh.entries?.some(entry=>entry.id===savedId))
-      throw Error('De nieuwe registratie kon niet teruggelezen worden');
-    if(selectedId===targetId)renderPerson(fresh);
-    $('details').value='';
-    $('saveStatus').textContent='Opgeslagen en opnieuw gecontroleerd · referentie '+savedId;
-    mark('Registratie opgeslagen in het dossier en bevestigd door Firebase');
-  }catch(e){
-    const warning=savedId
-      ?'De server heeft de registratie opgeslagen (referentie '+savedId+
-        '), maar de controle na opslaan mislukte. Vernieuw het dossier voor je opnieuw opslaat.'
-      :'Opslaan mislukt: '+e.message;
-    $('saveStatus').textContent=warning;
-    mark(warning,true);
-  }finally{button.disabled=false}
-};
-(async()=>{
-  try{
-    const cfg=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());
-    if(!cfg.enabled)throw Error('Firebase is niet actief');
-    ({setupPortalLogin:portalSetup}=await import('/portal-login.js'));
-    const app=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
-    authMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
-    auth=authMod.getAuth(app.initializeApp(cfg.firebaseConfig));
-    portalSetup({button:$('login'),auth,authModule:authMod,config:cfg,onError:e=>mark(e.message,true)});
-    const today=new Date();
-    $('eventDate').value=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),
-      String(today.getDate()).padStart(2,'0')].join('-');
-    authMod.onAuthStateChanged(auth,load);
-  }catch(e){mark(e.message,true)}
-})();
-</script><script defer src="/bpd-navigation.js"></script>
-</body></html>
+     const citizenPromotions=[
+     ...entries.filter(e=>e.kind==='volwaardig'),
+     ...(data.profileHistory||[]).map(e=>({...e,_profileHistory:true,
+       eventDate:e.at||e.eventDate||''}))
+   ];
+   fill('promotions',citizenPromotions,(root,e)=>{
+     if(e._profileHistory)
+       line(root,'Burgergegevens aangepast · '+(e.role||'Rol'),
+         'Volwaardig sinds: '+dateBE(e.volwaardigSince)+' · Reden: '+e.reason,
+         fmt(e.at)+' · door '+(e.byDiscordId||'onbekend'));
+     else renderRegistration(root,e,
+       'Historische registratie · volwaardig sinds '+dateBE(e.eventDate));
+   });
+>
