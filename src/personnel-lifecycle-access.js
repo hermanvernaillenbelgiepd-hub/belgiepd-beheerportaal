@@ -14,7 +14,8 @@ export function canManageLifecycleDepartment(actor,dept){
  if(!ID.test(String(actor.discordId||''))||actor.uid!=='discord:'+actor.discordId||
   !actor.departments?.includes(dept))return false;
  const scoped=roleForDepartment(actor,dept);
- if(dept==='burger')return HIGH.has(actor.role)&&HIGH.has(scoped);
+ if(dept==='burger')return actor.citizenCouncilVerified===true||
+   HIGH.has(actor.role)&&HIGH.has(scoped);
  if(!canViewPersonnel(actor,dept)||!canReadServiceDossier(actor,dept)||
   !actor.dossierNativeDepartments?.includes(dept))return false;
  if(dept==='brandweer'&&actor.fireZoneChief===true)return true;
