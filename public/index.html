@@ -32,7 +32,7 @@ nav svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.8;fi
 .topbar{padding:18px clamp(22px,4vw,56px);background:white;border-bottom:1px solid #e1e8f2;display:flex;align-items:center;justify-content:space-between;gap:16px}
 .topbar .path{font-size:13px;color:#6d7f9d}
 .topbar .status{font-size:12px;font-weight:700;color:#2856b6;border:1px solid #d3e0fb;background:#edf3ff;border-radius:99px;padding:7px 12px}
-main{max-width:1390px;margin:0 auto;padding:36px clamp(22px,4vw,56px) 60px}
+main{width:100%;max-width:none;min-width:0;box-sizing:border-box;margin:0;padding:36px clamp(22px,4vw,56px) 60px}
 .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.19em;color:#5775a7;font-weight:800;margin:0 0 8px}
 h1{font-size:clamp(27px,3vw,39px);line-height:1.13;letter-spacing:-.04em;margin:0;color:#112444}
 .lead{color:#60748e;margin:11px 0 0;font-size:15px;max-width:70ch}
@@ -152,7 +152,8 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     padding:10px clamp(20px,3vw,36px);
   }
   body:has(#staffDashboard:not([hidden])) main{
-    max-width:1600px;padding:16px clamp(18px,2.5vw,36px) 20px;
+    max-width:none;width:100%;min-width:0;box-sizing:border-box;
+    margin-inline:0;padding:16px clamp(18px,2.5vw,36px) 20px;
   }
   #staffDashboard .hero{padding-bottom:12px;gap:14px}
   #staffDashboard .hero-icon{width:48px;height:48px;border-radius:12px}
