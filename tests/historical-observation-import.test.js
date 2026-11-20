@@ -137,3 +137,23 @@ test('oorspronkelijke observator kan Middenkader, Officierenkader of Korpsleidin
  assert.match(api,/representativeFromPersonnel\(snap\.data,dept,representedId\)/);
  assert.match(api,/submittedByActor:actor/);
 });
+
+test('historische verlofovername heeft een bereikbare schakelaar en preflight, zonder rechten te verruimen',()=>{
+ const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+ assert.match(page,/\.after\(\$\('historicalMigrationManage'\)\)/,
+   'Migratieschakelaar staat in de registratiehub, niet verborgen in het sanctieformulier');
+ assert.match(page,/id="historicalLeaveAvailability"/);
+ assert.match(page,/migrationKinds=\['leave','sanctie'/);
+ assert.match(page,/async function verifyHistoricalLeaveTransfer\(transfer,dossierKey\)/);
+ assert.match(page,/if\(!transfer\.onBehalfOfDiscordId\)return/);
+ assert.match(page,/await request\('\/api\/registrations\/subjects'\)/);
+ assert.match(page,/fresh\?\.historicalMigration\?\.enabled!==true/);
+ assert.match(page,/const historical=historicalTransferData\('historicalLeave'\)/);
+ assert.match(page,/await verifyHistoricalLeaveTransfer\(historical,dossierKey\)/);
+ assert.match(page,/note:\$\('leaveNote'\)\.value\.trim\(\),\.\.\.historical/);
+ assert.doesNotMatch(page,/\.\.\.historicalTransferData\('historicalLeave'\)\}\}/,
+   'Overnamegegevens worden eerst expliciet gevalideerd');
+ assert.match(server,/historicalMigrationAllowed\(req\.bpd,dept,'verlof'/,
+   'De bestaande servertoegangscontrole blijft ongewijzigd');
+});
