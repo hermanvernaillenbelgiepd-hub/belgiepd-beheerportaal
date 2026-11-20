@@ -219,6 +219,60 @@
       text.className='bpd-home-side-label';text.textContent=label;
       link.replaceChildren(icon,text);
     }
+    // Split the HOME sidebar into visible headings without creating or
+    // authorizing any new links. Home mode selection and service-specific
+    // [hidden] flags remain owned by index.html.
+    function groupHomeSidebar(){
+      const definitions=[
+        {name:'Algemeen',paths:['/','/index.html','/discord-status.html','/meldingen.html','/verlofbeheer.html']},
+        {name:'Personeel',paths:['/personeelsbeheer.html','/personeelslijst.html',
+          '/organogram-hierarchie.html','/organogram.html','/opleidingscentrum.html',
+          '/rollen-opleidingen.html','/registraties.html']},
+        {name:'Operationeel',paths:['/activiteitscentrum.html','/dossiercentrum.html',
+          '/burger-personeelsdossiers.html','/to-dienstbord.html',
+          '/opleidingskalender.html','/weekrapporten.html']},
+        {name:'Documenten en aanvragen',paths:['/documentencentrum.html',
+          '/roepnummers.html','/vast-roepnummer-aanvragen.html']},
+        {name:'Beheer',paths:['/beheercentrum.html','/gebruikersbeheer.html']}
+      ];
+      const resolveGroup=link=>{
+        const path=String(link.getAttribute('href')||'').split(/[?#]/,1)[0];
+        return definitions.find(def=>def.paths.includes(path))?.name||'Overige';
+      };
+      for(const menu of sidebar.querySelectorAll('nav')){
+        const existing=Array.from(menu.children).filter(item=>
+          item.tagName==='A'&&item.hasAttribute('href'));
+        if(!existing.length)continue;
+        const groups=new Map(definitions.map(def=>[def.name,[]]));
+        groups.set('Overige',[]);
+        for(const item of existing)groups.get(resolveGroup(item)).push(item);
+        const output=document.createDocumentFragment();
+        const headings=[];
+        for(const [name,links] of groups){
+          if(!links.length)continue;
+          const heading=document.createElement('span');
+          heading.className='bpd-ref-side-heading';
+          heading.textContent=name;
+          heading.setAttribute('role','heading');
+          heading.setAttribute('aria-level','3');
+          output.append(heading,...links);
+          headings.push([heading,links]);
+        }
+        menu.append(output); // existing anchors are moved, not recreated
+        const refresh=()=>{
+          for(const [heading,links] of headings){
+            // Hidden links must never leave an empty misleading heading.
+            heading.hidden=!links.some(link=>!link.hidden);
+          }
+        };
+        new MutationObserver(records=>{
+          if(records.some(record=>record.target===menu||
+            record.target.tagName==='A'))refresh();
+        }).observe(menu,{subtree:true,attributes:true,attributeFilter:['hidden']});
+        refresh();
+      }
+    }
+    groupHomeSidebar();
     // A second, horizontally scrolling quick-navigation duplicated the
     // role-aware menu. Keep the theme switch, but use a compact drawer for
     // widths where the normal sidebar no longer fits.
