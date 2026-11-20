@@ -182,7 +182,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
  <p id="cadreStatus" role="status" aria-live="polite"></p>
  <div id="cadreCounters" class="counts"></div>
  <div class="tablewrap"><table>
- <thead><tr><th>Personeelslid</th><th>Observaties</th><th>Notities</th><th>Sancties</th><th>Opvolgingen</th><th>Overig</th><th>Opleidingsregistraties</th><th>Verlofbeslissingen</th><th>Overnames</th><th>Correcties</th><th>Registratiedagen</th></tr></thead>
+ <thead><tr><th>Personeelslid</th><th>Observaties</th><th>Notities</th><th>Sancties</th><th>Opvolgingen</th><th>Overig</th><th>Opleidingsregistraties</th><th>Gegeven lesmomenten</th><th>Deelnames</th><th>Verlofbeslissingen</th><th>Overnames</th><th>Correcties</th><th>Registratiedagen</th></tr></thead>
  <tbody id="cadreRows"></tbody></table></div>
  <p class="source-note" id="cadreNote"></p>
 </section>
@@ -394,6 +394,8 @@ function drawCadre(){
  for(const [label,key] of [['Kaderleden','members'],['Observaties','observaties'],
   ['Notities','notities'],['Sancties','sancties'],['Opvolgingen','opvolgingen'],
   ['Opleidingsregistraties','opleidingsregistraties'],
+  ['Gegeven lesmomenten','lesmomenten'],
+  ['Deelnames aan lessen','lesdeelnames'],
   ['Verlofbeslissingen','verlofbeslissingen']]){
     const sum=key==='members'?rows.length:rows.reduce((n,p)=>n+(p[key]||0),0);
     const box=el('div','','counter');box.append(el('strong',sum),el('small',label));
@@ -407,18 +409,19 @@ function drawCadre(){
      (p.series?' · '+p.series:'')));
    tr.append(person);
    for(const key of ['observaties','notities','sancties','opvolgingen',
-     'overig','opleidingsregistraties','verlofbeslissingen','overgenomen','correcties',
+     'overig','opleidingsregistraties','lesmomenten','lesdeelnames',
+     'verlofbeslissingen','overgenomen','correcties',
      'actieveRegistratiedagen'])tr.append(el('td',p[key]||0));
    body.append(tr);
  }
  if(!rows.length){const tr=document.createElement('tr'),cell=el('td','Geen kaderleden binnen de selectie.');
-   cell.colSpan=11;tr.append(cell);body.append(tr)}
+   cell.colSpan=13;tr.append(cell);body.append(tr)}
  $('cadreStatus').textContent='Periode '+cadreData.period.start+' t/m '+
    cadreData.period.end+' · '+rows.length+' actuele kaderleden'+
    (cadreData.incomplete?' · NIET VOLLEDIG: bronlimiet bereikt':'');
  $('cadreNote').textContent=cadreData.info+
    (cadreData.incomplete?' Sommige oudere gegevens konden niet volledig worden geteld.':'')+
-   ' Ook een geregistreerde opleiding is niet noodzakelijk één effectief gegeven les.';
+   ' Gegeven lesmomenten tellen alleen wanneer de geverifieerde opleider een afzonderlijk lesmoment vastlegde en er minstens één actief deelnemersresultaat aan gekoppeld is. Opleidingsregistraties worden apart geteld.';
 }
 async function loadCadre(){
  if(!cadreConfig||!$('cadreDept').value)return;

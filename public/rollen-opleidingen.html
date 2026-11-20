@@ -74,6 +74,15 @@ body.training-embedded #training h2{font-size:17px}
   <input id="instructorName" type="text" minlength="2" maxlength="120"
    placeholder="Naam of roepnummer van opleider">
  </label><label>Resultaat<select id="result"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></label>
+<div class="two">
+  <label>Gegeven lesmoment (optioneel, apart van het opleidingsresultaat)
+    <select id="lessonSession"><option value="">Niet aan een lesmoment gekoppeld</option></select>
+  </label>
+  <div><label>Gegeven les bevestigen</label>
+    <button type="button" class="secondary" id="newLesson">+ Mijn gegeven lesmoment registreren</button>
+  </div>
+</div>
+<p class="mini" id="lessonHelp">Één gegeven les met meerdere deelnemers telt één keer. Alleen de aangemelde opleider zelf kan het lesmoment bevestigen. Voeg deelnemers via hun eigen opleidingsresultaat aan hetzelfde lesmoment toe. Oudere resultaten zonder lesmoment tellen niet als bevestigde les.</p>
 <label id="qualificationStageWrap" hidden>Specialisatiefase<select id="qualificationStage"><option value="">Enkel aanwezig (geen STAGE)</option><option value="in_opleiding">In opleiding → STAGE na beoordeling</option></select></label>
 <p class="mini" id="qualificationHelp">Alleen een erkende specialisatieopleiding kan STAGE of JA activeren na beoordeling.</p><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
 <section class="panel" id="admin" hidden><h2>Uitzonderingen in machtigingen</h2><p>Alleen vooraf gemachtigd officierenkader of korpsleiding via Google. Je kunt je eigen rechten niet veranderen. Alle wijzigingen krijgen een auditvermelding.</p>
@@ -94,6 +103,10 @@ import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '
 import {sortTrainingPeople,populateInstructorOptions,syncManualInstructor,
  selectedInstructor,MANUAL_INSTRUCTOR_VALUE} from '/training-instructor-choices.js';
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null,reviewing=null;
+let lessonSessions=[],lessonsNonce=0;
+const canCreateLesson=()=>Boolean(profile?.trainingWritesEnabled&&
+  profile?.provider==='discord'&&
+  profile?.permissions?.[$('dept').value]?.['training.log']);
 enhanceBelgianDateInputs(['date','expiry']);
 const brusselsToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
  year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -119,6 +132,8 @@ async function refresh(){
     $('permissionList').replaceChildren();for(const [dept,rights] of Object.entries(p.permissions)){const v=document.createElement('div');v.className='item';text(v,dept,'strong');text(v,'Registreren: '+(rights['training.log']?'ja':'nee'),'small');text(v,'Controleren: '+(rights['training.review']?'ja':'nee'),'small');$('permissionList').append(v)}
     $('trainingNote').textContent=p.trainingWritesEnabled?'Opslag ingeschakeld. Alleen binnen je bevoegde hulpdienst.':'Opslag voorlopig uit: BPD_ENABLE_TRAINING_WRITES=false.';
     $('saveTraining').disabled=!p.trainingWritesEnabled;
+    $('newLesson').disabled=!canCreateLesson();
+    $('newLesson').hidden=p.provider!=='discord';
     const allowed=Object.entries(p.permissions||{})
       .filter(([,v])=>v['training.log']||v['training.review']).map(([d])=>d);
     const desired=new URLSearchParams(location.search).get('department')||$('dept').value;
@@ -158,10 +173,79 @@ $('instructorChoice').onchange=()=>syncManualInstructor(
 function setInstructorName(name){
  renderInstructorChoices(name);
 }
+async function refreshLessonSessions(){
+ const nonce=++lessonsNonce,dept=$('dept').value,select=$('lessonSession'),
+   previous=select.value;
+ lessonSessions=[];
+ select.replaceChildren(new Option('Niet aan een lesmoment gekoppeld',''));
+ if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
+   !profile?.permissions?.[dept]?.['training.review'])return;
+ try{
+   const data=await api('/api/training/lessons?department='+encodeURIComponent(dept));
+   if(nonce!==lessonsNonce||dept!==$('dept').value)return;
+   lessonSessions=Array.isArray(data.lessons)?data.lessons:[];
+   for(const session of lessonSessions){
+     select.add(new Option(formatBelgianDateInput(session.eventDate)+' · '+
+       session.courseName+' · '+session.instructorName+
+       ' · lescode '+session.id.slice(-6),session.id));
+   }
+   if(previous&&[...select.options].some(o=>o.value===previous))
+     select.value=previous;
+   $('lessonHelp').textContent='Eén les met meerdere deelnemers telt één keer. '+
+     'Selecteer hetzelfde lesmoment bij elke deelnemer. '+
+     'Alleen een bevestigd lesmoment met minstens één actief resultaat telt mee.'+
+     (data.limited?' Enkel de recentste 300 lesmomenten zijn selecteerbaar.':'');
+ }catch(e){$('lessonHelp').textContent='Lesmomenten niet geladen: '+e.message}
+}
+function applySelectedLesson(){
+ const session=lessonSessions.find(row=>row.id===$('lessonSession').value);
+ if(!session)return;
+ setCourse(session.courseName);
+ $('date').value=session.eventDate;
+ refreshBelgianDateInputs(['date']);
+ setInstructorName(session.instructorName);
+}
+$('lessonSession').onchange=applySelectedLesson;
+$('newLesson').onclick=async()=>{
+ if(editing){
+   $('trainingNote').textContent='Annuleer eerst de bewerking van de bestaande opleiding.';return;
+ }
+ const department=$('dept').value,courseName=selectedCourse();
+ const eventDate=parseBelgianDateInput($('dateText')?.value||$('date').value);
+ if(!department||courseName.length<3||courseName.length>150||
+   !eventDate||eventDate!==$('date').value){
+   $('trainingNote').textContent='Kies eerst dienst, opleiding en een geldige datum.';return;
+ }
+ if(!window.confirm('Bevestig je dat JIJ deze les daadwerkelijk hebt gegeven? '+
+   'Je geverifieerde Discord-ID wordt als opleider geregistreerd. '+
+   'Het lesmoment telt pas als minstens één deelnemersresultaat gekoppeld is.'))return;
+ const button=$('newLesson');button.disabled=true;
+ try{
+   const saved=await api('/api/training/lessons',{method:'POST',
+     body:JSON.stringify({department,courseName,eventDate})});
+   if(saved.saved!==true||!saved.lesson?.id)
+     throw Error('Lesmoment niet bevestigd');
+   await refreshLessonSessions();
+   if($('dept').value!==department)return;
+   if(![...$('lessonSession').options].some(o=>o.value===saved.lesson.id)){
+     lessonSessions.unshift(saved.lesson);
+     $('lessonSession').add(new Option(formatBelgianDateInput(saved.lesson.eventDate)+
+       ' · '+saved.lesson.courseName+' · '+saved.lesson.instructorName+
+       ' · lescode '+saved.lesson.id.slice(-6),saved.lesson.id),1);
+   }
+   $('lessonSession').value=saved.lesson.id;
+   applySelectedLesson();
+   $('trainingNote').textContent='Lesmoment opgeslagen. Kies een deelnemer en registreer diens resultaat.';
+ }catch(e){$('trainingNote').textContent='Lesmoment niet opgeslagen: '+e.message}
+ finally{button.disabled=!canCreateLesson()}
+};
 async function refreshPeople(){
  refreshCourseOptions();
   const n=++peopleNonce,dept=$('dept').value,select=$('subjectChoice');
   $('subject').value='';trainingInstructorPeople=[];
+  $('lessonSession').replaceChildren(new Option('Niet aan een lesmoment gekoppeld',''));
+  lessonSessions=[];++lessonsNonce;
+  $('newLesson').disabled=!canCreateLesson();
   renderInstructorChoices('');
   select.replaceChildren(new Option('Personeelslijst laden…',''));
   if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
@@ -183,6 +267,7 @@ async function refreshPeople(){
     $('subject').value=select.value;
     $('peopleNote').textContent=(data.people?.length||0)+
       ' personeelsleden beschikbaar binnen '+dept+'. Andere diensten blijven afgeschermd.';
+    await refreshLessonSessions();
   }catch(e){
     if(n!==peopleNonce)return;
     select.replaceChildren(new Option('Personeelslijst niet beschikbaar',''));
@@ -234,6 +319,7 @@ function cancelEdit(){
   $('course').value='';
   for(const historic of $('result').querySelectorAll('option[data-legacy]'))historic.remove();
   $('result').value='aanwezig';
+  $('lessonSession').value='';
   renderInstructorChoices('');
   $('qualificationStage').value='';
   $('date').value=brusselsToday();
@@ -249,12 +335,12 @@ async function showRecords(){
     $('records').replaceChildren();
     if(!d.records.length){text($('records'),'Nog geen registraties.','p');return}
     const t=document.createElement('table'),head=document.createElement('tr');
-    for(const h of ['Datum','Opleiding','Opleider','Resultaat','Administratieve controle','Aangemaakt','Acties'])text(head,h,'th');t.append(head);
+    for(const h of ['Datum','Opleiding','Opleider','Lesmoment','Resultaat','Administratieve controle','Aangemaakt','Acties'])text(head,h,'th');t.append(head);
     const resultLabels={aanwezig:'Aanwezig',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',onderbroken:'Onderbroken',in_opleiding:'In opleiding (historisch)',stage:'STAGE (historisch)',restricted:'RESTRICTED (historisch)'};
     const reviewLabels={nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',klaar_voor_manuele_invoer:'Goedgekeurd voor verwerking'};
     for(const r of d.records){
       const tr=document.createElement('tr');
-      for(const value of [formatBelgianDateInput(r.eventDate)||'—',r.courseName,r.instructorName||'Niet vermeld',resultLabels[r.result]||r.result,(reviewLabels[r.rosterStatus]||r.rosterStatus||'Open')+(r.appliedSpecialtyLabel?' · patch: '+r.appliedSpecialtyLabel:''),r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
+      for(const value of [formatBelgianDateInput(r.eventDate)||'—',r.courseName,r.instructorName||'Niet vermeld',r.lessonSessionId?'Gekoppeld':'Niet gekoppeld',resultLabels[r.result]||r.result,(reviewLabels[r.rosterStatus]||r.rosterStatus||'Open')+(r.appliedSpecialtyLabel?' · patch: '+r.appliedSpecialtyLabel:''),r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
       const actions=document.createElement('td');
       if(profile.trainingWritesEnabled && r.canEdit){
         const edit=document.createElement('button');edit.type='button';edit.className='secondary small-action';edit.textContent='Wijzigen';
@@ -272,6 +358,11 @@ async function showRecords(){
           $('qualificationStage').value=r.qualificationStage||'';
           syncQualificationStage();$('details').value=r.details||'';
           setInstructorName(r.instructorName||r.instructor||'');
+          if(r.lessonSessionId&&
+             ![...$('lessonSession').options].some(o=>o.value===r.lessonSessionId))
+            $('lessonSession').add(new Option('Bestaand gekoppeld lesmoment (archief)',
+              r.lessonSessionId));
+          $('lessonSession').value=r.lessonSessionId||'';
           $('saveTraining').textContent='Wijziging bewaren';$('cancelEdit').hidden=false;
           $('editNotice').textContent='Je bewerkt een bestaande registratie. Geef bij bewaren een reden. De Discord-rollen en personeelslijst blijven onveranderd.';
           $('editNotice').hidden=false;$('course').focus();
@@ -348,12 +439,20 @@ $('saveTraining').onclick=async()=>{
     $('dateText')?.focus();return;
   }
   const instructorName=selectedInstructor($('instructorChoice'),$('instructorName'));
+  const chosenLesson=lessonSessions.find(row=>row.id===$('lessonSession').value);
+  if(chosenLesson&&(chosenLesson.courseName!==courseName||
+     chosenLesson.eventDate!==trainingDate||
+     chosenLesson.instructorName!==instructorName)){
+    $('trainingNote').textContent='De opleiding, datum of opleider verschilt van het gekozen lesmoment. Kies het lesmoment opnieuw of kies “Niet gekoppeld”.';
+    return;
+  }
   if(instructorName.length<2||instructorName.length>120){
     $('trainingNote').textContent='Vul de opleider in (naam of roepnummer, 2–120 tekens).';return;
   }
   const values={department:$('dept').value,discordId:$('subject').value.trim(),courseName,
     eventDate:trainingDate,result:$('result').value,details:$('details').value,
-    instructorName,qualificationStage:$('qualificationStage').value};
+    instructorName,qualificationStage:$('qualificationStage').value,
+    lessonSessionId:$('lessonSession').value||null};
   let url='/api/training',method='POST';
   if(editing){
     const reason=window.prompt('Reden van deze wijziging (minstens 8 tekens):','Correctie opleidingsregistratie');
@@ -365,8 +464,14 @@ $('saveTraining').onclick=async()=>{
   button.disabled=true;
   try{
     const d=await api(url,{method,body:JSON.stringify(values)});
+    const keepSession=d.saved&&!editing?values.lessonSessionId:null;
     $('trainingNote').textContent=d.saved?(editing?'Wijziging met audit bewaard.':'Geregistreerd.')+' Discord en Google Sheets zijn niet gewijzigd.':'Niet opgeslagen';
-    cancelEdit();await showRecords();
+    cancelEdit();
+    if(keepSession&&[...$('lessonSession').options].some(o=>o.value===keepSession)){
+      $('lessonSession').value=keepSession;
+      applySelectedLesson();
+    }
+    await showRecords();
   }catch(e){$('trainingNote').textContent='Fout: '+e.message}
   finally{button.disabled=!profile?.trainingWritesEnabled}
 };
