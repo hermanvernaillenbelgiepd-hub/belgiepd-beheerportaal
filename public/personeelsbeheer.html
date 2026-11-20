@@ -4250,9 +4250,7 @@ function renderGeneralDossierNotes(){
     'Geen algemene notities geregistreerd.',limited);
   const root=$('dossierGeneralNoteList');
   if(!root)return;
-  root.replaceChildren();
-  if(!list.length){root.textContent='Geen algemene notities geregistreerd.';return}
-  for(const row of list){
+  renderRecentDossierEntries(root,list,(mount,row)=>{
     const item=document.createElement('div');item.className='note-item general-note-item';
     const heading=document.createElement('strong');
     heading.textContent=(row._noteDate||'—')+' · '+(row._noteTitle||'Notitie');
@@ -4269,9 +4267,9 @@ function renderGeneralDossierNotes(){
     attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
     if(row._dossierSource==='cases'&&selected)
       addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
-    root.append(item);
-  }
-  if(limited)root.append(document.createTextNode(' Er kunnen oudere notities bestaan.'));
+    mount.append(item);
+  },{empty:'Geen algemene notities geregistreerd.',
+    limited,noun:'notities'});
 }
 // Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
 let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
