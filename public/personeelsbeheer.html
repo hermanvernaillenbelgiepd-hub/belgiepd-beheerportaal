@@ -6224,7 +6224,20 @@ $('staffCaseForm').onsubmit=async event=>{
     await loadLinkedPersonnelRecords(person,key);
     notice((staffCaseLabels[type]||type)+' opgeslagen én opnieuw teruggelezen uit het personeelsdossier. '+
       'Referentie: '+stored.reference+'. De registratie wordt opgenomen in het weekrapport.');
-  }catch(e){notice(e.message,true)}finally{button.disabled=false}
+  }catch(e){
+    notice(e.message,true);
+    if(e.message.includes('Discord-bot-token ontbreekt')||
+       e.message.includes('Discord-bot kon jouw rol')){
+      const link=document.createElement('a');
+      link.href='/auth/discord/start?return=%2Fpersoneelsbeheer.html';
+      link.textContent='Discord opnieuw verifiëren';
+      link.style.color='inherit';
+      link.style.fontWeight='bold';
+      link.style.textDecoration='underline';
+      $('notice').append(document.createTextNode(
+        ' · Bewaar je motivering voordat je opnieuw aanmeldt. '),link);
+    }
+  }finally{button.disabled=false}
 };
 // Centrale opslagknop: de oorspronkelijke validators, transactie-API's,
 // audiethistoriek en weekrapportkoppeling blijven ongewijzigd.
