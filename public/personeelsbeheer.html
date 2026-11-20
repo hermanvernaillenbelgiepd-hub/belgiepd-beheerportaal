@@ -5923,8 +5923,7 @@ async function loadStaffDossier(p){
     }));
     generalLegacyLimited=result.notesLimited===true;
     renderGeneralDossierNotes();
-    if(!result.notes?.length)list.textContent='Geen eerder in dit aanvullende dossier geregistreerde notities.';
-    else for(const item of result.notes){
+    renderRecentDossierEntries(list,result.notes||[],(mount,item)=>{
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
       title.textContent=(staffNotesLabels[item.kind]||item.kind)+' · '+item.title;
@@ -5933,20 +5932,22 @@ async function loadStaffDossier(p){
       meta.textContent=(item.recordedAt?new Date(item.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
         ' · Registratie door '+(item.authorDiscordId||'onbekend');
       div.append(title,body,meta);
+      attachExpandableDossierText(div,body,item.details||'—',
+        {label:'Lees volledige notitie'});
       attachRetireButton(div,item,'staff');
-      list.append(div);
-    }
-    if(result.notesLimited)list.append(document.createTextNode(' Alleen de 60 recentste oudere dossiernotities worden getoond.'));
+      mount.append(div);
+    },{empty:'Geen eerder in dit aanvullende dossier geregistreerde notities.',
+      limited:result.notesLimited,noun:'notities'});
     void loadStaffTrainingRights(p,key);
     const hist=$('staffDossierHistory');
-    if(!result.profileChanges?.length)hist.textContent='Nog geen administratieve wijzigingen geregistreerd.';
-    else for(const entry of result.profileChanges){
+    renderRecentDossierEntries(hist,result.profileChanges||[],(mount,entry)=>{
       const line=document.createElement('div');line.className='history';
       line.textContent=(entry.action==='profile_updated'?'Administratieve basisgegevens gewijzigd':'Notitie geregistreerd')+
         ' · '+(entry.recordedAt?new Date(entry.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
         ' · Door '+(entry.byDiscordId||'onbekend')+(entry.reason?' · '+entry.reason:'');
-      hist.append(line);
-    }
+      mount.append(line);
+    },{empty:'Nog geen administratieve wijzigingen geregistreerd.',
+      noun:'administratieve wijzigingen'});
   }catch(e){
     if(selected&&selected.dept+':'+selected.discordId===key){
       sheetDossierProfile({});
