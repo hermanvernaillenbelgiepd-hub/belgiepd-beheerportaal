@@ -157,3 +157,17 @@ test('historische verlofovername heeft een bereikbare schakelaar en preflight, z
  assert.match(server,/historicalMigrationAllowed\(req\.bpd,dept,'verlof'/,
    'De bestaande servertoegangscontrole blijft ongewijzigd');
 });
+
+test('historische verlofweigering noemt de echte serverreden en verzwakt geen beveiliging',()=>{
+ const leave=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+ assert.match(leave,/const migration=historicalMigrationSettings\(config\.data\(\)\)/);
+ assert.match(leave,/const authorized=canManageHistoricalObservationImport\(req\.bpd\)/);
+ assert.match(leave,/if\(!historicalMigrationAllowed\(req\.bpd,dept,'verlof',migration\)\)/);
+ assert.match(leave,/cause=!migration\.enabled\?'feature-disabled'/);
+ assert.match(leave,/!authorized\?'actor-not-authorized'/);
+ assert.match(leave,/historical_leave_denied/);
+ assert.match(leave,/Historische verlofovername staat op de SERVER uit/);
+ assert.match(leave,/Je HUIDIGE aanmelding is niet meer gemachtigd/);
+ assert.match(leave,/throw rejection\([\s\S]*?403\)/);
+ assert.doesNotMatch(leave,/console\.warn\('historical_leave_denied',\s*(personId|representedId|req\.bpd\.discordId)/);
+});
