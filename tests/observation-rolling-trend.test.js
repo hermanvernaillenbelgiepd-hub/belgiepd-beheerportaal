@@ -85,8 +85,8 @@ test('verwijderingskeuzes activeren een aparte procedure, niet de ping-POST',()=
  assert.match(police,/option value="ARCHIVE_DISCORD_DEPARTURE"/);
  assert.match(police,/const cause=ACTIVITY_ARCHIVE_CAUSES\[option\]/);
  assert.match(police,/await archiveServiceMembership\(selected,\{fromActivityPing:true,presetCause:cause\}\)/);
- assert.match(police,/if\(!current\.canManage\|\|current\.state!=='active'\)/);
- assert.match(police,/body:\{cause,reason,expectedRevision:current\.revision\}/);
+ assert.match(police,/if\(current\.state!=='active'\|\|\(scope==='global'\?/);
+ assert.match(police,/body:\{cause,reason,scope,expectedRevision:current\.revision\}/);
  assert.match(police,/if\(activity&&Object\.hasOwn\(ACTIVITY_ARCHIVE_CAUSES,activityStatus\)\)/);
  const backend=sourceFile('src/personnel-lifecycle-routes.js');
  assert.match(backend,/source:'personnel-lifecycle-archive'/);
