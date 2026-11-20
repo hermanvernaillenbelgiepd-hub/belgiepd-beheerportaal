@@ -40,6 +40,7 @@ RUN node --test tests/training-instructor-choice.test.js
 RUN node --test tests/training-general-instructor-policy.test.js
 RUN node --test tests/dossier-administrative-corrections.test.js
 RUN node --test tests/personnel-always-table.test.js
+RUN node --test tests/personnel-rank-bot-recovery.test.js tests/personnel-rank-changes.test.js
 RUN node --test tests/police-promotion-proposals.test.js
 RUN node --test tests/global-personnel-archive.test.js
 RUN node --test tests/siv-training-restrictions.test.js
