@@ -129,6 +129,8 @@ async function refresh(){
     $('permissionList').replaceChildren();for(const [dept,rights] of Object.entries(p.permissions)){const v=document.createElement('div');v.className='item';text(v,dept,'strong');text(v,'Registreren: '+(rights['training.log']?'ja':'nee'),'small');text(v,'Controleren: '+(rights['training.review']?'ja':'nee'),'small');$('permissionList').append(v)}
     $('trainingNote').textContent=p.trainingWritesEnabled?'Opslag ingeschakeld. Alleen binnen je bevoegde hulpdienst.':'Opslag voorlopig uit: BPD_ENABLE_TRAINING_WRITES=false.';
     $('saveTraining').disabled=!p.trainingWritesEnabled;
+    $('newLesson').disabled=!p.trainingWritesEnabled;
+    $('newLesson').hidden=p.provider!=='discord';
     const allowed=Object.entries(p.permissions||{})
       .filter(([,v])=>v['training.log']||v['training.review']).map(([d])=>d);
     const desired=new URLSearchParams(location.search).get('department')||$('dept').value;
@@ -236,6 +238,8 @@ async function refreshPeople(){
  refreshCourseOptions();
   const n=++peopleNonce,dept=$('dept').value,select=$('subjectChoice');
   $('subject').value='';trainingInstructorPeople=[];
+  $('lessonSession').replaceChildren(new Option('Niet aan een lesmoment gekoppeld',''));
+  lessonSessions=[];++lessonsNonce;
   renderInstructorChoices('');
   select.replaceChildren(new Option('Personeelslijst laden…',''));
   if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
@@ -257,6 +261,7 @@ async function refreshPeople(){
     $('subject').value=select.value;
     $('peopleNote').textContent=(data.people?.length||0)+
       ' personeelsleden beschikbaar binnen '+dept+'. Andere diensten blijven afgeschermd.';
+    await refreshLessonSessions();
   }catch(e){
     if(n!==peopleNonce)return;
     select.replaceChildren(new Option('Personeelslijst niet beschikbaar',''));
