@@ -31,7 +31,9 @@ export function canReadPersonnelLifecycle(actor,person){
 }
 export function canManagePersonnelLifecycle(actor,person){
  return Boolean(person&&ID.test(String(person.personId||''))&&
-  actor?.discordId!==person.personId&&canReadPersonnelLifecycle(actor,person)&&
+  actor?.discordId!==person.personId&&
+  canManageLifecycleDepartment(actor,person.dept)&&
+  canReadPersonnelLifecycle(actor,person)&&
   (person.dept==='burger'||canEditPersonnel(actor,person)));
 }
 
