@@ -585,3 +585,21 @@ html.bpd-reference-ui .portal.bpd-home-nav-drawer > .surface {
     padding-inline:12px;
   }
 }
+
+/* Extra-wide monitors: override the original staff-mode :has() selector
+ * that capped the home contents at 1600 CSS pixels, leaving a right gap. */
+html.bpd-reference-ui body:has(#staffDashboard:not([hidden]))
+  .portal > .surface > main,
+html.bpd-reference-ui body:has(#memberDashboard:not([hidden]))
+  .portal > .surface > main {
+  width:100%;
+  max-width:none;
+  min-width:0;
+  margin-inline:0;
+  box-sizing:border-box;
+}
+html.bpd-reference-ui body:has(> .portal) .portal > .surface {
+  width:100%;
+  min-width:0;
+  max-width:none;
+}

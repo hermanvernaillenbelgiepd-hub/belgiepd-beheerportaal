@@ -92,3 +92,14 @@ test('widescreen dashboard consumes full available width and uses fluid cards',(
  assert.match(nav,/verifyIdentity\(show\)/);
  assert.match(nav,/groupHomeSidebar\(\)/);
 });
+
+test('widescreen startdashboard has no 1600px or 1390px width cap',()=>{
+ const home=read('public/index.html');
+ const css=read('public/bpd-reference-dashboard.css');
+ assert.doesNotMatch(home,/main\{max-width:1390px/);
+ assert.doesNotMatch(home,/body:has\(#staffDashboard:not\(\[hidden\]\)\) main\{\s*max-width:1600px/);
+ assert.match(home,/body:has\(#staffDashboard:not\(\[hidden\]\)\) main\{\s*max-width:none;width:100%;min-width:0/);
+ assert.match(css,/html\.bpd-reference-ui body:has\(#staffDashboard:not\(\[hidden\]\)\)/);
+ assert.match(css,/html\.bpd-reference-ui body:has\(#memberDashboard:not\(\[hidden\]\)\)/);
+ assert.match(css,/width:100%;\s*max-width:none;\s*min-width:0;/);
+});
