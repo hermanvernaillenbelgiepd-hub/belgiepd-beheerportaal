@@ -24,6 +24,7 @@ import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
 import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
+import {installVisualDesignRoutes} from './visual-design-routes.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
@@ -172,6 +173,7 @@ app.use('/api/activity',express.json({limit:'4kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/technical-center',express.json({limit:'3kb',strict:true}));
+app.use('/api/visual-design',express.json({limit:'2kb',strict:true}));
 app.use('/api/technical-cleanup',express.json({limit:'4kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
@@ -1012,6 +1014,7 @@ installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
+installVisualDesignRoutes(app,{requireUser});
 installPortalLabelRoutes(app,{requireUser:requireDossierUser});
 installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
 installTechnicalSimulatorRoutes(app,{requireUser});
