@@ -74,6 +74,15 @@ body.training-embedded #training h2{font-size:17px}
   <input id="instructorName" type="text" minlength="2" maxlength="120"
    placeholder="Naam of roepnummer van opleider">
  </label><label>Resultaat<select id="result"><option value="aanwezig">Aanwezig</option><option value="geslaagd">Geslaagd</option><option value="niet_geslaagd">Niet geslaagd</option><option value="onderbroken">Onderbroken</option></select></label>
+<div class="two">
+  <label>Gegeven lesmoment (optioneel, apart van het opleidingsresultaat)
+    <select id="lessonSession"><option value="">Niet aan een lesmoment gekoppeld</option></select>
+  </label>
+  <div><label>Gegeven les bevestigen</label>
+    <button type="button" class="secondary" id="newLesson">+ Mijn gegeven lesmoment registreren</button>
+  </div>
+</div>
+<p class="mini" id="lessonHelp">Één gegeven les met meerdere deelnemers telt één keer. Alleen de aangemelde opleider zelf kan het lesmoment bevestigen. Voeg deelnemers via hun eigen opleidingsresultaat aan hetzelfde lesmoment toe. Oudere resultaten zonder lesmoment tellen niet als bevestigde les.</p>
 <label id="qualificationStageWrap" hidden>Specialisatiefase<select id="qualificationStage"><option value="">Enkel aanwezig (geen STAGE)</option><option value="in_opleiding">In opleiding → STAGE na beoordeling</option></select></label>
 <p class="mini" id="qualificationHelp">Alleen een erkende specialisatieopleiding kan STAGE of JA activeren na beoordeling.</p><label>Opmerkingen<textarea id="details" maxlength="1600" placeholder="Evaluatie en aandachtspunten"></textarea></label><button id="saveTraining">Registratie bewaren</button><button class="secondary" id="cancelEdit" hidden>Wijziging annuleren</button><p class="mini" id="editNotice" hidden></p><p class="mini" id="trainingNote"></p></section>
 <section class="panel" id="admin" hidden><h2>Uitzonderingen in machtigingen</h2><p>Alleen vooraf gemachtigd officierenkader of korpsleiding via Google. Je kunt je eigen rechten niet veranderen. Alle wijzigingen krijgen een auditvermelding.</p>
@@ -94,6 +103,7 @@ import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '
 import {sortTrainingPeople,populateInstructorOptions,syncManualInstructor,
  selectedInstructor,MANUAL_INSTRUCTOR_VALUE} from '/training-instructor-choices.js';
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null,reviewing=null;
+let lessonSessions=[],lessonsNonce=0;
 enhanceBelgianDateInputs(['date','expiry']);
 const brusselsToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
  year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -234,6 +244,7 @@ function cancelEdit(){
   $('course').value='';
   for(const historic of $('result').querySelectorAll('option[data-legacy]'))historic.remove();
   $('result').value='aanwezig';
+  $('lessonSession').value='';
   renderInstructorChoices('');
   $('qualificationStage').value='';
   $('date').value=brusselsToday();
