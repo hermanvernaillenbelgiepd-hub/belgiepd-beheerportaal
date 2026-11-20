@@ -148,8 +148,9 @@ export function installCitizenDossierRoutes(app,{requireUser,getSnapshot}){
       const roleType=citizenMemberType(memberSnap.data(),process.env.DISCORD_GUILD_ID);
       const roleCode=citizenDossierRole({savedRole:saved.roleCode,
         verifiedRole:roleType,rosterRank:person.rank,hasPromotion:!!promoted});
-      const volwaardigDate=Object.hasOwn(saved,'volwaardigSince')?
-        saved.volwaardigSince:promoted?.eventDate||null;
+      const volwaardigDate=roleCode==='burger'?
+        (Object.hasOwn(saved,'volwaardigSince')?
+          saved.volwaardigSince:promoted?.eventDate||null):null;
       const profileRevision=Number.isSafeInteger(saved.profileRevision)?
         saved.profileRevision:0;
       const canWrite=writable()&&canWriteCitizenDossier(req.bpd,
