@@ -322,16 +322,37 @@ function fill(containerId,items,render){
   if(!items?.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Geen registraties';container.append(empty);return}
   items.forEach(item=>render(container,item));
 }
+function populateCitizenPickers(){
+  for(const id of ['citizenPicker','citizenColleague']){
+    const select=$(id),previous=id==='citizenColleague'?selectedId:select.value;
+    const intro=document.createElement('option');
+    intro.value='';intro.textContent='Kies een BIO of Burger…';
+    select.replaceChildren(intro);
+    for(const [code,label] of [
+      ['bio','Burger in opleiding'],['burger','Volwaardige Burger'],
+      [null,'Rol nog niet geregistreerd']]){
+      const group=document.createElement('optgroup');group.label=label;
+      for(const p of rows.filter(person=>person.roleCode===code)){
+        const choice=document.createElement('option');
+        choice.value=p.discordId;
+        choice.textContent=(p.name||'Onbekende burger')+' · '+p.discordId;
+        group.append(choice);
+      }
+      if(group.children.length)select.append(group);
+    }
+    if(previous&&rows.some(p=>p.discordId===previous))select.value=previous;
+  }
+}
 function renderRoster(){
   const term=$('search').value.toLocaleLowerCase('nl-BE').trim();
-  const filtered=rows.filter(p=>(p.name+' '+p.discordId+' '+p.rank).toLocaleLowerCase('nl-BE').includes(term));
+  const filtered=rows.filter(p=>(p.name+' '+p.discordId+' '+p.roleLabel).toLocaleLowerCase('nl-BE').includes(term));
   const root=$('roster');root.replaceChildren();
   if(!filtered.length){line(root,'Geen BIO of Burger gevonden','','');return}
   for(const p of filtered){
     const button=document.createElement('button');button.type='button';button.className='row';
     const name=document.createElement('span');
     const strong=document.createElement('strong');strong.textContent=p.name||'Onbekende burger';
-    const small=document.createElement('small');small.textContent=(p.rank||'Burger')+' · '+p.discordId;
+    const small=document.createElement('small');small.textContent=(p.roleLabel||'Niet geregistreerd')+' · '+p.discordId;
     name.append(strong,small);button.append(name);
     const action=document.createElement('span');action.textContent='Open dossier';button.append(action);
     button.onclick=()=>openPerson(p.discordId);root.append(button);
@@ -339,9 +360,23 @@ function renderRoster(){
 }
 function renderPerson(data){
   const p=data.person;set('personName',p.name||'Burgerpersoneelsdossier');
-  set('personId',p.discordId);set('personRole',data.roleType||p.rank||'Niet bevestigd');
-  set('personCall',p.call);renderDossierStatus($('personStatus'),p.status);
-  set('personPromoted',data.volwaardigDate);
+  set('personId',p.discordId);set('personRole',data.roleLabel||'Niet geregistreerd');
+  renderDossierStatus($('personStatus'),p.status);
+  set('personPromoted',dateBE(data.volwaardigDate));
+  profileRevision=data.profileRevision||0;
+  $('citizenProfileEditor').hidden=data.canEditProfile!==true;
+  $('profileRole').value=data.roleCode||'';
+  $('profileSince').value=data.volwaardigDate||'';
+  $('profileReason').value='';
+  syncCitizenProfileDate();
+  $('profileSaveStatus').textContent='';
+  if(rows.some(row=>row.discordId===p.discordId)){
+    const current=rows.find(row=>row.discordId===p.discordId);
+    current.roleCode=data.roleCode||null;
+    current.roleLabel=data.roleLabel||'Niet geregistreerd';
+    populateCitizenPickers();
+    $('citizenColleague').value=p.discordId;
+  }
   const score=data.observation||{};
   set('personAvg',score.count?String(score.average).replace('.',',')+'/10 ('+
     score.count+')':'Geen scores');
@@ -353,9 +388,7 @@ function renderPerson(data){
     '. Trend: eerdere versus recente observaties, verschil vanaf 0,5 punt.'+
     (score.limited?' Onvolledige registratiebron; geen trend.':'');
   $('personAvg').title='Alleen geldige observatiescores van de laatste drie maanden.';
-  $('limited').hidden=!(data.entriesLimited||data.leaveLimited||data.deletionLogLimited);
-  fill('leave',data.leave,(root,l)=>line(root,
-    l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
+  $('limited').hidden=!(data.entriesLimited||data.deletionLogLimited);
   const entries=data.entries||[],canDelete=data.canDelete===true;
   const originalAuthor=e=>{
     const matches=rows.filter(x=>x.discordId===e.byDiscordId);
@@ -365,8 +398,7 @@ function renderPerson(data){
     const actor=originalAuthor(e);
     return (e.eventDate||'—')+' · '+fmt(e.createdAt)+' · Door '+
       (actor?.name||e.byDiscordId||'onbekend')+
-      (actor?.call?' · '+actor.call:'')+
-      (actor?.rank?' · huidige graad: '+actor.rank:'');
+      (actor?.roleLabel?' · '+actor.roleLabel:'');
   };
   const renderRegistration=(root,e,title,isObservation=false)=>{
     const actor=originalAuthor(e);
@@ -382,7 +414,7 @@ function renderPerson(data){
       attachDossierRecordPreview(record,{row:e,title,
         text:e.details||'—',bodyNode:description,metaNode:recordMeta,
         authorText:attribution,
-        extra:actor?.rank?[['Huidige graad (niet historisch)',actor.rank]]:[]});
+        extra:actor?.roleLabel?[['Huidige burgerrol',actor.roleLabel]]:[]});
     }
     if(canDelete){
       const remove=document.createElement('button');
@@ -406,7 +438,11 @@ function renderPerson(data){
   if(data.evaluationsLimited)$('citizenCheckrides').append(
     document.createTextNode(' Mogelijk zijn oudere evaluaties niet getoond.'));
   fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    renderRegistration(root,e,'Volwaardig sinds '+e.eventDate));
+    renderRegistration(root,e,'Historische registratie · volwaardig sinds '+dateBE(e.eventDate)));
+  for(const edit of data.profileHistory||[])
+    line($('promotions'),'Burgergegevens aangepast · '+(edit.role||'Rol'),
+      'Volwaardig sinds: '+dateBE(edit.volwaardigSince)+' · Reden: '+edit.reason,
+      fmt(edit.at)+' · door '+(edit.byDiscordId||'onbekend'));
   fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
     'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
     'Reden: '+e.reason,
@@ -433,7 +469,7 @@ async function load(){
   try{
     await api('/api/citizen-staff/access');
     const data=await api('/api/citizen-staff/overview');
-    rows=data.rows||[];renderRoster();$('overview').hidden=false;
+    rows=data.rows||[];renderRoster();populateCitizenPickers();$('overview').hidden=false;
     mark(rows.length+' burgerdossiers beschikbaar');
     const target=new URLSearchParams(location.search).get('discordId');
     if(target&&rows.some(p=>p.discordId===target))await openPerson(target);
