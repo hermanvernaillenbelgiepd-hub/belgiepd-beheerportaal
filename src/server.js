@@ -487,7 +487,8 @@ async function requireUser(req,res,next){
     // never infer promotion rights from callsign, Board or portal role alone.
     const personnelRankAction=req.path==='/api/personnel/overview'||
       /^\/api\/personnel\/politie\/\d{15,22}\/rank-change$/.test(req.path)||
-      req.path.startsWith('/api/police-promotions/');
+      req.path.startsWith('/api/police-promotions/')||
+      req.path.startsWith('/api/personnel-lifecycle/');
     const policeScoped=departmentRoles.politie;
     // An approved Police service role is the scope. The independent guild
     // proof is refreshed even for a Board/technical dual appointment whose
