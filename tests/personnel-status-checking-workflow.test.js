@@ -84,7 +84,7 @@ test('archiveren vereist afzonderlijke bevoegde beslissing, logt beweging en pin
  assert.match(r,/type:'personeelsbeweging',reportCategory:'personeelsbeweging'/);
  assert.match(r,/(newRank:action==='archive'\?'Ontslag'|newRank:'Ontslag')/);
  assert.match(r,/activityStatus:'VERWIJDERD',discordPingSent:false/);
- assert.match(r,/departureEvidence\(historic,readableServices,input\.cause,input\.reason\)/);
+ assert.match(r,/departureEvidence\(historic,archiveSubjects,input\.cause,input\.reason\)/);
 });
 test('manuele ACTIEF/50-50 wijziging sluit open verlofcontrole met dossieraudit',()=>{
  const r=read('src/personnel-editor-routes.js');
