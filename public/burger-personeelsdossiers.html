@@ -477,6 +477,46 @@ async function load(){
 }
 $('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
 $('search').oninput=renderRoster;
+for(const id of ['citizenPicker','citizenColleague'])
+  $(id).onchange=()=>{const chosen=$(id).value;
+    if(chosen&&rows.some(p=>p.discordId===chosen))void openPerson(chosen);
+  };
+function syncCitizenProfileDate(){
+  const trainee=$('profileRole').value==='bio';
+  $('profileSince').disabled=trainee;
+  if(trainee)$('profileSince').value='';
+}
+$('profileRole').onchange=syncCitizenProfileDate;
+$('citizenProfileForm').onsubmit=async event=>{
+  event.preventDefault();if(!selectedId)return;
+  const targetId=selectedId,button=$('profileSave');
+  button.disabled=true;$('profileSaveStatus').textContent='Burgergegevens opslaan…';
+  let saved=false;
+  try{
+    const payload={role:$('profileRole').value,
+      volwaardigSince:$('profileRole').value==='burger'?
+        $('profileSince').value||null:null,
+      reason:$('profileReason').value.trim(),expectedRevision:profileRevision};
+    const response=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+
+      '/profile','POST',payload);
+    if(response.saved!==true)throw Error('De server heeft geen opslag bevestigd');
+    saved=true;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
+    if(fresh.profileRevision!==response.revision)
+      throw Error('De nieuwe dossierrevisie kon niet teruggelezen worden');
+    if(selectedId===targetId){
+      renderPerson(fresh);
+      renderRoster();
+      $('profileSaveStatus').textContent='Burgergegevens gecontroleerd opgeslagen.';
+    }
+    mark('Burgerrol en datum zijn opgeslagen met revisiecontrole en audit.');
+  }catch(e){
+    const warning=saved?
+      'Opgeslagen, maar nacontrole mislukte. Vernieuw het dossier.':
+      'Opslaan mislukt: '+e.message;
+    $('profileSaveStatus').textContent=warning;mark(warning,true);
+  }finally{button.disabled=false}
+};
 $('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
   selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};
