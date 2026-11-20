@@ -41,6 +41,7 @@ test('Politionele Officierenkader/Korpsleiding volgen live rang EN geverifieerde
  assert.equal(canManageCadreActivity(actor,roster),true);
  assert.equal(canReadCadreActivity(actor,'politie',{},roster),true);
  assert.equal(canManageCadreActivity(actor,policeRoster('720','Hoofdinspecteur')),false);
+ assert.equal(canManageCadreActivity(actor,policeRoster('930','Hoofdinspecteur')),false); // Rang is gewijzigd, callsign loopt achter
  assert.equal(canReadCadreActivity(actor,'politie',{},policeRoster('720','Hoofdinspecteur')),false);
  assert.equal(canManageCadreActivity(policeOfficer({
    role:'middenkader',departmentRoles:{politie:'middenkader'},
