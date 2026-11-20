@@ -117,4 +117,11 @@ test('Alle vijf dossiers delen de vijf-regelregel, zonder wijziging aan toegangs
  assert.match(citizen,/fill\('sanctions'/);
  assert.match(helper,/const older=document\.createElement\('details'\)/);
  assert.doesNotMatch(citizen,/id="citizenLeave"/);
+ // A partial page can have valid snippets but omit forms or initialization.
+ // Guard the full original dossier lifecycle before any UI deployment.
+ assert.match(citizen,/authMod\.onAuthStateChanged\(auth,load\)/);
+ assert.match(citizen,/\$\('details'\)\.value=''/);
+ assert.match(citizen,/\$\('saveStatus'\)\.textContent/);
+ assert.match(citizen,/<\/script><script defer src="\/bpd-navigation\.js"><\/script>/);
+ assert.match(citizen,/<\/body><\/html>/);
 });
