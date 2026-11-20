@@ -91,7 +91,7 @@ export function validateLifecycleAction(body,action){
  if(!['archive','restore','activate'].includes(action)||!body||typeof body!=='object'||
     Array.isArray(body))throw Error('Ongeldige personeelsactie');
  const allowed=action==='archive'?
-  ['reason','cause','expectedRevision']:['reason','expectedRevision'];
+  ['reason','cause','expectedRevision','scope']:['reason','expectedRevision'];
  if(Object.keys(body).some(k=>!allowed.includes(k)))throw Error('Onbekende personeelsactie');
  const reason=String(body.reason||'').trim();
  if(reason.length<10||reason.length>500||/[<>\x00-\x1f\x7f]/.test(reason))
@@ -101,7 +101,10 @@ export function validateLifecycleAction(body,action){
  const cause=action==='archive'?String(body.cause||''):'return_to_service';
  if(action==='archive'&&!ARCHIVE_REASONS.includes(cause))
   throw Error('Kies een geldige ontslagreden');
- return {reason,cause,expectedRevision:body.expectedRevision};
+ const scope=action==='archive'?String(body.scope||'service'):'service';
+ if(!['service','global'].includes(scope))
+  throw Error('Kies een geldige archiveringsomvang');
+ return {reason,cause,scope,expectedRevision:body.expectedRevision};
 }
 export function lifecycleSourceSnapshot(p){
  if(!p||!lifecycleKey(p.dept,p.personId))return null;
