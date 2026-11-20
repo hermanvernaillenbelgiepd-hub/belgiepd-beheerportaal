@@ -60,6 +60,7 @@ RUN node --test tests/manual-leave-dates-and-notices.test.js
 RUN node --test tests/fire-promotion-workflow.test.js
 RUN node --test tests/dossier-last-five-expandable.test.js
 RUN node --test tests/visual-design-settings.test.js
+RUN node --test tests/visual-page-design.test.js tests/visual-page-studio.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node

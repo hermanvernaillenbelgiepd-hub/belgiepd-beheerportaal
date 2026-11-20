@@ -48,6 +48,13 @@
     design.dataset.bpdVisualDesign='1';
     document.head.append(design);
   }
+  // Safely apply page-specific style tokens and the responsive grid layer.
+  if(!document.querySelector('script[data-bpd-page-design]')){
+    const pageDesign=document.createElement('script');
+    pageDesign.src='/bpd-page-design.js';
+    pageDesign.dataset.bpdPageDesign='1';
+    document.head.append(pageDesign);
+  }
   // Display-only DD/MM/YYYY formatting for all services, including embedded views.
   // Input values and API payloads remain ISO dates for consistent sorting.
   if(!document.querySelector('script[data-bpd-display-dates]')){
