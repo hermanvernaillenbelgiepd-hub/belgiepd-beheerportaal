@@ -192,6 +192,11 @@
  function start(){
   if(!document.body)return;
   document.documentElement.setAttribute('data-bpd-page-design',key);
+  if(!document.getElementById('bpdResponsiveGridSheet')){
+   const responsive=document.createElement('link');
+   responsive.rel='stylesheet';responsive.href='/bpd-page-responsive.css';
+   responsive.id='bpdResponsiveGridSheet';document.head.append(responsive);
+  }
   discover();
   watcher.observe(document.body,{childList:true,subtree:true});
   void reload();
