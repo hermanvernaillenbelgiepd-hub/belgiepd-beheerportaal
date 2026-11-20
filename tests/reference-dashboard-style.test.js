@@ -116,9 +116,9 @@ test('daily staff module cards are 6 + 6 on widescreen, and adapt by available c
  assert.match(css,/container-name:bpd-daily-cards/);
  assert.match(css,/html\.bpd-reference-ui \.portal #staffDashboard > \.grid \{/);
  assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
- for(const [bound,columns] of [[1449,5],[1199,4],[959,3],[719,2]])
+ for(const [bound,columns] of [[1449,4],[999,3],[759,2]])
    assert.match(css,new RegExp('@container bpd-daily-cards \\(max-width:'+bound+'px\\) \\{[\\s\\S]*?grid-template-columns:repeat\\('+columns+',minmax\\(0,1fr\\)\\)'));
- assert.match(css,/@container bpd-daily-cards \(max-width:479px\)/);
+ assert.match(css,/@container bpd-daily-cards \(max-width:499px\)/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\)/);
  // Admin section remains independent; this selector only targets direct children.
  assert.doesNotMatch(css,/\.portal #adminRights > \.grid\s*\{\s*grid-template-columns:repeat\(6/);
