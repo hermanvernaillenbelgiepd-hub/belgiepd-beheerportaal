@@ -5359,13 +5359,11 @@ async function loadStaffFormalRecords(p,key){
     const data=await request('/api/registrations/entries?dept='+encodeURIComponent(p.dept)+
       '&discordId='+encodeURIComponent(p.discordId));
     if(!sameDossier(key))return;
-    root.replaceChildren();
     const records=newestDossierEntries(
       (data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type)));
     formalRecords=records;
     sheetFormalRows(records,data.limited);
-    if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
-    for(const row of records.slice(0,100)){
+    renderRecentDossierEntries(root,records,(mount,row)=>{
       let item=document.createElement('div');item.className='note-item';
       const title=document.createElement('strong');
       const date=row.eventDate||row.createdAt||'Datum onbekend';
@@ -5430,10 +5428,10 @@ async function loadStaffFormalRecords(p,key){
           item.append(edit);
         }
       }
-      root.append(item);
-    }
-    if(data.entries?.length===100)root.append(document.createTextNode(
-      ' Het register toont maximaal de 100 recentste registraties.'));
+      mount.append(item);
+    },{empty:'Geen zichtbare formele observaties of sancties.',
+      limited:Boolean(data.limited||data.entries?.length===100),
+      noun:'observaties en sancties'});
   }catch(e){if(sameDossier(key)){
     root.textContent='Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message;
     if(p.dept==='politie'){
