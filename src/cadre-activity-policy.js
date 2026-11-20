@@ -26,6 +26,7 @@ export function canManageCadreActivity(actor,roster){
  const matches=roster.filter(p=>p?.dept==='politie'&&p.personId===actor.discordId&&
    p.lifecycleState!=='archived'&&p.lifecycleState!=='pending');
  return matches.length===1&&/^(?:S[- ]?)?9\d{2}$/i.test(String(matches[0].call||''))&&
+   /(?:commissaris|\bacp\b|\bcp\b|\b1cp\b|\b1hcp\b)/i.test(String(matches[0].rank||''))&&
    !/^(?:ontslag|verwijderd|blacklisted)$/i.test(String(matches[0].status||''));
 }
 export function canReadCadreActivity(actor,dept,settings,roster){
