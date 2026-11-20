@@ -183,7 +183,8 @@ async function refreshLessonSessions(){
    lessonSessions=Array.isArray(data.lessons)?data.lessons:[];
    for(const session of lessonSessions){
      select.add(new Option(formatBelgianDateInput(session.eventDate)+' · '+
-       session.courseName+' · '+session.instructorName,session.id));
+       session.courseName+' · '+session.instructorName+
+       ' · lescode '+session.id.slice(-6),session.id));
    }
    if(previous&&[...select.options].some(o=>o.value===previous))
      select.value=previous;
@@ -225,8 +226,8 @@ $('newLesson').onclick=async()=>{
    if(![...$('lessonSession').options].some(o=>o.value===saved.lesson.id)){
      lessonSessions.unshift(saved.lesson);
      $('lessonSession').add(new Option(formatBelgianDateInput(saved.lesson.eventDate)+
-       ' · '+saved.lesson.courseName+' · '+saved.lesson.instructorName,
-       saved.lesson.id),1);
+       ' · '+saved.lesson.courseName+' · '+saved.lesson.instructorName+
+       ' · lescode '+saved.lesson.id.slice(-6),saved.lesson.id),1);
    }
    $('lessonSession').value=saved.lesson.id;
    applySelectedLesson();
