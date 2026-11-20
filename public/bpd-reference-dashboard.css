@@ -459,3 +459,13 @@ html.bpd-reference-ui .portal .topbar-logout {
   html.bpd-reference-ui #bpdQuicknav .bpd-ref-search{flex-basis:100%}
   html.bpd-reference-ui #bpdQuicknav .bpd-ref-shortcuts{margin-left:auto}
 }
+
+
+html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading {
+  display:block;margin:15px 10px 4px;
+  color:#7e9dcf;text-transform:uppercase;
+  letter-spacing:.10em;font:800 10px/1.2 Inter,system-ui,Arial,sans-serif;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading:first-child {
+  margin-top:3px;
+}
