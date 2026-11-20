@@ -329,12 +329,12 @@ async function showRecords(){
     $('records').replaceChildren();
     if(!d.records.length){text($('records'),'Nog geen registraties.','p');return}
     const t=document.createElement('table'),head=document.createElement('tr');
-    for(const h of ['Datum','Opleiding','Opleider','Resultaat','Administratieve controle','Aangemaakt','Acties'])text(head,h,'th');t.append(head);
+    for(const h of ['Datum','Opleiding','Opleider','Lesmoment','Resultaat','Administratieve controle','Aangemaakt','Acties'])text(head,h,'th');t.append(head);
     const resultLabels={aanwezig:'Aanwezig',geslaagd:'Geslaagd',niet_geslaagd:'Niet geslaagd',onderbroken:'Onderbroken',in_opleiding:'In opleiding (historisch)',stage:'STAGE (historisch)',restricted:'RESTRICTED (historisch)'};
     const reviewLabels={nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',klaar_voor_manuele_invoer:'Goedgekeurd voor verwerking'};
     for(const r of d.records){
       const tr=document.createElement('tr');
-      for(const value of [formatBelgianDateInput(r.eventDate)||'—',r.courseName,r.instructorName||'Niet vermeld',resultLabels[r.result]||r.result,(reviewLabels[r.rosterStatus]||r.rosterStatus||'Open')+(r.appliedSpecialtyLabel?' · patch: '+r.appliedSpecialtyLabel:''),r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
+      for(const value of [formatBelgianDateInput(r.eventDate)||'—',r.courseName,r.instructorName||'Niet vermeld',r.lessonSessionId?'Gekoppeld':'Niet gekoppeld',resultLabels[r.result]||r.result,(reviewLabels[r.rosterStatus]||r.rosterStatus||'Open')+(r.appliedSpecialtyLabel?' · patch: '+r.appliedSpecialtyLabel:''),r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
       const actions=document.createElement('td');
       if(profile.trainingWritesEnabled && r.canEdit){
         const edit=document.createElement('button');edit.type='button';edit.className='secondary small-action';edit.textContent='Wijzigen';
@@ -352,6 +352,11 @@ async function showRecords(){
           $('qualificationStage').value=r.qualificationStage||'';
           syncQualificationStage();$('details').value=r.details||'';
           setInstructorName(r.instructorName||r.instructor||'');
+          if(r.lessonSessionId&&
+             ![...$('lessonSession').options].some(o=>o.value===r.lessonSessionId))
+            $('lessonSession').add(new Option('Bestaand gekoppeld lesmoment (archief)',
+              r.lessonSessionId));
+          $('lessonSession').value=r.lessonSessionId||'';
           $('saveTraining').textContent='Wijziging bewaren';$('cancelEdit').hidden=false;
           $('editNotice').textContent='Je bewerkt een bestaande registratie. Geef bij bewaren een reden. De Discord-rollen en personeelslijst blijven onveranderd.';
           $('editNotice').hidden=false;$('course').focus();
@@ -428,12 +433,20 @@ $('saveTraining').onclick=async()=>{
     $('dateText')?.focus();return;
   }
   const instructorName=selectedInstructor($('instructorChoice'),$('instructorName'));
+  const chosenLesson=lessonSessions.find(row=>row.id===$('lessonSession').value);
+  if(chosenLesson&&(chosenLesson.courseName!==courseName||
+     chosenLesson.eventDate!==trainingDate||
+     chosenLesson.instructorName!==instructorName)){
+    $('trainingNote').textContent='De opleiding, datum of opleider verschilt van het gekozen lesmoment. Kies het lesmoment opnieuw of kies “Niet gekoppeld”.';
+    return;
+  }
   if(instructorName.length<2||instructorName.length>120){
     $('trainingNote').textContent='Vul de opleider in (naam of roepnummer, 2–120 tekens).';return;
   }
   const values={department:$('dept').value,discordId:$('subject').value.trim(),courseName,
     eventDate:trainingDate,result:$('result').value,details:$('details').value,
-    instructorName,qualificationStage:$('qualificationStage').value};
+    instructorName,qualificationStage:$('qualificationStage').value,
+    lessonSessionId:$('lessonSession').value||null};
   let url='/api/training',method='POST';
   if(editing){
     const reason=window.prompt('Reden van deze wijziging (minstens 8 tekens):','Correctie opleidingsregistratie');
