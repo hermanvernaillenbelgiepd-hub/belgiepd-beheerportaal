@@ -31,10 +31,10 @@ async function querySources(db,subjects,dept,period){
      const sources=[
        db.collection(dept==='burger'?'bpd_citizen_staff_dossiers':'bpd_cases')
          .doc(dept==='burger'?person.personId:key).collection('entries')
-         .where('eventDate','>=',period.start).limit(151).get(),
+         .where('eventDate','>=',period.start).orderBy('eventDate','desc').limit(151).get(),
        dept==='burger'?Promise.resolve({docs:[],size:0}):
          db.collection('bpd_training').doc(key).collection('records')
-           .where('eventDate','>=',period.start).limit(151).get()
+           .where('eventDate','>=',period.start).orderBy('eventDate','desc').limit(151).get()
      ];
      return Promise.all(sources);
    }));
