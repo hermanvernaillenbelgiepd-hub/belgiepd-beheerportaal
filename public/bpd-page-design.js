@@ -95,7 +95,10 @@
   add('background-color',style.background);
   add('color',style.textColor);
   add('border-color',style.borderColor);
-  if(style.borderWidth!==undefined)add('border-width',style.borderWidth+'px');
+  if(style.borderWidth!==undefined){
+   add('border-width',style.borderWidth+'px');
+   if(style.borderWidth>0)add('border-style','solid');
+  }
   if(style.radius!==undefined)add('border-radius',style.radius+'px');
   if(style.padding!==undefined)add('padding',style.padding+'px');
   if(style.gap!==undefined)add('gap',style.gap+'px');
@@ -108,6 +111,16 @@
   if(style.minHeight!==undefined)add('min-height',style.minHeight+'px');
   const lines=[];
   if(declaration.length)lines.push(target+'{'+declaration.join(';')+'}');
+  // Most portal pages set explicit pixel sizes on their contents. Inherit-only
+  // changes would not visibly update those. Scope editable typography to the
+  // selected card, without touching ranks, icons, status chips or badges.
+  const readable=target+' :is(p,li,label,small,input,select,textarea):not(.status):not(.badge):not(.rank-insignia)';
+  const text=[];
+  if(style.textColor)text.push('color:'+style.textColor+' !important');
+  if(style.fontFamily)text.push('font-family:'+fonts[style.fontFamily]+' !important');
+  if(style.fontSize!==undefined)text.push('font-size:'+style.fontSize+'px !important');
+  if(style.fontWeight)text.push('font-weight:'+style.fontWeight+' !important');
+  if(text.length)lines.push(readable+'{'+text.join(';')+'}');
   if(style.headingColor)lines.push(target+' :is(h1,h2,h3,h4){color:'+style.headingColor+' !important}');
   if(style.linkColor)lines.push(target+' a:not(.pill):not(.badge){color:'+style.linkColor+' !important}');
   const button=target+' :is(button,input[type="submit"],input[type="button"],.button):not(.danger):not(.critical):not(.emergency):not([data-operational])';
