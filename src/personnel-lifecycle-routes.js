@@ -543,6 +543,20 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        createdAt:at,modifiedAt:null});
      tx.create(notice,{caseId:dept+'_'+discordId,entryId:entry.id,
        type:'personeelsbeweging',dept,createdAt:at});
+     // Burger heeft een eigen native dossierbron in plaats van het
+     // algemene bpd_cases-overzicht. Bewaar daar dezelfde dienstactie.
+     // De globale burgerregistratie wordt reeds door writeIdentityArchive
+     // geaudit; schrijf die gebeurtenis niet dubbel.
+     if(dept==='burger'&&!globalArchive){
+      tx.create(db().collection('bpd_citizen_staff_dossiers').doc(discordId)
+       .collection('entries').doc(),{
+        kind:'notitie',eventDate,
+        details:'Burgerpersoneelsverloop: '+movement+' · '+previousState+
+          ' → '+nextState+' · Reden: '+input.reason,
+        source:'personnel-lifecycle-'+action,byDiscordId:req.bpd.discordId,
+        createdAt:at
+      });
+     }
      if(action==='archive'){
        // A removal creates a distinct, truthful activity follow-up entry.
        // NO Discord message is sent automatically and NO automatic departure
