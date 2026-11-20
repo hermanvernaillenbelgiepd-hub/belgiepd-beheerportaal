@@ -30,8 +30,10 @@ function eventClock(row){
 }
 function dayOf(row){
  return dossierEventDay(row?.eventDate)||
+  dossierEventDay(row?.startDate)||
   dossierEventDay(row?._noteSortDate)||
   dossierEventDay(row?.date)||
+  dossierEventDay(row?.at)||
   dossierEventDay(createdTimestamp(row));
 }
 export function compareDossierEntriesNewestFirst(a,b){
