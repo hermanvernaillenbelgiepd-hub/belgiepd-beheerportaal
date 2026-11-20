@@ -30,6 +30,7 @@ import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
 import {installActivityCenterRoutes} from './activity-center-routes.js';
+import {installCadreActivityRoutes} from './cadre-activity-routes.js';
 import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
 import {installActivityReturnRoutes,scheduleLeaveReturnChecks} from './activity-return-routes.js';
 import {projectLeaveReturnChecking} from './personnel-return-status-projection.js';
@@ -1054,6 +1055,7 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 // Isolated legacy activity read: no automated pings or personnel changes.
 installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installCadreActivityRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installActivityReturnRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installPersonnelReturnReviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
