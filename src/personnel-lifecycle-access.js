@@ -3,6 +3,7 @@ import {roleForDepartment} from './leave-policy.js';
 import {LIFECYCLE_SERVICES} from './personnel-lifecycle-policy.js';
 import {canViewPersonnel,canEditPersonnel,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
+import {verifiedPoliceRankAuthority} from './personnel-rank-policy.js';
 const ID=/^\d{15,22}$/;
 const HIGH=new Set(['officierenkader','korpsleiding']);
 const technical=a=>Boolean(a?.portalTechnicalMode===true&&a?.profileTechnicalAvailable===true&&
@@ -29,3 +30,19 @@ export function canManagePersonnelLifecycle(actor,person){
   actor?.discordId!==person.personId&&canReadPersonnelLifecycle(actor,person)&&
   (person.dept==='burger'||canEditPersonnel(actor,person)));
 }
+
+// FULL-SERVICE removal is a separate, Police-owned decision. A manager
+// of Brandweer, AZLS, Depannage or Burger may never trigger it by selecting
+// an ordinary service archive. Technical access alone is not a permission.
+export function canGloballyArchivePersonnel(actor,subject){
+ return Boolean(subject&&LIFECYCLE_SERVICES.includes(subject.dept)&&
+   ID.test(String(subject.personId||''))&&actor?.discordId!==subject.personId&&
+   actor?.uid==='discord:'+actor?.discordId&&
+   actor?.dossierNativeDepartments?.includes('politie')&&
+   actor?.dossierAllowedDepartments?.includes('politie')&&
+   canReadServiceDossier(actor,'politie')&&
+   ['officierenkader','korpsleiding'].includes(verifiedPoliceRankAuthority(actor)));
+}
+// Reentry: the local service may register a pending request, but only
+// independently verified Police Officer cadre or Corps may release it.
+export const canApproveServiceReentry=canGloballyArchivePersonnel;
