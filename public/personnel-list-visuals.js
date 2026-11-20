@@ -303,6 +303,13 @@
     return {group,number:match?Number(match[1]):0,
       functionName:names[group],label:headings[group]};
   };
+  // Read-only dossierlabel: only a recognised Depannage function is shown.
+  // A foreign service rank (e.g. Ambulancier or Arts) never becomes a function.
+  const depannageDossierFunction=person=>{
+    if(person?.dept!=='depannage')return '';
+    const service=depannageFunction(person);
+    return service.group===3?'Niet geregistreerd':service.functionName;
+  };
   function comparePersonnel(a,b,mode='call-desc'){
     const nameA=String(a?.name||''),nameB=String(b?.name||'');
     const nameCompare=nameA.localeCompare(nameB,'nl',{numeric:true,sensitivity:'base'});
@@ -356,6 +363,6 @@
   root.BPDPersonnelVisuals=Object.freeze({
     rankInfo,specialtyBadges,specialtyIcon,specialtyIconImage,specialtyBannerImage,qualification,specialtyStatuses,
     setArtworkManifest,specialtyArtworkCode,specialtyBannerDisplay,
-    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,comparePersonnel,sortPersonnelRows
+    specialtyColumns,specialtyStateFor,policeCadre,seriesWithCadre,depannageFunction,depannageDossierFunction,comparePersonnel,sortPersonnelRows
   });
 })(typeof window==='object'?window:globalThis);
