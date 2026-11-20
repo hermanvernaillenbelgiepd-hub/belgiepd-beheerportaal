@@ -78,34 +78,44 @@ export function setupVisualPageEditor({api,$}){
   updatePreview();
  }
  function updatePreview(){
-  const values=targetValues(),theme=chosenTheme();
-  const demo=$('studioPreviewCard'),button=$('studioPreviewButton'),
-   label=$('studioPreviewHeading'),area=$('studioPreviewArea');
+  const values=targetValues(),theme=chosenTheme(),target=currentTarget();
+  const card=$('studioPreviewCard'),button=$('studioPreviewButton'),
+   heading=$('studioPreviewHeading'),field=$('studioPreviewField'),
+   grid=$('studioPreviewArea'),frame=$('studioPreviewAreaOuter');
+  // Reset the previous selected element: previews must never leave stale
+  // colors, dimensions or typography behind when another target is chosen.
+  for(const el of [card,button,heading,field,grid,frame]){
+   for(const key of ['backgroundColor','color','borderColor','borderRadius',
+    'padding','fontSize','fontFamily','fontWeight','maxWidth','width','gap']){
+    el.style[key]='';
+   }
+  }
+  const element=target==='buttons'?button:target==='headings'?heading:
+    target==='fields'?field:target==='grid'?grid:target==='page'?frame:card;
   const bg=values[theme+'Bg'],fg=values[theme+'Text'],
    border=values[theme+'Border'];
-  demo.style.backgroundColor=bg||'';
-  demo.style.color=fg||'';
-  demo.style.borderColor=border||'';
-  demo.style.borderRadius=values.radius===undefined?'':values.radius+'px';
-  demo.style.padding=values.padding===undefined?'':values.padding+'px';
+  element.style.backgroundColor=bg||'';
+  element.style.color=fg||'';
+  element.style.borderColor=border||'';
+  element.style.borderRadius=values.radius===undefined?'':values.radius+'px';
+  element.style.padding=values.padding===undefined?'':values.padding+'px';
   const family={inter:'Inter,system-ui,sans-serif',system:'system-ui,sans-serif',
    arial:'Arial,sans-serif',georgia:'Georgia,serif',verdana:'Verdana,sans-serif',
    trebuchet:'Trebuchet MS,sans-serif',tahoma:'Tahoma,sans-serif'};
-  demo.style.fontFamily=family[values.fontFamily]||'';
-  demo.style.fontSize=values.fontSize?values.fontSize+'px':'';
-  demo.style.fontWeight=({normal:'400',medium:'600',bold:'700'})[values.fontWeight]||'';
-  demo.style.maxWidth=({narrow:'480px',regular:'760px',wide:'1180px',full:'none'})[values.width]||'';
-  demo.style.width='100%';
-  button.style.backgroundColor=currentTarget()==='buttons'?bg||'':'';
-  button.style.color=currentTarget()==='buttons'?fg||'':'';
-  button.style.borderColor=currentTarget()==='buttons'?border||'':'';
-  label.style.color=currentTarget()==='headings'?fg||'':'';
-  area.style.gridTemplateColumns=currentTarget()==='grid'&&values.columns&&values.columns!=='auto'?
-   'repeat('+({one:1,two:2,three:3,four:4})[values.columns]+',minmax(0,1fr))':'repeat(auto-fit,minmax(120px,1fr))';
-  area.style.gap=values.gridGap===undefined?'':values.gridGap+'px';
-  const targetLabel=$('studioTarget').selectedOptions[0]?.textContent||'';
-  $('studioPreviewCaption').textContent='Voorbeeld voor '+targetLabel+' · '+(theme==='dark'?'donker':'licht');
+  element.style.fontFamily=family[values.fontFamily]||'';
+  element.style.fontSize=values.fontSize===undefined?'':values.fontSize+'px';
+  element.style.fontWeight=({normal:'400',medium:'600',bold:'700'})[values.fontWeight]||'';
+  element.style.maxWidth=({narrow:'480px',regular:'760px',wide:'1180px',full:'none'})[values.width]||'';
+  if(values.width)element.style.width='100%';
+  grid.style.gridTemplateColumns=target==='grid'&&values.columns&&values.columns!=='auto'?
+   'repeat('+({one:1,two:2,three:3,four:4})[values.columns]+',minmax(0,1fr))':
+   'repeat(auto-fit,minmax(120px,1fr))';
+  grid.style.gap=target==='grid'&&values.gridGap!==undefined?values.gridGap+'px':'';
+  $('studioPreviewCaption').textContent='Voorbeeld voor '+
+   ($('studioTarget').selectedOptions[0]?.textContent||'')+
+   ' · '+(theme==='dark'?'donker':'licht');
  }
+
  function formatName(filename){
   return filename.replace(/\.html$/,'').replaceAll('-',' ').replace(/\b\p{L}/gu,c=>c.toUpperCase());
  }
