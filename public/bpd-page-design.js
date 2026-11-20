@@ -44,6 +44,7 @@
     const bg=values[theme+'Bg'],fg=values[theme+'Text'],border=values[theme+'Border'];
     if(typeof bg==='string'&&COLORS.test(bg)){
      rules.push(prefix+(scope.bg||sel)+'{background-color:'+bg+'!important}');
+     if(entry.target==='page')rules.push(prefix+'main{background-color:'+bg+'!important}');
      if(!(typeof fg==='string'&&COLORS.test(fg))){
       const channel=[1,3,5].map(n=>parseInt(bg.slice(n,n+2),16)/255).map(v=>
        v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
