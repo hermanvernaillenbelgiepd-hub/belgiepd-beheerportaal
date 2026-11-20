@@ -42,6 +42,25 @@
     if(event.detail?.preview===true||storedTheme()===null)applyTheme(value);
     else applyTheme(storedTheme());
   });
+  // TEST-approved navy design skin and responsive layouts; personal theme
+  // preferences and all per-page design overrides remain in force.
+  document.documentElement.classList.add('bpd-reference-ui');
+  const adaptiveFile=window.location.pathname.split('/').pop()||'index.html';
+  const adaptivePage=/^[a-z0-9-]+[.]html$/.test(adaptiveFile)?
+    adaptiveFile.slice(0,-5):'unknown';
+  document.documentElement.setAttribute('data-bpd-adaptive-page',adaptivePage);
+  if(!document.getElementById('bpdReferenceDashboardStyles')){
+    const reference=document.createElement('link');
+    reference.id='bpdReferenceDashboardStyles';reference.rel='stylesheet';
+    reference.href='/bpd-reference-dashboard.css';
+    document.head.append(reference);
+  }
+  if(!document.getElementById('bpdAdaptiveLayoutStyles')){
+    const adaptive=document.createElement('link');
+    adaptive.id='bpdAdaptiveLayoutStyles';adaptive.rel='stylesheet';
+    adaptive.href='/bpd-adaptive-layout.css';
+    document.head.append(adaptive);
+  }
   if(!document.querySelector('script[data-bpd-visual-design]')){
     const design=document.createElement('script');
     design.src='/bpd-visual-design.js';
@@ -147,10 +166,67 @@
     }
     return link;
   }
+  // Search exposes ONLY module links already provided by the verified
+  // role-aware navigation, with a fallback to the existing protected roster.
+  // It never performs a privileged personnel API call.
+  function makeReferenceSearch(source){
+    const form=document.createElement('form');
+    form.className='bpd-ref-search';form.role='search';
+    form.setAttribute('aria-label','Portaalmodules en personeelslijst zoeken');
+    const input=document.createElement('input');
+    input.type='search';input.autocomplete='off';input.maxLength=110;
+    input.placeholder='Zoek module, naam of roepnummer';
+    input.setAttribute('aria-label','Zoek module, personeelslid of roepnummer');
+    const action=document.createElement('button');
+    action.type='submit';action.textContent='Zoek';
+    form.append(input,action);
+    form.addEventListener('submit',event=>{
+      event.preventDefault();
+      const q=input.value.trim();
+      if(!q)return;
+      const value=q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl');
+      const allowed=source().filter(item=>item.href&&item.label);
+      const exact=allowed.find(item=>
+        item.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .toLocaleLowerCase('nl')===value);
+      const partial=allowed.find(item=>
+        item.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .toLocaleLowerCase('nl').includes(value));
+      if(exact||partial){
+        window.location.assign((exact||partial).href);
+        return;
+      }
+      // Backend on /personeelslijst.html still independently verifies access.
+      window.location.assign('/personeelslijst.html?zoek='+encodeURIComponent(q));
+    });
+    return form;
+  }
   function renderQuick(items,bar){
     bar.replaceChildren();
-    for(const item of items)bar.append(linkFor(item,true));
-    bar.append(makeThemeToggle());
+    const current=items.find(item=>currentPage(item.href))||NAV.home;
+    const breadcrumb=document.createElement('span');
+    breadcrumb.className='bpd-ref-breadcrumb';
+    breadcrumb.append(document.createTextNode('BelgiëPD / '));
+    const strong=document.createElement('strong');
+    strong.textContent=current.label;
+    breadcrumb.append(strong);
+    const search=makeReferenceSearch(()=>items);
+    const shortcuts=document.createElement('details');
+    shortcuts.className='bpd-ref-shortcuts';
+    const summary=document.createElement('summary');
+    summary.textContent='Modules';
+    const menu=document.createElement('div');
+    menu.className='bpd-ref-shortcuts-menu';
+    menu.append(...items.filter(item=>item.href!==current.href)
+      .map(item=>linkFor(item,true)));
+    shortcuts.append(summary,menu);
+    const profile=items.find(item=>item.href===NAV.profile.href);
+    bar.append(breadcrumb,search,shortcuts,makeThemeToggle());
+    if(profile){
+      const link=linkFor(profile,true);
+      link.classList.add('bpd-ref-profile');
+      bar.append(link);
+    }
   }
   function makeQuick(){
     const nav=document.createElement('nav');
@@ -179,6 +255,60 @@
       text.className='bpd-home-side-label';text.textContent=label;
       link.replaceChildren(icon,text);
     }
+    // Split the HOME sidebar into visible headings without creating or
+    // authorizing any new links. Home mode selection and service-specific
+    // [hidden] flags remain owned by index.html.
+    function groupHomeSidebar(){
+      const definitions=[
+        {name:'Algemeen',paths:['/','/index.html','/discord-status.html','/meldingen.html','/verlofbeheer.html']},
+        {name:'Personeel',paths:['/personeelsbeheer.html','/personeelslijst.html',
+          '/organogram-hierarchie.html','/organogram.html','/opleidingscentrum.html',
+          '/rollen-opleidingen.html','/registraties.html']},
+        {name:'Operationeel',paths:['/activiteitscentrum.html','/dossiercentrum.html',
+          '/burger-personeelsdossiers.html','/to-dienstbord.html',
+          '/opleidingskalender.html','/weekrapporten.html']},
+        {name:'Documenten en aanvragen',paths:['/documentencentrum.html',
+          '/roepnummers.html','/vast-roepnummer-aanvragen.html']},
+        {name:'Beheer',paths:['/beheercentrum.html','/gebruikersbeheer.html']}
+      ];
+      const resolveGroup=link=>{
+        const path=String(link.getAttribute('href')||'').split(/[?#]/,1)[0];
+        return definitions.find(def=>def.paths.includes(path))?.name||'Overige';
+      };
+      for(const menu of sidebar.querySelectorAll('nav')){
+        const existing=Array.from(menu.children).filter(item=>
+          item.tagName==='A'&&item.hasAttribute('href'));
+        if(!existing.length)continue;
+        const groups=new Map(definitions.map(def=>[def.name,[]]));
+        groups.set('Overige',[]);
+        for(const item of existing)groups.get(resolveGroup(item)).push(item);
+        const output=document.createDocumentFragment();
+        const headings=[];
+        for(const [name,links] of groups){
+          if(!links.length)continue;
+          const heading=document.createElement('span');
+          heading.className='bpd-ref-side-heading';
+          heading.textContent=name;
+          heading.setAttribute('role','heading');
+          heading.setAttribute('aria-level','3');
+          output.append(heading,...links);
+          headings.push([heading,links]);
+        }
+        menu.append(output); // existing anchors are moved, not recreated
+        const refresh=()=>{
+          for(const [heading,links] of headings){
+            // Hidden links must never leave an empty misleading heading.
+            heading.hidden=!links.some(link=>!link.hidden);
+          }
+        };
+        new MutationObserver(records=>{
+          if(records.some(record=>record.target===menu||
+            record.target.tagName==='A'))refresh();
+        }).observe(menu,{subtree:true,attributes:true,attributeFilter:['hidden']});
+        refresh();
+      }
+    }
+    groupHomeSidebar();
     // A second, horizontally scrolling quick-navigation duplicated the
     // role-aware menu. Keep the theme switch, but use a compact drawer for
     // widths where the normal sidebar no longer fits.
@@ -186,6 +316,12 @@
     const theme=makeThemeToggle();
     theme.id='homeThemeToggle';
     actions.prepend(theme);
+    const search=makeReferenceSearch(()=>[...sidebar.querySelectorAll('nav:not([hidden]) a[href]')]
+      .filter(a=>!a.closest('[hidden]')&&a.offsetParent!==null)
+      .map(a=>({href:a.getAttribute('href'),label:String(a.textContent||'').trim()
+        .replace(/^[^\p{L}\p{N}]+/u,'').trim()})));
+    search.classList.add('bpd-ref-home-search');
+    actions.prepend(search);
     const portal=sidebar.closest('.portal');
     sidebar.id='homeRoleSidebar';
     const toggle=document.createElement('button');
@@ -308,7 +444,28 @@
       identityConfirmed=verified===true;
       const items=list.map(key=>key==='profile'&&!identityConfirmed?
         {...NAV.profile,label:'Aanmelden',short:'Aanmelden'}:NAV[key]).filter(Boolean);
-      links.replaceChildren(...items.map(item=>linkFor(item)));
+      // Group only the ALREADY verified links; labels add no authority.
+      // No inaccessible module may be constructed from a group heading.
+      const groupCatalog=[
+        ['Algemeen',['home','notifications','leave','profile']],
+        ['Personeel',['personnel','organogram','education','observations','citizen']],
+        ['Operationeel',['activity','dossiers','to','calendar','reports']],
+        ['Documenten',['documents']],
+        ['Beheer',['center','admin']]
+      ];
+      const grouped=document.createDocumentFragment(),seen=new Set();
+      for(const [title,keys] of groupCatalog){
+        const available=keys.map(key=>items.find(item=>item.href===NAV[key]?.href))
+          .filter(item=>item&&!seen.has(item.href));
+        if(!available.length)continue;
+        const heading=document.createElement('span');
+        heading.className='bpd-ref-side-heading';heading.textContent=title;
+        heading.setAttribute('aria-hidden','true');
+        grouped.append(heading);
+        for(const item of available){grouped.append(linkFor(item));seen.add(item.href)}
+      }
+      for(const item of items)if(!seen.has(item.href))grouped.append(linkFor(item));
+      links.replaceChildren(grouped);
       renderQuick(items,top);
     }
     // Hide privileged links until the CURRENT authenticated user is checked.
