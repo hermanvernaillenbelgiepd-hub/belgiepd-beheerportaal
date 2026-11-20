@@ -33,7 +33,7 @@
     button.addEventListener('click',()=>applyTheme(currentTheme==='dark'?'light':'dark',true));
     return button;
   }
-  applyTheme(currentTheme);
+  // Theme init runs after the SVG helper/allowlist has been defined.
   // Keep each user's own light/dark switch; centrally managed theme is only
   // the initial default for a browser with no explicit preference.
   window.addEventListener('bpd:visual-design-default',event=>{
@@ -204,6 +204,7 @@
     button.replaceChildren(svgUiIcon(open?'x':'menu'),
       ...(label?[document.createTextNode(' '+label)]:[]));
   }
+  applyTheme(currentTheme);
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
   const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
     'reports','to','leave','notifications','center','admin'];
