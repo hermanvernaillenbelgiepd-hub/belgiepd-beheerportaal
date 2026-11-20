@@ -60,3 +60,21 @@ test('roster names open the existing organogram card instead of showing private 
  assert.match(hierarchy,/notifyCardParent\('ready'\)/);
  assert.match(hierarchy,/location\.origin/);
 });
+
+test('opleidingsregister voert Belgische datumweergave in, met ISO-opslag',()=>{
+ const page=read('public/rollen-opleidingen.html');
+ const dossier=read('public/personeelsbeheer.html');
+ const helper=read('public/bpd-date-inputs.js');
+ assert.match(page,/id="date" type="date" required/);
+ assert.match(page,/Datum \(dd\/mm\/jjjj\)/);
+ assert.match(page,/from '\/bpd-date-inputs\.js'/);
+ assert.match(page,/enhanceBelgianDateInputs\(\['date','expiry'\]\)/);
+ assert.match(page,/refreshBelgianDateInputs\(\['date'\]\)/);
+ assert.match(page,/formatBelgianDateInput\(r\.eventDate\)/);
+ assert.match(page,/parseBelgianDateInput\(\$\('dateText'\)\?\.value\|\|\$\('date'\)\.value\)/);
+ assert.match(page,/eventDate:trainingDate/);
+ assert.match(page,/brusselsToday\(\)/);
+ assert.match(page,/timeZone:'Europe\/Brussels'/);
+ assert.match(dossier,/enhanceBelgianDateInputs\(\['leaveFrom','leaveUntil','staffStartDate','staffTrainingDate'/);
+ assert.match(helper,/field\.placeholder='dd\/mm\/jjjj'/);
+});
