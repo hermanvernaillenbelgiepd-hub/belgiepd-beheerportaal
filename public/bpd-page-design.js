@@ -112,9 +112,11 @@
   if(style.linkColor)lines.push(target+' a:not(.pill):not(.badge){color:'+style.linkColor+' !important}');
   const button=target+' :is(button,input[type="submit"],input[type="button"],.button):not(.danger):not(.critical):not(.emergency):not([data-operational])';
   const b=[];
-  if(style.buttonBackground)b.push('background-color:'+style.buttonBackground+' !important');
-  if(style.buttonText)b.push('color:'+style.buttonText+' !important');
-  if(style.buttonBorder)b.push('border-color:'+style.buttonBorder+' !important');
+  // The real operational dispatch/TO board keeps its emergency/status palette.
+  if(key!=='to-dienstbord'&&style.buttonBackground)
+   b.push('background-color:'+style.buttonBackground+' !important');
+  if(key!=='to-dienstbord'&&style.buttonText)b.push('color:'+style.buttonText+' !important');
+  if(key!=='to-dienstbord'&&style.buttonBorder)b.push('border-color:'+style.buttonBorder+' !important');
   if(style.buttonRadius!==undefined)b.push('border-radius:'+style.buttonRadius+'px !important');
   if(style.buttonFontSize!==undefined)b.push('font-size:'+style.buttonFontSize+'px !important');
   if(b.length)lines.push(button+'{'+b.join(';')+'}');
@@ -186,8 +188,12 @@
  editorStyle.textContent='[data-bpd-editor-selected]{outline:3px dashed #ef9b21 !important;outline-offset:2px !important}';
  document.head.append(editorStyle);
  const watcher=new MutationObserver(records=>{
-  if(records.some(row=>row.type==='childList'&&
-    (row.addedNodes.length||row.removedNodes.length)))schedule();
+  // Personnel and radio screens update labels frequently. Rebuild only
+  // when a new section/card can actually affect the numbered frame catalog.
+  const changed=records.some(row=>row.type==='childList'&&
+   [...row.addedNodes].some(node=>node.nodeType===1&&
+    (node.matches?.(candidate)||node.querySelector?.(candidate))));
+  if(changed)schedule();
  });
  function start(){
   if(!document.body)return;
