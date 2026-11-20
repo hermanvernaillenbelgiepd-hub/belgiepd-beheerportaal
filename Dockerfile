@@ -61,6 +61,8 @@ RUN node --test tests/fire-promotion-workflow.test.js
 RUN node --test tests/dossier-last-five-expandable.test.js
 RUN node --test tests/visual-design-settings.test.js
 RUN node --test tests/visual-design-pages.test.js
+RUN node --test tests/reference-dashboard-style.test.js
+RUN node --test tests/portal-adaptive-layout.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node

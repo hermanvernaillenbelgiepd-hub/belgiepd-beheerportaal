@@ -636,6 +636,11 @@ async function load(){
  finally{$('refresh').disabled=false}
 }
 $('search').oninput=searchDirectory;$('refresh').onclick=load;
+ // The shared topbar only forwards a query to this existing protected
+ // directory. The authenticated source data/permissions remain unchanged.
+ const startSearch=new URLSearchParams(location.search).get('zoek');
+ if(startSearch&&startSearch.length<=110)$('search').value=startSearch.trim();
+
 window.addEventListener('message',event=>{
  if(!directoryEmbedded||window.parent===window||
     event.origin!==location.origin||event.source!==window.parent||

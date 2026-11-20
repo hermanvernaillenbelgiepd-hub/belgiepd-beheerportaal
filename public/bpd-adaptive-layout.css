@@ -1,0 +1,157 @@
+/* BelgiëPD — Portal-wide adaptive layouts (TEST).
+ * All interactive authorization, dossier, operational status and personnel
+ * rendering stays owned by the existing application modules.
+ * These rules size containers and rearrange only presentation groups.
+ *
+ * Full-width 2k/4k monitors: no stranded empty strip.
+ * Tablet: flowing cards and fields. Narrow mobile: single-column forms.
+ * Wide data matrices: keep every actual column and its own horizontal scroll.
+ */
+@media screen {
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell > main:not(.workspace),
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell > main.workspace {
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    box-sizing:border-box;
+    margin-inline:0 !important;
+    padding-inline:clamp(12px,1.35vw,34px) !important;
+  }
+  /* Service pages sometimes use centered max-width wrappers instead of
+     using <main> directly. Expand those wrappers without changing widgets. */
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(
+      .personnel-overview,.staff-list-panel,.personnel-original-directory,
+      #personnelOriginalDirectory,#personnelPublicView,#personnelServiceDirectory,
+      #personnelGroupedView,#staffManagePanel,
+      .page-layout,.page-content,.content-layout,.main-content,
+      .dossier-list,.dossier-pane,.dossier-sheet,.dossier-main,.dossier-wide,
+      .activity-container,.activity-grid,.training-content,.overview-content
+    ) {
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  /* A roster is embedded inside the personnel page; both the iframe and its
+     parent must inherit the full space (the iframe keeps its own auth checks). */
+  html.bpd-reference-ui[data-bpd-adaptive-page="personeelsbeheer"]
+    body.bpd-shell > main #personnelPublicView,
+  html.bpd-reference-ui[data-bpd-adaptive-page="personeelsbeheer"]
+    body.bpd-shell > main #personnelOriginalDirectory {
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    box-sizing:border-box;
+  }
+  html.bpd-reference-ui[data-bpd-adaptive-page="personeelsbeheer"]
+    body.bpd-shell > main #personnelDirectoryFrame {
+    display:block;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    box-sizing:border-box;
+  }
+  /* Embedded roster fills the iframe. Keep the complete personnel matrix
+     intact, with local scrolling, sticky headings and real specializations. */
+  html.bpd-reference-ui[data-bpd-adaptive-page="personeelslijst"]
+    body.roster-embedded,
+  html.bpd-reference-ui[data-bpd-adaptive-page="personeelslijst"]
+    body.roster-embedded > main {
+    margin:0;
+    max-width:none;
+    min-width:0;
+    width:100%;
+    box-sizing:border-box;
+  }
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(
+      .staff-roster-holder,.tablewrap,.mr-scroll,.scroller,
+      .table-scroll,.table-responsive,[data-table-scroll]
+    ) {
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    overflow-x:auto;
+    box-sizing:border-box;
+    scrollbar-width:thin;
+    overscroll-behavior-inline:contain;
+  }
+  /* Do not set display:none or shrink the roster's columns. The existing
+     role-aware mobile card/list presentation remains authoritative. */
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(
+      .card,.panel,.sheet-block,.dossier-pane,.dossier-sheet,
+      .summary-grid,.stats-grid,.form-grid,.filter-grid,.service-grid,
+      .staff-filters,.two,.three,.counts,.tablewrap
+    ) > :not(table):not(.mr-table):not(.staff-roster-table) {
+    min-width:0;
+    box-sizing:border-box;
+  }
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(input:not([type="checkbox"]):not([type="radio"]),
+      select,textarea,img,iframe) {
+    max-width:100%;
+  }
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(.controls,.toolbar,.filters,.buttons,
+      .dossier-toolbar,.member-roster-tools,.personnel-roster-controls) {
+    min-width:0;
+    max-width:100%;
+    flex-wrap:wrap;
+  }
+}
+@media screen and (max-width:1100px) {
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(.form-grid,.filter-grid,.staff-filters,
+      .service-buttons,.service-grid,.summary-grid,.stats-grid,
+      .counts,.cards,.tile-grid,.card-grid) {
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));
+    gap:clamp(8px,1.1vw,14px);
+    min-width:0;
+  }
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(.two,.three,.dossier-sheet .sheet-grid,
+      .dossier-summary,.middle-cadre-columns) {
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));
+    min-width:0;
+  }
+  /* The topbar must not force a long search control off the laptop screen. */
+  html.bpd-reference-ui #bpdQuicknav {
+    flex-wrap:wrap;
+    column-gap:8px;
+    row-gap:7px;
+    min-width:0;
+    max-width:100%;
+  }
+  html.bpd-reference-ui #bpdQuicknav .bpd-ref-search {
+    min-width:min(100%,200px);
+    flex:1 1 230px;
+    max-width:520px;
+  }
+}
+@media screen and (max-width:680px) {
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell > main:not(.workspace) {
+    padding-inline:clamp(9px,2.8vw,15px) !important;
+  }
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(
+      .form-grid,.filter-grid,.staff-filters,.service-buttons,.service-grid,
+      .summary-grid,.stats-grid,.counts,.cards,.tile-grid,.card-grid,
+      .two,.three,.dossier-sheet .sheet-grid,.dossier-summary
+    ) {
+    grid-template-columns:minmax(0,1fr);
+  }
+  html.bpd-reference-ui:not([data-bpd-adaptive-page="to-dienstbord"])
+    body.bpd-shell main :is(.card,.panel,.dossier-pane,.staff-list-panel) {
+    max-width:100%;
+  }
+  html.bpd-reference-ui #bpdQuicknav .bpd-ref-search {
+    flex:1 1 100%;
+    max-width:none;
+  }
+}
+/* Print output, documents, uniform artwork and TO dispatch intentionally
+ * retain their dedicated layouts; no print or rank/color rules here. */
