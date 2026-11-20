@@ -255,7 +255,7 @@
     const search=makeReferenceSearch(()=>[...sidebar.querySelectorAll('nav:not([hidden]) a[href]')]
       .filter(a=>!a.closest('[hidden]')&&a.offsetParent!==null)
       .map(a=>({href:a.getAttribute('href'),label:String(a.textContent||'').trim()
-        .replace(/^[^\\p{L}\\p{N}]+/u,'').trim()})));
+        .replace(/^[^\p{L}\p{N}]+/u,'').trim()})));
     search.classList.add('bpd-ref-home-search');
     actions.prepend(search);
     const portal=sidebar.closest('.portal');
