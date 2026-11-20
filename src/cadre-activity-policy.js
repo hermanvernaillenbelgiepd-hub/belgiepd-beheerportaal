@@ -2,6 +2,7 @@
 import {policeKader} from './normalize.js';
 import {verifiedPoliceRankAuthority} from './personnel-rank-policy.js';
 import {mayReadFortnightReport} from './fortnight-report-policy.js';
+import {confirmedLessonsByInstructor} from './training-session-policy.js';
 
 export const CADRE_ACTIVITY_SETTINGS_COLLECTION='bpd_cadre_activity_settings';
 export const CADRE_ACTIVITY_SETTINGS_DOC='visibility';
@@ -93,11 +94,12 @@ export function cadreActivityPeriod(value,today){
    .toISOString().slice(0,10);
  return {start,end:today,days};
 }
-export function cadreActivityCounts(people,cases,trainings,period,leaveDecisions=[]){
+export function cadreActivityCounts(people,cases,trainings,period,leaveDecisions=[],lessonSessions=[],department='politie'){
  const byId=new Map(people.map(p=>[p.personId,{
    discordId:p.personId,name:p.name,call:p.call||'',rank:p.rank||'',series:p.series||'',
    observaties:0,notities:0,sancties:0,opvolgingen:0,overig:0,
-   opleidingsregistraties:0,verlofbeslissingen:0,overgenomen:0,correcties:0,dagen:new Set()
+   opleidingsregistraties:0,lesmomenten:0,lesdeelnames:0,
+   verlofbeslissingen:0,overgenomen:0,correcties:0,dagen:new Set()
  }]));
  for(const e of cases){
    if(!e||!validDate(e.eventDate)||e.eventDate<period.start||e.eventDate>period.end)
@@ -132,6 +134,15 @@ export function cadreActivityCounts(people,cases,trainings,period,leaveDecisions
    if(!person)continue;
    person.opleidingsregistraties++;
    person.dagen.add(r.eventDate);
+ }
+ // A lesson credits its signed instructor, never the person who entered
+ // individual student outcomes. One ID can have many students but one lesson.
+ const teachers=confirmedLessonsByInstructor(trainings,lessonSessions,department,period);
+ for(const [instructorId,stats] of teachers){
+   const person=byId.get(instructorId);
+   if(!person)continue;
+   person.lesmomenten=stats.lesmomenten;
+   person.lesdeelnames=stats.lesdeelnames;
  }
  for(const d of leaveDecisions){
    if(!d||d.historicalImport===true||d.subjectDepartments?.includes('politie')!==true||
