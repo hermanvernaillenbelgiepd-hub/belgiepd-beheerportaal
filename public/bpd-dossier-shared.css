@@ -1135,3 +1135,17 @@ html:not([data-bpd-theme="dark"]) body .bpd-observation-disclosure:not([open]):h
  .bpd-record-fact{grid-template-columns:1fr;gap:1px}
  .bpd-dossier-inspector-content{padding:10px}
 }
+
+/* The same latest-five/older pattern is shared by all operational dossiers.
+   Pure visual grouping: does not alter permissions or source records. */
+.bpd-dossier-older{margin:9px 0 4px;min-width:0;border:1px solid #54749d;border-radius:9px;background:rgba(32,59,93,.24)}
+.bpd-dossier-older>summary{cursor:pointer;list-style:revert;padding:10px 14px;color:inherit;font-size:12px;font-weight:750;overflow-wrap:anywhere}
+.bpd-dossier-older>summary:focus-visible,.bpd-dossier-long-text>summary:focus-visible{outline:2px solid #76a9f5;outline-offset:2px}
+.bpd-dossier-older-list{display:grid;gap:7px;padding:5px 9px 11px;min-width:0}
+.bpd-dossier-older-list>*{min-width:0}
+.bpd-dossier-long-text{margin:5px 0 8px}
+.bpd-dossier-long-text>summary{display:list-item;cursor:pointer;font-size:12px;font-weight:700;color:inherit}
+.bpd-dossier-long-text>.bpd-dossier-full-text{padding:10px 12px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;border:1px solid #567ba5;border-radius:7px;background:rgba(34,61,93,.24);color:inherit;max-height:none!important;overflow:visible!important}
+.bpd-dossier-source-limit{margin-top:6px!important;font-size:11px}
+body.light-mode .bpd-dossier-older,body[data-theme="light"] .bpd-dossier-older{background:rgba(119,149,183,.11);border-color:#91aac5}
+body.light-mode .bpd-dossier-long-text>.bpd-dossier-full-text,body[data-theme="light"] .bpd-dossier-long-text>.bpd-dossier-full-text{background:#f4f8ff;color:#19334b;border-color:#9db2cc}

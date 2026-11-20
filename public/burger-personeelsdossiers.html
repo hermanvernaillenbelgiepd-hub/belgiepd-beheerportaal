@@ -290,6 +290,7 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
+import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 import {attachDossierRecordPreview} from '/dossier-entry-preview.js';
 const $=id=>document.getElementById(id);
@@ -310,17 +311,18 @@ async function api(url,method='GET',payload){
   if(!response.ok)throw Error(data.error||'Dossier niet beschikbaar');
   return data;
 }
-const line=(container,title,details,meta)=>{
+const line=(container,title,details,meta,{expand=true}={})=>{
   const node=document.createElement('div');node.className='record';
   const h=document.createElement('strong');h.textContent=title;node.append(h);
-  if(details){const p=document.createElement('p');p.textContent=details;node.append(p)}
+  if(details){const p=document.createElement('p');p.textContent=details;node.append(p);
+    if(expand)attachExpandableDossierText(node,p,details,{label:'Lees volledige tekst'})}
   if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
   container.append(node);return node;
 };
 function fill(containerId,items,render){
-  const container=$(containerId);container.replaceChildren();
-  if(!items?.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Geen registraties';container.append(empty);return}
-  items.forEach(item=>render(container,item));
+ const container=$(containerId);
+ return renderRecentDossierEntries(container,items,render,{
+   empty:'Geen registraties',noun:'registraties'});
 }
 function populateCitizenPickers(){
   for(const id of ['citizenPicker','citizenColleague']){
@@ -406,7 +408,8 @@ function renderPerson(data){
     const disclosure=isObservation?createObservationDisclosure({
       title,score:e.score,details:e.details||'—',attribution
     }):null;
-    const record=disclosure?disclosure.element:line(root,title,e.details,attribution);
+    const record=disclosure?disclosure.element:
+      line(root,title,e.details,attribution,{expand:false});
     if(disclosure)root.append(record);
     else{
       const description=record.querySelector('p');
@@ -437,12 +440,19 @@ function renderPerson(data){
     'Evaluatiehistoriek is tijdelijk niet beschikbaar.';
   if(data.evaluationsLimited)$('citizenCheckrides').append(
     document.createTextNode(' Mogelijk zijn oudere evaluaties niet getoond.'));
-  fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    renderRegistration(root,e,'Historische registratie · volwaardig sinds '+dateBE(e.eventDate)));
-  for(const edit of data.profileHistory||[])
-    line($('promotions'),'Burgergegevens aangepast · '+(edit.role||'Rol'),
-      'Volwaardig sinds: '+dateBE(edit.volwaardigSince)+' · Reden: '+edit.reason,
-      fmt(edit.at)+' · door '+(edit.byDiscordId||'onbekend'));
+  const citizenPromotions=[
+    ...entries.filter(e=>e.kind==='volwaardig'),
+    ...(data.profileHistory||[]).map(e=>({...e,_profileHistory:true,
+      eventDate:e.at||e.eventDate||''}))
+  ];
+  fill('promotions',citizenPromotions,(root,e)=>{
+    if(e._profileHistory)
+      line(root,'Burgergegevens aangepast · '+(e.role||'Rol'),
+        'Volwaardig sinds: '+dateBE(e.volwaardigSince)+' · Reden: '+e.reason,
+        fmt(e.at)+' · door '+(e.byDiscordId||'onbekend'));
+    else renderRegistration(root,e,
+      'Historische registratie · volwaardig sinds '+dateBE(e.eventDate));
+  });
   fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
     'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
     'Reden: '+e.reason,

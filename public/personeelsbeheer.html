@@ -1468,6 +1468,7 @@ import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol}
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {newestDossierEntries} from '/dossier-entry-order.js';
+import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {effectiveTemporarySanctionStatus} from '/temporary-sanction-state.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
@@ -3932,9 +3933,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
   if(!root)return;
   const entries=Array.isArray(rows)?rows:[];
-  const wasExpanded=root.dataset.expanded==='true';
-  root.replaceChildren();
-  const append=(row)=>{
+  const append=(mount,row)=>{
     if((group==='observations'||group==='formal')&&row.type==='observatie'){
       const {element,content}=createObservationDisclosure({
         title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
@@ -3948,7 +3947,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       attachObservationEditButton(content,row);
       attachAdministrativeCaseCorrection(content,row);
       attachRetireButton(content,row,'cases');
-      root.append(element);
+      mount.append(element);
       return;
     }
     if(group==='notes'||group==='activityPings'){
@@ -3990,7 +3989,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       }
       attachAdministrativeCaseCorrection(item,row);
       attachRetireButton(item,row,'cases');
-      root.append(item);return;
+      mount.append(item);return;
     }
     if(group==='basisNotes'){
       const item=document.createElement('div');item.className='overview-preview general-note-preview';
@@ -4007,18 +4006,21 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           (row.registeredBy?.rank?' · '+row.registeredBy.rank:'')+
           (row.registeredBy?.call?' · '+row.registeredBy.call:'')});
       attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
-      root.append(item);return;
+      mount.append(item);return;
     }
     const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
     const item=document.createElement('div');item.className='overview-preview';
     const heading=document.createElement('strong');
     heading.textContent=[cells[0],cells[1]].filter(value=>value&&value!=='—').join(' · ').slice(0,160)||'Registratie';
     const meta=document.createElement('span');
-    meta.textContent=cells.slice(2).filter(value=>value&&value!=='—').join(' · ').slice(0,330);
+    const fullMeta=cells.slice(2).filter(value=>value&&value!=='—').join(' · ');
+    meta.textContent=fullMeta;
     const score=['formal','observations'].includes(group)&&row.type==='observatie'?
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    if(!['formal','sanctions','movements'].includes(group))
+      attachExpandableDossierText(item,meta,fullMeta,{label:'Lees volledige registratie'});
     if(['formal','sanctions','movements'].includes(group)){
       const description=document.createElement('p');
       const full=cells.slice(2).filter(x=>x&&x!=='—').join(' · ');
@@ -4037,27 +4039,10 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         selected.dept+':'+selected.discordId);
     else attachAdministrativeCaseCorrection(item,row);
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
-    root.append(item);
+    mount.append(item);
   };
-  if(!entries.length){
-    const note=document.createElement('span');note.className='overview-no-data';
-    note.textContent=empty;root.append(note);return;
-  }
-  const previewCount=group==='leave'?5:3;
-  for(const row of (wasExpanded?entries:entries.slice(0,previewCount)))append(row);
-  if(entries.length>previewCount){
-    const toggle=document.createElement('button');toggle.type='button';
-    toggle.className='sheet-show-more';
-    toggle.textContent=wasExpanded?'Minder tonen':'Toon alle '+entries.length+(limited?'+':'')+' registraties';
-    toggle.onclick=()=>{
-      root.dataset.expanded=wasExpanded?'false':'true';
-      sheetSetRows(group,entries,toCells,empty,limited);
-    };
-    root.append(toggle);
-  }else if(limited){
-    const notice=document.createElement('span');notice.className='overview-no-data';
-    notice.textContent='De bron toont niet alle oudere registraties.';root.append(notice);
-  }
+  return renderRecentDossierEntries(root,entries,append,{
+    empty,limited,noun:'registraties'});
 }
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function makeScoreBadge(score){
@@ -4268,9 +4253,7 @@ function renderGeneralDossierNotes(){
     'Geen algemene notities geregistreerd.',limited);
   const root=$('dossierGeneralNoteList');
   if(!root)return;
-  root.replaceChildren();
-  if(!list.length){root.textContent='Geen algemene notities geregistreerd.';return}
-  for(const row of list){
+  renderRecentDossierEntries(root,list,(mount,row)=>{
     const item=document.createElement('div');item.className='note-item general-note-item';
     const heading=document.createElement('strong');
     heading.textContent=(row._noteDate||'—')+' · '+(row._noteTitle||'Notitie');
@@ -4287,9 +4270,9 @@ function renderGeneralDossierNotes(){
     attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
     if(row._dossierSource==='cases'&&selected)
       addManualCaseCorrectionControls(item,row,selected,selected.dept+':'+selected.discordId);
-    root.append(item);
-  }
-  if(limited)root.append(document.createTextNode(' Er kunnen oudere notities bestaan.'));
+    mount.append(item);
+  },{empty:'Geen algemene notities geregistreerd.',
+    limited,noun:'notities'});
 }
 // Dynamisch samengesteld uit de twee bestaande beveiligde bronnen.
 let importantCaseEntries=[],importantRestrictionEntries=[],importantPortalRestrictionEntries=[],
@@ -4413,28 +4396,26 @@ async function loadStaffCheckrides(p,key){
       encodeURIComponent(p.discordId));
     if(!same())return;
     const records=data.evaluations||[];
-    preview.replaceChildren();detail.replaceChildren();
-    if(!records.length){
-      preview.textContent=detail.textContent='Nog geen stage- of koppelritevaluaties geregistreerd.';
-      return;
-    }
-    for(const e of records.slice(0,5)){
+    renderRecentDossierEntries(preview,records,(mount,e)=>{
       const row=document.createElement('div');row.className='sheet-record';
       row.textContent=(e.eventDate||'—')+' · '+e.trackLabel+' · '+(e.average??'—')+
         '/5 · '+(e.outcome||'—');
-      preview.append(row);
-    }
-    for(const e of records.slice(0,50)){
+      mount.append(row);
+    },{empty:'Nog geen stage- of koppelritevaluaties geregistreerd.',
+      limited:data.limited,noun:'evaluaties'});
+    renderRecentDossierEntries(detail,records,(mount,e)=>{
       const row=document.createElement('div');row.className='note-item';
       const title=document.createElement('strong');
       title.textContent=(e.eventDate||'—')+' · '+e.trackLabel+' · '+(e.average??'—')+'/5';
       const meta=document.createElement('span');meta.className='subtle';
       meta.textContent=(e.outcome||'—')+' · Beoordelaar: '+(e.evaluatorDiscordId||'—');
       const note=document.createElement('p');note.textContent=e.notes||'—';
-      row.append(title,meta,note);detail.append(row);
-    }
-    if(data.limited||records.length>50)
-      detail.append(document.createTextNode(' Meer evaluaties kunnen beschikbaar zijn in de opleidingshistoriek.'));
+      row.append(title,meta,note);
+      attachExpandableDossierText(row,note,note.textContent,{
+        label:'Lees volledige evaluatie'});
+      mount.append(row);
+    },{empty:'Nog geen stage- of koppelritevaluaties geregistreerd.',
+      limited:data.limited,noun:'evaluaties'});
   }catch(e){if(same()){
     preview.textContent='Evaluatiegegevens niet beschikbaar voor deze dossierbevoegdheid.';
     detail.textContent='Evaluatiehistoriek niet beschikbaar ('+e.message+').';
@@ -4560,12 +4541,8 @@ function renderLinkedTraining(p){
         x.result||'—'),
     x.instructorName||x.registeredBy?.name||'—'
   ],'Nog geen opleidingsregistraties.',linkedTrainingLimited||linkedCaseLimited);
-  const holder=$('staffLinkedTraining');holder.replaceChildren();
-  if(!all.length)holder.textContent=linkedTrainingFetchError?
-    'Opleidingsregister beperkt toegankelijk ('+linkedTrainingFetchError+').'+
-    ' Uitgevoerde opleidingsaanvragen blijven zichtbaar via de dossierhistoriek.':
-    'Geen zichtbare opleidingsregistraties.';
-  for(const row of all.slice(0,25)){
+  const holder=$('staffLinkedTraining');
+  renderRecentDossierEntries(holder,all,(mount,row)=>{
     const div=document.createElement('div');div.className='note-item';
     const title=document.createElement('strong');
     title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
@@ -4584,16 +4561,26 @@ function renderLinkedTraining(p){
             (row.appliedSpecialtyLabel?' · Specialisatie: '+row.appliedSpecialtyLabel+
               ' ('+(row.result==='geslaagd'?'JA':'STAGE')+')':'');
     div.append(title,meta);
+    attachExpandableDossierText(div,meta,meta.textContent,{
+      label:'Lees volledige opleidingsgegevens'});
+    if(row.details){
+      const note=document.createElement('p');note.textContent=row.details;
+      div.append(note);
+      attachExpandableDossierText(div,note,row.details,{
+        label:'Lees volledige opleidingsevaluatie'});
+    }
     if(row._trainingSource==='register'&&row.canEdit===true&&
         trainingRights?.trainingWritesEnabled===true&&
         trainingRights.permissions?.[p.dept]?.['training.log']){
       const edit=document.createElement('button');edit.type='button';edit.className='alt small';
       edit.textContent='Opleiding wijzigen';edit.onclick=()=>staffTrainingEdit(row);div.append(edit);
     }
-    holder.append(div);
-  }
-  if(linkedTrainingLimited||linkedCaseLimited||all.length>25)
-    holder.append(document.createTextNode(' Er kunnen nog oudere registraties bestaan.'));
+    mount.append(div);
+  },{empty:linkedTrainingFetchError?
+    'Opleidingsregister beperkt toegankelijk ('+linkedTrainingFetchError+
+      '). Uitgevoerde opleidingsaanvragen blijven zichtbaar.':
+    'Geen zichtbare opleidingsregistraties.',
+    limited:linkedTrainingLimited||linkedCaseLimited,noun:'opleidingen'});
   if(linkedTrainingScope==='alleen_eigen_registraties')
     holder.append(document.createTextNode(' Je ziet uit het opleidingsregister alleen je eigen registraties.'));
 }
@@ -4634,10 +4621,8 @@ async function loadLinkedPersonnelRecords(p,key){
           x.type==='opleiding'&&x.trainingRequestId&&x.reportCategory==='opleiding');
         linkedCaseLimited=Boolean(data.limited);
         renderLinkedTraining(p);
-        cases.replaceChildren();
-        const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type)).slice(0,60);
-        if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
-        for(const row of allowed){
+        const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type));
+        renderRecentDossierEntries(cases,allowed,(mount,row)=>{
           const div=document.createElement('div');div.className='note-item';
           const title=document.createElement('strong');
           title.textContent=(staffCaseLabels[row.type]||row.type||'Kaderregistratie')+
@@ -4650,6 +4635,8 @@ async function loadLinkedPersonnelRecords(p,key){
           const body=document.createElement('p');
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);
+          attachExpandableDossierText(div,body,body.textContent,{
+            label:'Lees volledige kaderregistratie'});
           if(row.historicalImport){
             const provenance=document.createElement('small');
             provenance.textContent='Historische overname · oorspronkelijk: '+
@@ -4662,9 +4649,9 @@ async function loadLinkedPersonnelRecords(p,key){
           attachAdministrativeCaseCorrection(div,row);
           attachRetireButton(div,row,'cases');
           addManualCaseCorrectionControls(div,row,p,key);
-          cases.append(div);
-        }
-        if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
+          mount.append(div);
+        },{empty:'Geen toegelaten kadernotities gevonden.',
+          limited: data.limited,noun:'kaderregistraties'});
       }catch(e){if(same()){
         linkedCompletedRequestRecords=[];linkedCaseLimited=false;
         renderLinkedTraining(p);
@@ -4711,7 +4698,7 @@ async function loadStaffLeave(p,key){
     const overviewLeaves=leaves.filter(x=>x.status==='approved')
       .sort((a,b)=>order[periodState(a)]-order[periodState(b)]||
         String(b.startDate||'').localeCompare(String(a.startDate||'')))
-      .slice(0,5);
+;
     sheetSetRows('leave',overviewLeaves,x=>[
       displayLeaveDate(x.startDate),displayLeaveDate(x.endDate),periodState(x),
       (Number(x.days)||'—')+' dagen',
@@ -4729,9 +4716,7 @@ async function loadStaffLeave(p,key){
         'Nog niet goedgekeurd; beslissing door bevoegd Officierenkader of Korpsleiding.';
       $('sheetLeave').append(reminder);
     }
-    root.replaceChildren();
-    if(!leaves.length)root.textContent='Geen geregistreerde verlofperiodes.';
-    for(const item of leaves){
+    renderRecentDossierEntries(root,leaves,(mount,item)=>{
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
       title.textContent=displayLeaveDate(item.startDate)+' tot '+displayLeaveDate(item.endDate)+
@@ -4740,6 +4725,8 @@ async function loadStaffLeave(p,key){
       const reason=document.createElement('p');
       reason.textContent='Reden: '+(item.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
       div.append(title,reason);
+      attachExpandableDossierText(div,reason,reason.textContent,{
+        label:'Lees volledige verlofreden'});
       if(item.historicalImport){
         const audit=document.createElement('p');
         audit.textContent='Historische overname · oorspronkelijk: '+
@@ -4766,9 +4753,9 @@ async function loadStaffLeave(p,key){
           div.append(button);
         }
       }
-      root.append(div);
-    }
-    if(info.limited)root.append(document.createTextNode(' Niet alle oudere periodes worden getoond.'));
+      mount.append(div);
+    },{empty:'Geen geregistreerde verlofperiodes.',
+      limited:info.limited,noun:'verlofperiodes'});
   }catch(e){if(same()){
     root.textContent='Verlofgegevens niet beschikbaar: '+e.message;
     $('sheetLeave').textContent='Verlofgegevens niet beschikbaar.';
@@ -5379,13 +5366,11 @@ async function loadStaffFormalRecords(p,key){
     const data=await request('/api/registrations/entries?dept='+encodeURIComponent(p.dept)+
       '&discordId='+encodeURIComponent(p.discordId));
     if(!sameDossier(key))return;
-    root.replaceChildren();
     const records=newestDossierEntries(
       (data.entries||[]).filter(r=>['observatie','sanctie'].includes(r.type)));
     formalRecords=records;
     sheetFormalRows(records,data.limited);
-    if(!records.length)root.textContent='Geen zichtbare formele observaties of sancties.';
-    for(const row of records.slice(0,100)){
+    renderRecentDossierEntries(root,records,(mount,row)=>{
       let item=document.createElement('div');item.className='note-item';
       const title=document.createElement('strong');
       const date=row.eventDate||row.createdAt||'Datum onbekend';
@@ -5450,10 +5435,10 @@ async function loadStaffFormalRecords(p,key){
           item.append(edit);
         }
       }
-      root.append(item);
-    }
-    if(data.entries?.length===100)root.append(document.createTextNode(
-      ' Het register toont maximaal de 100 recentste registraties.'));
+      mount.append(item);
+    },{empty:'Geen zichtbare formele observaties of sancties.',
+      limited:Boolean(data.limited||data.entries?.length===100),
+      noun:'observaties en sancties'});
   }catch(e){if(sameDossier(key)){
     root.textContent='Formele registraties niet zichtbaar met de huidige bevoegdheden: '+e.message;
     if(p.dept==='politie'){
@@ -5783,8 +5768,7 @@ function renderReceived(group,rows,limited){
   if(!root)return;
   root.replaceChildren();
   if(rows===null){root.textContent='Je hebt geen inzagerecht voor deze rubriek.';return}
-  if(!rows?.length){root.textContent='Geen ontvangen registraties voor deze medewerker.';return}
-  for(const entry of rows){
+  renderRecentDossierEntries(root,rows,(mount,entry)=>{
     const div=document.createElement('article');div.className='received-record';
     const title=document.createElement('strong');
     const labels={observatie:'Observatie',sanctie:'Sanctie',notitie:'Personeelsnotitie',
@@ -5803,6 +5787,8 @@ function renderReceived(group,rows,limited){
     const description=document.createElement('p');description.className='received-details';
     description.textContent=entry.details||'Geen omschrijving opgegeven.';
     div.append(title,meta,description);
+    attachExpandableDossierText(div,description,description.textContent,{
+      label:'Lees volledige registratie'});
     if(entry.type==='sanctie'){
       const detail=document.createElement('small');
       detail.textContent='Ernst: '+(entry.severity??'—')+'/10'+
@@ -5813,13 +5799,9 @@ function renderReceived(group,rows,limited){
       const badge=document.createElement('span');badge.className='received-test';
       badge.textContent='TEST – uitgesloten van weekrapport';div.append(badge);
     }
-    root.append(div);
-  }
-  if(limited){
-    const note=document.createElement('p');note.className='subtle';
-    note.textContent='Alleen de recentste registraties zijn geladen. Oudere registraties blijven bewaard.';
-    root.append(note);
-  }
+    mount.append(div);
+  },{empty:'Geen ontvangen registraties voor deze medewerker.',
+    limited,noun:'ontvangen registraties'});
 }
 async function loadReceivedRegistrations(person){
   const key=person.dept+':'+person.discordId,serial=++receivedRequestSerial;
@@ -5942,8 +5924,7 @@ async function loadStaffDossier(p){
     }));
     generalLegacyLimited=result.notesLimited===true;
     renderGeneralDossierNotes();
-    if(!result.notes?.length)list.textContent='Geen eerder in dit aanvullende dossier geregistreerde notities.';
-    else for(const item of result.notes){
+    renderRecentDossierEntries(list,result.notes||[],(mount,item)=>{
       const div=document.createElement('div');div.className='note-item';
       const title=document.createElement('strong');
       title.textContent=(staffNotesLabels[item.kind]||item.kind)+' · '+item.title;
@@ -5952,20 +5933,22 @@ async function loadStaffDossier(p){
       meta.textContent=(item.recordedAt?new Date(item.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
         ' · Registratie door '+(item.authorDiscordId||'onbekend');
       div.append(title,body,meta);
+      attachExpandableDossierText(div,body,item.details||'—',
+        {label:'Lees volledige notitie'});
       attachRetireButton(div,item,'staff');
-      list.append(div);
-    }
-    if(result.notesLimited)list.append(document.createTextNode(' Alleen de 60 recentste oudere dossiernotities worden getoond.'));
+      mount.append(div);
+    },{empty:'Geen eerder in dit aanvullende dossier geregistreerde notities.',
+      limited:result.notesLimited,noun:'notities'});
     void loadStaffTrainingRights(p,key);
     const hist=$('staffDossierHistory');
-    if(!result.profileChanges?.length)hist.textContent='Nog geen administratieve wijzigingen geregistreerd.';
-    else for(const entry of result.profileChanges){
+    renderRecentDossierEntries(hist,result.profileChanges||[],(mount,entry)=>{
       const line=document.createElement('div');line.className='history';
       line.textContent=(entry.action==='profile_updated'?'Administratieve basisgegevens gewijzigd':'Notitie geregistreerd')+
         ' · '+(entry.recordedAt?new Date(entry.recordedAt).toLocaleString('nl-BE'):'Datum onbekend')+
         ' · Door '+(entry.byDiscordId||'onbekend')+(entry.reason?' · '+entry.reason:'');
-      hist.append(line);
-    }
+      mount.append(line);
+    },{empty:'Nog geen administratieve wijzigingen geregistreerd.',
+      noun:'administratieve wijzigingen'});
   }catch(e){
     if(selected&&selected.dept+':'+selected.discordId===key){
       sheetDossierProfile({});
