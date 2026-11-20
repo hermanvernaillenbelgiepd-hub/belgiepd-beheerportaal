@@ -1475,7 +1475,7 @@ import {mountPersonnelGroupSettingsEditor} from '/personnel-group-settings-edito
 import {displayServiceBadge,serviceIdentity} from '/dossier-service-badge.js';
 import {policeGroupedRoster,policeOperationalTier,policeTierDisplay} from '/police-roster-cadre.js';
 import {attachRosterNamePreview,dismissRosterNamePreview} from '/roster-name-preview.js';
-import {sortDossierColleagues,DOSSIER_COLLEAGUE_SORT_MODES} from '/dossier-colleague-sort.js';
+import {sortDossierColleagues,DOSSIER_COLLEAGUE_SORT_MODES,DOSSIER_COLLEAGUE_DEPARTMENTS} from '/dossier-colleague-sort.js';
 import {populateInstructorOptions,syncManualInstructor,selectedInstructor} from '/training-instructor-choices.js';
 let setupPortalLogin;
 const $=id=>document.getElementById(id);
@@ -1719,13 +1719,18 @@ function updateFicheColleagues(){
   const select=$('ficheColleague');
   // Zelfde sortering als de personeelslijst: 900, 910, ... 700, 710,
   // ... 600, ... 008; per andere dienst de eigen ranghiërarchie.
-  const options=sortDossierColleagues(people,BPDPersonnelVisuals.comparePersonnel);
+  // Dossiernavigatie bevat uitsluitend personen van de huidige dienst.
+  const dept=selected?.dept||initialQuery.get('dept')||$('dept').value;
+  const options=DOSSIER_COLLEAGUE_DEPARTMENTS.includes(dept)?
+    sortDossierColleagues(people,BPDPersonnelVisuals.comparePersonnel,dept):[];
   select.replaceChildren(...options.map(p=>option(p.dept+':'+p.discordId,
     (p.call||'—')+' · '+p.name+' ('+(departments[p.dept]||p.dept)+')')));
   if(selected)select.value=selected.dept+':'+selected.discordId;
 }
 $('ficheColleague').onchange=()=>{
-  const person=people.find(p=>p.dept+':'+p.discordId===$('ficheColleague').value);
+  const dept=selected?.dept||initialQuery.get('dept')||$('dept').value;
+  const person=people.find(p=>p.dept===dept&&
+    p.dept+':'+p.discordId===$('ficheColleague').value&&p.canOpenDossier===true);
   if(person)window.location.assign(ficheUrl(person));
 };
 if(dossierEmbedded){
@@ -1819,7 +1824,6 @@ function availablePersonnelRegistrationKinds(){
     if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
        casePermissions.typesByDepartment?.[dept]?.includes('algemene_notitie'))
       kinds.push(['case:algemene_notitie','Algemene notitie']);
-    if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
     return kinds;
   }
   if(formalPermissions?.writesEnabled===true&&formalPermissions.actor){
@@ -1833,6 +1837,8 @@ function availablePersonnelRegistrationKinds(){
       // Opleiding blijft als dossierregistratie beschikbaar wanneer het
       // formele opleidingsregister hier niet actief is, zonder dubbel menu.
       if(type==='activiteit'||type==='verlof')continue;
+      // Geen algemene naamcorrecties of activiteitenpings bij nevendiensten.
+      if(dept!=='politie'&&['naamswijziging','inactiviteitsping'].includes(type))continue;
       // Opleidingen zijn altijd centrale trainingsregistraties. Een losse
       // managementnotitie mag hier niet als tweede opleidingsinvoer verschijnen.
       if(type==='opleiding')continue;
@@ -1844,7 +1850,8 @@ function availablePersonnelRegistrationKinds(){
   }
   if(canRegisterOfficialTraining())
     kinds.push(['training','Opleiding registreren']);
-  if(registrationManualLeave)kinds.push(['leave','Verlofperiode manueel inschrijven']);
+  if(dept==='politie'&&registrationManualLeave)
+    kinds.push(['leave','Verlofperiode manueel inschrijven']);
   return kinds;
 }
 function displaySelectedRegistration(){
@@ -4185,8 +4192,11 @@ function sheetSpecialtyRows(rows){
   }
 }
 function updateGeneralPersonnelInfoDisplay(){
-  const canCore=Boolean(selected?.canEditIdentity===true&&writesEnabled);
-  const canProfile=staffDossierCanMaintain===true;
+  // Politionele algemene personeelsadministratie hoort niet in nevendossiers.
+  // Dienstgebonden functies en specialisaties blijven apart beheerbaar.
+  const police=selected?.dept==='politie';
+  const canCore=Boolean(police&&selected?.canEditIdentity===true&&writesEnabled);
+  const canProfile=police&&staffDossierCanMaintain===true;
   const canWrite=canCore||canProfile;
   $('editForm').hidden=!canCore;
   $('staffProfileForm').hidden=!canProfile;
@@ -6658,8 +6668,9 @@ async function loadPersonnelLifecycle(p){
   $('personnelArchiveAction').textContent=p.dept==='politie'?
     'Politie: volledig uit dienst (alle diensten)':
     'Alleen '+(departments[p.dept]||p.dept)+' uit dienst plaatsen';
-  $('personnelGlobalArchiveAction').hidden=p.dept==='politie'||
-    !(data.state==='active'&&data.canArchiveGlobally);
+  // Vanuit het politiedossier is de primaire archiefknop al globaal.
+  // Nevendiensten zien alleen hun eigen dienstarchivering.
+  $('personnelGlobalArchiveAction').hidden=true;
   $('archiveFromActivityPing').hidden=$('personnelArchiveAction').hidden||
     $('staffCaseType').value!=='inactiviteitsping';
  }catch(e){
