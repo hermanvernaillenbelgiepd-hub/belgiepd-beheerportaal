@@ -559,15 +559,18 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
     if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID'});
     const ref=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records').doc(recordId);
     try{
+      data=await resolveLessonForRecord(data);
       await db().runTransaction(async tx=>{
         const snap=await tx.get(ref);
         if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
         const old=snap.data();
         if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen wijzigingsrecht op deze registratie'),{status:403});
-        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName','qualificationStage'].map(k=>[k,old[k]??null]));
+        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName','qualificationStage','lessonSessionId','instructorDiscordId'].map(k=>[k,old[k]??null]));
         const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,
           result:data.result,instructorName:data.instructorName,
-          qualificationStage:data.qualificationStage};
+          qualificationStage:data.qualificationStage,
+          lessonSessionId:data.lessonSessionId,
+          instructorDiscordId:data.instructorDiscordId||null};
         if(requiresReReview(old,next)){
           next.rosterStatus='ter_controle';
           const specialty=await syncTrainingSpecialty(tx,{department,discordId,recordId,
@@ -580,7 +583,7 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       });
       onSpecialtyChanged?.();
       res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
-    }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
+    }catch(e){if([400,403,404].includes(e.status))return res.status(e.status).json({error:e.message});error(res,e)}
   });
 
   // "Verwijderen" is archival, not physical deletion: audits remain intact.
