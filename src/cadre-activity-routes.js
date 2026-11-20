@@ -56,6 +56,24 @@ async function querySources(db,subjects,dept,period){
  }
  return {cases,trainings,incomplete,examined};
 }
+async function policeLeaveDecisions(db,period){
+ const lower=new Date(period.start+'T00:00:00Z');
+ const snap=await db.collection('bpd_leave_requests')
+   .where('decidedAt','>=',lower).orderBy('decidedAt','desc').limit(1501).get();
+ const rows=snap.docs.slice(0,1500).map(doc=>{
+   const d=doc.data(),stamp=d.decidedAt?.toDate?.()||
+     (d.decidedAt instanceof Date?d.decidedAt:null);
+   return {
+     decidedByDiscordId:d.decidedByDiscordId,
+     historicalImport:d.historicalImport===true,status:d.status,
+     subjectDepartments:d.subjectDepartments,
+     decisionDate:stamp instanceof Date&&!Number.isNaN(stamp.valueOf())?
+       new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+         year:'numeric',month:'2-digit',day:'2-digit'}).format(stamp):null
+   };
+ });
+ return {rows,incomplete:snap.size>=1501};
+}
 export function installCadreActivityRoutes(app,{requireUser,getSnapshot,getDb=getFirestore}){
  const settingsRef=()=>getDb().collection(CADRE_ACTIVITY_SETTINGS_COLLECTION)
    .doc(CADRE_ACTIVITY_SETTINGS_DOC);
@@ -131,11 +149,16 @@ export function installCadreActivityRoutes(app,{requireUser,getSnapshot,getDb=ge
      const personnel=uniquePeople(roster,dept);
      if(personnel.length>250)return fail(res);
      const cadre=personnel.filter(isCadreActivitySubject);
-     const {cases,trainings,incomplete,examined}=await querySources(
-       db,personnel,dept,period);
-     const people=cadreActivityCounts(cadre,cases,trainings,period);
+     const [events,leaveDecisions]=await Promise.all([
+       querySources(db,personnel,dept,period),
+       dept==='politie'?policeLeaveDecisions(db,period):
+         Promise.resolve({rows:[],incomplete:false})
+     ]);
+     const {cases,trainings,examined}=events;
+     const incomplete=events.incomplete||leaveDecisions.incomplete;
+     const people=cadreActivityCounts(cadre,cases,trainings,period,leaveDecisions.rows);
      const totals={observaties:0,notities:0,sancties:0,opvolgingen:0,overig:0,
-       opleidingsregistraties:0,overgenomen:0,correcties:0};
+       opleidingsregistraties:0,verlofbeslissingen:0,overgenomen:0,correcties:0};
      for(const person of people)
        for(const key of Object.keys(totals))totals[key]+=person[key];
      return res.json({department:dept,period,people,totals,incomplete,
