@@ -164,7 +164,7 @@ test('Burgerraad/Korpsleiding/technical profile input is exact, validated and re
  ])assert.throws(()=>validateCitizenProfile(invalid,{today:'2026-11-20'}));
 });
 
-test('Burgerdossier heeft geen verlof/callsign en schrijft profiel uitsluitend met audit',()=>{
+test('Burgerdossier heeft geen verlof/callsign en schrijft profiel uitsluitend met audit',async()=>{
  const fs=await import('node:fs');
  const read=path=>fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
  const html=read('public/burger-personeelsdossiers.html');
