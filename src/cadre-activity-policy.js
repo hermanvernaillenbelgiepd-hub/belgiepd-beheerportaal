@@ -19,20 +19,27 @@ export function cadreActivitySettings(raw){
  return {enabled,revision:Number.isSafeInteger(raw?.revision)&&raw.revision>=0?
    raw.revision:0};
 }
-export function canManageCadreActivity(actor){
- // Neither a generic dashboard label nor a Police callsign grants this.
- // Technical mode retains only independently verified operational Police rank.
- return Boolean(verifiedPoliceRankAuthority(actor));
+export function canManageCadreActivity(actor,roster){
+ // Independently verified Discord officer status AND a current official
+ // 9xx personnel record are required on EVERY read and setting change.
+ if(!verifiedPoliceRankAuthority(actor)||!Array.isArray(roster))return false;
+ const matches=roster.filter(p=>p?.dept==='politie'&&p.personId===actor.discordId&&
+   p.lifecycleState!=='archived'&&p.lifecycleState!=='pending');
+ return matches.length===1&&/^(?:S[- ]?)?9\d{2}$/i.test(String(matches[0].call||''))&&
+   !/^(?:ontslag|verwijderd|blacklisted)$/i.test(String(matches[0].status||''));
 }
 export function canReadCadreActivity(actor,dept,settings,roster){
  if(!CADRE_ACTIVITY_DEPARTMENTS.includes(dept)||!DISCORD.test(actor?.discordId||'')||
-    actor.uid!=='discord:'+actor.discordId)return false;
- if(canManageCadreActivity(actor)){
-   // Police leadership can manage switches; other-service record visibility
-   // still requires an independently scoped personnel/dossier grant.
+   actor.uid!=='discord:'+actor.discordId||!Array.isArray(roster))return false;
+ if(canManageCadreActivity(actor,roster)){
+   // Police leadership manages settings; other-service information still
+   // requires its own separate verified dossier scope.
    return dept==='politie'||actor.dossierAllowedDepartments?.includes(dept)===true;
  }
  if(dept==='politie'||!cadreActivitySettings(settings).enabled[dept])return false;
+ const mine=roster.filter(p=>p.dept===dept&&p.personId===actor.discordId&&
+   isCadreActivitySubject(p));
+ if(mine.length!==1)return false;
  if(dept==='burger')return actor.citizenCouncilVerified===true&&
    actor.departments?.includes('burger')===true;
  return mayReadFortnightReport(actor,dept,roster);
@@ -72,8 +79,11 @@ export function isCadreActivitySubject(p){
    return /burgerraad/i.test(rank);
  return false;
 }
-const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&
- new Date(d+'T12:00:00Z').toISOString().slice(0,10)===d;
+const validDate=d=>{
+ if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;
+ const ms=Date.parse(d+'T12:00:00Z');
+ return Number.isFinite(ms)&&new Date(ms).toISOString().slice(0,10)===d;
+};
 export function cadreActivityPeriod(value,today){
  if(!validDate(today))throw Error('Ongeldige peildatum');
  const days=Number(value);
@@ -88,7 +98,6 @@ export function cadreActivityCounts(people,cases,trainings,period){
    observaties:0,notities:0,sancties:0,opvolgingen:0,overig:0,
    opleidingsregistraties:0,overgenomen:0,correcties:0,dagen:new Set()
  }]));
- const hits=()=>Object.fromEntries([...byId].map(([id,value])=>[id,value]));
  for(const e of cases){
    if(!e||!validDate(e.eventDate)||e.eventDate<period.start||e.eventDate>period.end)
      continue;
@@ -101,7 +110,7 @@ export function cadreActivityCounts(people,cases,trainings,period){
    }
    const amendment=Boolean(e.amendmentOf||e.retirementOf||
       /(?:amendment|correction|retirement)/.test(e.source||''));
-   const recipient=byId.get(amendment?original:original);
+   const recipient=byId.get(original);
    if(!recipient)continue;
    if(amendment){recipient.correcties++;continue}
    if(e.deletedAt||e.retiredAt||e.status==='verwijderd'||e.testRecord===true)
@@ -123,7 +132,7 @@ export function cadreActivityCounts(people,cases,trainings,period){
    person.opleidingsregistraties++;
    person.dagen.add(r.eventDate);
  }
- return Object.values(hits()).map(({dagen,...p})=>({
+ return [...byId.values()].map(({dagen,...p})=>({
    ...p,actieveRegistratiedagen:dagen.size,
    totaal:p.observaties+p.notities+p.sancties+p.opvolgingen+p.overig+
      p.opleidingsregistraties
