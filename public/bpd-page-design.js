@@ -75,8 +75,12 @@
    if(entry.target==='grid'){
     if(NUMBERS.minColumnWidth.includes(values.minColumnWidth))
      rules.push('html[data-bpd-design-page="'+file+'"]{--bpd-page-grid-min:'+values.minColumnWidth+'px}');
-    if(['one','two','three','four'].includes(values.columns))
-     geometry.push('grid-template-columns:repeat('+({one:1,two:2,three:3,four:4})[values.columns]+',minmax(0,1fr))!important');
+    if(['one','two','three','four'].includes(values.columns)){
+     const count=({one:1,two:2,three:3,four:4})[values.columns];
+     // A forced desktop column count must never override adaptive mobile grids.
+     rules.push('@media(min-width:1081px){'+base+sel+
+      '{grid-template-columns:repeat('+count+',minmax(0,1fr))!important}}');
+    }
    }
    if(geometry.length)rules.push(base+sel+'{'+geometry.join(';')+'}');
   }
