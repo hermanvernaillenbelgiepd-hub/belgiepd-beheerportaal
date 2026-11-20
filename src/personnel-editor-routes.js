@@ -7,7 +7,8 @@ import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {LIFECYCLE_SERVICES} from './personnel-lifecycle-policy.js';
 import {PERSONNEL_IDENTITY_NAMES,canonicalRosterName,normalizedIdentityName} from './personnel-identity-policy.js';
-import {canManageLifecycleDepartment,canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
+import {canManageLifecycleDepartment,canManagePersonnelLifecycle,
+ canGloballyArchivePersonnel} from './personnel-lifecycle-access.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canReadPersonnelSubject,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,canRenameLowerPolice,validateLowerPoliceRename,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
@@ -84,6 +85,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
           rankDisplay:p.dept==='politie'?policeOfficialRankLabel(p.rank):p.rank,
           canOpenDossier,canManageLifecycle:canManagePersonnelLifecycle(req.bpd,p),
+          canArchiveGlobally:canGloballyArchivePersonnel(req.bpd,p),
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),
           series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),
