@@ -26,7 +26,7 @@
  const shadows={none:'none',subtle:'0 2px 9px rgba(0,0,0,.1)',
   medium:'0 7px 18px rgba(0,0,0,.17)',
   strong:'0 12px 28px rgba(0,0,0,.25)'};
- const validSlots=/^(?:page|block:(?:0|[1-9][0-9]?)|id:[A-Za-z][A-Za-z0-9_-]{0,63})$/;
+ const validSlots=/^(?:page|block:(?:0|[1-9][0-9]{0,2})|id:[A-Za-z][A-Za-z0-9_-]{0,63})$/;
  const safeStyle=raw=>{
   const out={};
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return out;
