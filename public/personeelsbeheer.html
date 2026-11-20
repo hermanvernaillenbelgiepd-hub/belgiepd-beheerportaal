@@ -6081,6 +6081,19 @@ function updateManualLeaveGuidance(){
 $('leaveFrom').addEventListener('change',updateManualLeaveGuidance);
 $('leaveUntil').addEventListener('change',updateManualLeaveGuidance);
 updateManualLeaveGuidance();
+// Bij een verlopen toestemming mag een historische overname niet als
+// gewone verlofregistratie worden opgeslagen. De API controleert dit ook.
+async function verifyHistoricalLeaveTransfer(transfer,dossierKey){
+ if(!transfer.onBehalfOfDiscordId)return;
+ const fresh=await request('/api/registrations/subjects');
+ if(!sameDossier(dossierKey))
+   throw Error('Het geopende personeelsdossier is gewijzigd. Open het dossier opnieuw.');
+ formalPermissions=fresh;
+ updateHistoricalMigrationUi();
+ if(fresh?.canManageHistoricalObservationImport!==true||
+    fresh?.historicalMigration?.enabled!==true||fresh?.writesEnabled!==true)
+   throw Error('Historische verlofovername is niet actief of je bent er niet voor gemachtigd. Schakel de tijdelijke migratie in via ‘Oude dossiers tijdelijk overnemen’, of vink historische overname uit om gewoon verlof te registreren.');
+}
 $('staffManualLeaveForm').onsubmit=async event=>{
  event.preventDefault();
  const person=selected;
@@ -6092,15 +6105,19 @@ $('staffManualLeaveForm').onsubmit=async event=>{
  }
  const button=$('leaveManualSave');button.disabled=true;
  try{
+   const dossierKey=person.dept+':'+person.discordId;
+   const historical=historicalTransferData('historicalLeave');
+   await verifyHistoricalLeaveTransfer(historical,dossierKey);
+   if(!sameDossier(dossierKey))return;
    if(!confirm('Verlof van '+days+' kalenderdagen voor '+person.name+' vastleggen? '+
+     (historical.onBehalfOfDiscordId?' HISTORISCHE OVERNAME namens de opgegeven oorspronkelijke registrator.':'')+
      (days>30?'Middenkader dient dit ter goedkeuring in; Officierenkader en Korpsleiding kunnen zelf goedkeuren.':
        'Bevoegd kader registreert dit rechtstreeks.')+
      ' De registratie wordt in het personeelsdossier en weekrapport gelogd.'))return;
    const saved=await request('/api/leave/manual',{method:'POST',
      body:{dept:person.dept,discordId:person.discordId,
        startDate:$('leaveFrom').value,endDate:$('leaveUntil').value,
-       note:$('leaveNote').value.trim(),
-       ...historicalTransferData('historicalLeave')}});
+       note:$('leaveNote').value.trim(),...historical}});
    $('leaveNote').value='';
    await loadStaffLeave(person,person.dept+':'+person.discordId);
    try{
