@@ -23,21 +23,24 @@ export function verifiedDocumentRoles(member,guildId,now=Date.now()){
 // approval and lifecycle checks. A temporary callsign or missing roster row
 // may NEVER prevent reading a handbook intended for verified service members.
 export function documentScopes(actor,roster,verifiedRoleIds=[]){
-  const empty={read:[],write:[],manage:[],members:[],instructors:[],
+  const empty={read:[],write:[],manage:[],review:[],members:[],instructors:[],
     manualReaderId:null};
   if(!actor||!ID.test(actor.discordId)||!Array.isArray(actor.departments)||
      !Array.isArray(roster))return empty;
   const manualReaderId=actor.discordId;
   const technical=actor.portalTechnicalMode===true&&
     actor.profileTechnicalAvailable===true&&actor.uid==='discord:'+actor.discordId;
-  if(technical||actor.boardPersonnelAdmin===true||actor.role==='beheerder')
-    return {read:all(),write:all(),manage:all(),members:all(),
-      instructors:all(),manualReaderId};
   const unique=(dept)=>actor.departments.includes(dept)&&
     roster.filter(p=>p.dept===dept&&p.personId===actor.discordId).length===1;
+  // Approval is limited to verified police Officierenkader and Korpsleiding.
+  // Technical/admin access can maintain records, but cannot approve a service
+  // leader's draft without also holding a current police officer appointment.
   const highPolice=unique('politie')&&COMMAND.has(roleForDepartment(actor,'politie'));
-  if(highPolice)return {read:all(),write:all(),manage:all(),members:all(),
-    instructors:all(),manualReaderId};
+  if(highPolice)return {read:all(),write:all(),manage:all(),review:all(),
+    members:all(),instructors:all(),manualReaderId};
+  if(technical||actor.boardPersonnelAdmin===true||actor.role==='beheerder')
+    return {read:all(),write:all(),manage:all(),review:[],
+      members:all(),instructors:all(),manualReaderId};
   const members=SERVICES.filter(d=>actor.departments.includes(d));
   if(members.length)members.push('multidisciplinair');
   const verified=new Set(verifiedRoleIds),instructors=[],write=[];
@@ -50,7 +53,7 @@ export function documentScopes(actor,roster,verifiedRoleIds=[]){
     if(cadre||leadership||instructor)instructors.push(dept);
   }
   if(instructors.length)instructors.push('multidisciplinair');
-  return {read:[...new Set([...members,...instructors])],write,manage:[],
+  return {read:[...new Set([...members,...instructors])],write,manage:[],review:[],
     members,instructors,manualReaderId};
 }
 
@@ -78,4 +81,17 @@ export function mayWriteDocuments(scopes,department){
 // Published files are permanently owned by BelgiumPD, not by their uploader.
 export function mayManageDocuments(scopes,department){
   return DOCUMENT_DEPARTMENTS.includes(department)&&scopes.manage?.includes(department)===true;
+}
+
+export function mayApproveDocuments(scopes,department){
+  return DOCUMENT_DEPARTMENTS.includes(department)&&
+    scopes.review?.includes(department)===true;
+}
+// Never use audience membership as a substitute for review/author ownership:
+// a pending item is NOT a published handbook.
+export function mayInspectPendingDocument(scopes,entry,actorUid){
+  return entry?.status==='pending'&&
+    (mayApproveDocuments(scopes,entry.department)||
+      (entry.uploadedBy===actorUid&&
+       scopes.read?.includes(entry.department)===true));
 }
