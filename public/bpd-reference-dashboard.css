@@ -469,3 +469,31 @@ html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading {
 html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading:first-child {
   margin-top:3px;
 }
+
+/* Category headings on every role-dependent homepage menu. Existing
+ * anchors and authorization-controlled visibility remain unchanged. */
+html.bpd-reference-ui .portal > aside nav .bpd-ref-side-heading {
+  display:block;grid-column:1/-1;flex:0 0 100%;width:100%;
+  box-sizing:border-box;
+  margin:14px 0 4px;padding:9px 10px 4px;
+  border-top:1px solid #283650;
+  color:#88a8df;
+  font:800 10px/1.35 Inter,system-ui,"Segoe UI",sans-serif;
+  letter-spacing:.11em;text-transform:uppercase;white-space:normal;
+}
+html.bpd-reference-ui .portal > aside nav .bpd-ref-side-heading:first-child {
+  margin-top:2px;border-top:0;padding-top:3px;
+}
+html.bpd-reference-ui .portal > aside nav .bpd-ref-side-heading[hidden] {
+  display:none!important;
+}
+html.bpd-reference-ui .portal.bpd-home-nav-drawer #homeRoleSidebar nav:not([hidden])
+  .bpd-ref-side-heading {grid-column:1/-1;min-width:0}
+/* Same clear section separators on every other page's generated sidebar. */
+html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading {
+  margin:15px 10px 4px;padding-top:10px;border-top:1px solid #283650;
+  color:#88a8df;letter-spacing:.11em;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading:first-child {
+  margin-top:2px;padding-top:3px;border-top:0;
+}

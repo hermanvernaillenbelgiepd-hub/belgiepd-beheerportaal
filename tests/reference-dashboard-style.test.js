@@ -50,3 +50,24 @@ test('TEST roster keeps its original table and scroll holder',()=>{
  assert.match(roster,/<table class="staff-roster-table"/);
  assert.match(roster,/class="scroller staff-roster-holder"/);
 });
+
+test('left sidebar is sectioned on home for all department-specific menus',()=>{
+ const nav=read('public/bpd-navigation.js');
+ const css=read('public/bpd-reference-dashboard.css');
+ const home=read('public/index.html');
+ assert.match(nav,/function groupHomeSidebar\(\)/);
+ assert.match(nav,/groupHomeSidebar\(\);/);
+ assert.match(nav,/sidebar\.querySelectorAll\('nav'\)/);
+ assert.match(nav,/Array\.from\(menu\.children\)\.filter\(item=>/);
+ for(const title of ['Algemeen','Personeel','Operationeel','Documenten en aanvragen','Beheer'])
+   assert.match(nav,new RegExp("name:'"+title+"'"));
+ assert.match(nav,/menu\.append\(output\)/);
+ assert.match(nav,/heading\.hidden=!links\.some\(link=>!link\.hidden\)/);
+ assert.match(nav,/attributeFilter:\['hidden'\]/);
+ assert.match(css,/\.portal > aside nav \.bpd-ref-side-heading/);
+ assert.match(css,/\.bpd-ref-side-heading\[hidden\]/);
+ for(const id of ['staffNav','memberNav','zoneNav','ambulanceNav'])
+   assert.match(home,new RegExp('id="'+id+'"'));
+ assert.match(nav,/output\.append\(heading,\.\.\.links\)/);
+ assert.match(nav,/verifyIdentity\(show\)/);
+});
