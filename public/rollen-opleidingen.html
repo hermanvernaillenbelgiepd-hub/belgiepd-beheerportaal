@@ -168,6 +168,70 @@ $('instructorChoice').onchange=()=>syncManualInstructor(
 function setInstructorName(name){
  renderInstructorChoices(name);
 }
+async function refreshLessonSessions(){
+ const nonce=++lessonsNonce,dept=$('dept').value,select=$('lessonSession'),
+   previous=select.value;
+ lessonSessions=[];
+ select.replaceChildren(new Option('Niet aan een lesmoment gekoppeld',''));
+ if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
+   !profile?.permissions?.[dept]?.['training.review'])return;
+ try{
+   const data=await api('/api/training/lessons?department='+encodeURIComponent(dept));
+   if(nonce!==lessonsNonce||dept!==$('dept').value)return;
+   lessonSessions=Array.isArray(data.lessons)?data.lessons:[];
+   for(const session of lessonSessions){
+     select.add(new Option(formatBelgianDateInput(session.eventDate)+' · '+
+       session.courseName+' · '+session.instructorName,session.id));
+   }
+   if(previous&&[...select.options].some(o=>o.value===previous))
+     select.value=previous;
+   $('lessonHelp').textContent='Eén les met meerdere deelnemers telt één keer. '+
+     'Selecteer hetzelfde lesmoment bij elke deelnemer. '+
+     'Alleen een bevestigd lesmoment met minstens één actief resultaat telt mee.'+
+     (data.limited?' Enkel de recentste 300 lesmomenten zijn selecteerbaar.':'');
+ }catch(e){$('lessonHelp').textContent='Lesmomenten niet geladen: '+e.message}
+}
+function applySelectedLesson(){
+ const session=lessonSessions.find(row=>row.id===$('lessonSession').value);
+ if(!session)return;
+ setCourse(session.courseName);
+ $('date').value=session.eventDate;
+ refreshBelgianDateInputs(['date']);
+ setInstructorName(session.instructorName);
+}
+$('lessonSession').onchange=applySelectedLesson;
+$('newLesson').onclick=async()=>{
+ if(editing){
+   $('trainingNote').textContent='Annuleer eerst de bewerking van de bestaande opleiding.';return;
+ }
+ const department=$('dept').value,courseName=selectedCourse();
+ const eventDate=parseBelgianDateInput($('dateText')?.value||$('date').value);
+ if(!department||courseName.length<3||courseName.length>150||
+   !eventDate||eventDate!==$('date').value){
+   $('trainingNote').textContent='Kies eerst dienst, opleiding en een geldige datum.';return;
+ }
+ if(!window.confirm('Bevestig je dat JIJ deze les daadwerkelijk hebt gegeven? '+
+   'Je geverifieerde Discord-ID wordt als opleider geregistreerd. '+
+   'Het lesmoment telt pas als minstens één deelnemersresultaat gekoppeld is.'))return;
+ const button=$('newLesson');button.disabled=true;
+ try{
+   const saved=await api('/api/training/lessons',{method:'POST',
+     body:JSON.stringify({department,courseName,eventDate})});
+   if(saved.saved!==true||!saved.lesson?.id)
+     throw Error('Lesmoment niet bevestigd');
+   await refreshLessonSessions();
+   if(![...$('lessonSession').options].some(o=>o.value===saved.lesson.id)){
+     lessonSessions.unshift(saved.lesson);
+     $('lessonSession').add(new Option(formatBelgianDateInput(saved.lesson.eventDate)+
+       ' · '+saved.lesson.courseName+' · '+saved.lesson.instructorName,
+       saved.lesson.id),1);
+   }
+   $('lessonSession').value=saved.lesson.id;
+   applySelectedLesson();
+   $('trainingNote').textContent='Lesmoment opgeslagen. Kies een deelnemer en registreer diens resultaat.';
+ }catch(e){$('trainingNote').textContent='Lesmoment niet opgeslagen: '+e.message}
+ finally{button.disabled=!profile?.trainingWritesEnabled}
+};
 async function refreshPeople(){
  refreshCourseOptions();
   const n=++peopleNonce,dept=$('dept').value,select=$('subjectChoice');
