@@ -301,7 +301,8 @@ html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
 const $=id=>document.getElementById(id);
 let auth=null,context=null,loading=false,aePeople=[],aeHasAccess=false;
 const {setupTechnicalServiceEditors}=await import('/technical-service-editors.js');
-let serviceEditor=null;
+const {setupVisualDesignEditor}=await import('/visual-design-editor.js');
+let serviceEditor=null,visualDesignEditor=null;
 function notice(message,error=false){
  const element=$('feedback');element.textContent=message;
  element.className='notice'+(error?' bad':'');
@@ -437,7 +438,7 @@ function drawHistory(items){
 async function load(){
  if(!auth?.currentUser){
   context=null;aeHasAccess=false;aePeople=[];
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
@@ -448,6 +449,11 @@ async function load(){
   $('serviceCenter').hidden=false;
   if(!serviceEditor)serviceEditor=setupTechnicalServiceEditors({api,notice,$});
   void serviceEditor.load();
+  if(!visualDesignEditor)visualDesignEditor=setupVisualDesignEditor({api,$});
+  void visualDesignEditor.load().catch(error=>{
+    $('visualDesign').hidden=true;$('visualDesignTile').hidden=true;
+    console.warn('Vormgeving laden:',error?.message||'Onbekend');
+  });
   $('next').hidden=false;$('historyPanel').hidden=!next.canEdit;
   $('accessLabel').textContent=next.canEdit?'Technisch Beheer':'Operationeel kader';
    $('cleanupTile').hidden=!next.canEdit;
@@ -467,7 +473,7 @@ async function load(){
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
   context=null;
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }
