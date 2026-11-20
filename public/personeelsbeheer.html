@@ -4013,11 +4013,14 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
     const heading=document.createElement('strong');
     heading.textContent=[cells[0],cells[1]].filter(value=>value&&value!=='—').join(' · ').slice(0,160)||'Registratie';
     const meta=document.createElement('span');
-    meta.textContent=cells.slice(2).filter(value=>value&&value!=='—').join(' · ').slice(0,330);
+    const fullMeta=cells.slice(2).filter(value=>value&&value!=='—').join(' · ');
+    meta.textContent=fullMeta;
     const score=['formal','observations'].includes(group)&&row.type==='observatie'?
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    if(!['formal','sanctions','movements'].includes(group))
+      attachExpandableDossierText(item,meta,fullMeta,{label:'Lees volledige registratie'});
     if(['formal','sanctions','movements'].includes(group)){
       const description=document.createElement('p');
       const full=cells.slice(2).filter(x=>x&&x!=='—').join(' · ');
