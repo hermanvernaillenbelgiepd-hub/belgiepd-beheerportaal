@@ -70,7 +70,7 @@ export function installCadreActivityRoutes(app,{requireUser,getSnapshot,getDb=ge
    try{
      const roster=await live();
      const settings=cadreActivitySettings((await settingsRef().get()).data());
-     const manager=canManageCadreActivity(req.bpd);
+     const manager=canManageCadreActivity(req.bpd,roster);
      const allowed=CADRE_ACTIVITY_DEPARTMENTS.filter(d=>
        canReadCadreActivity(req.bpd,d,settings,roster));
      if(!allowed.length&&!manager)return fail(res,403);
@@ -82,7 +82,12 @@ export function installCadreActivityRoutes(app,{requireUser,getSnapshot,getDb=ge
  });
  app.put('/api/cadre-activity/config',requireUser,async(req,res)=>{
    res.set('Cache-Control','private, no-store');
-   if(!canManageCadreActivity(req.bpd))return fail(res,403);
+   // A rank/department change revokes the configuration right immediately,
+   // even if an old signed portal role is still cached.
+   try{
+     const roster=await live();
+     if(!canManageCadreActivity(req.bpd,roster))return fail(res,403);
+   }catch(e){return fail(res)}
    let value;
    try{value=validateCadreActivityToggle(req.body)}
    catch(e){return res.status(400).json({error:e.message})}
