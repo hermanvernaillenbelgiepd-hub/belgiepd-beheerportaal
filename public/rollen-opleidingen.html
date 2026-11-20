@@ -104,6 +104,9 @@ import {sortTrainingPeople,populateInstructorOptions,syncManualInstructor,
  selectedInstructor,MANUAL_INSTRUCTOR_VALUE} from '/training-instructor-choices.js';
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null,reviewing=null;
 let lessonSessions=[],lessonsNonce=0;
+const canCreateLesson=()=>Boolean(profile?.trainingWritesEnabled&&
+  profile?.provider==='discord'&&
+  profile?.permissions?.[$('dept').value]?.['training.log']);
 enhanceBelgianDateInputs(['date','expiry']);
 const brusselsToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
  year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -129,7 +132,7 @@ async function refresh(){
     $('permissionList').replaceChildren();for(const [dept,rights] of Object.entries(p.permissions)){const v=document.createElement('div');v.className='item';text(v,dept,'strong');text(v,'Registreren: '+(rights['training.log']?'ja':'nee'),'small');text(v,'Controleren: '+(rights['training.review']?'ja':'nee'),'small');$('permissionList').append(v)}
     $('trainingNote').textContent=p.trainingWritesEnabled?'Opslag ingeschakeld. Alleen binnen je bevoegde hulpdienst.':'Opslag voorlopig uit: BPD_ENABLE_TRAINING_WRITES=false.';
     $('saveTraining').disabled=!p.trainingWritesEnabled;
-    $('newLesson').disabled=!p.trainingWritesEnabled;
+    $('newLesson').disabled=!canCreateLesson();
     $('newLesson').hidden=p.provider!=='discord';
     const allowed=Object.entries(p.permissions||{})
       .filter(([,v])=>v['training.log']||v['training.review']).map(([d])=>d);
@@ -223,6 +226,7 @@ $('newLesson').onclick=async()=>{
    if(saved.saved!==true||!saved.lesson?.id)
      throw Error('Lesmoment niet bevestigd');
    await refreshLessonSessions();
+   if($('dept').value!==department)return;
    if(![...$('lessonSession').options].some(o=>o.value===saved.lesson.id)){
      lessonSessions.unshift(saved.lesson);
      $('lessonSession').add(new Option(formatBelgianDateInput(saved.lesson.eventDate)+
@@ -233,7 +237,7 @@ $('newLesson').onclick=async()=>{
    applySelectedLesson();
    $('trainingNote').textContent='Lesmoment opgeslagen. Kies een deelnemer en registreer diens resultaat.';
  }catch(e){$('trainingNote').textContent='Lesmoment niet opgeslagen: '+e.message}
- finally{button.disabled=!profile?.trainingWritesEnabled}
+ finally{button.disabled=!canCreateLesson()}
 };
 async function refreshPeople(){
  refreshCourseOptions();
@@ -241,6 +245,7 @@ async function refreshPeople(){
   $('subject').value='';trainingInstructorPeople=[];
   $('lessonSession').replaceChildren(new Option('Niet aan een lesmoment gekoppeld',''));
   lessonSessions=[];++lessonsNonce;
+  $('newLesson').disabled=!canCreateLesson();
   renderInstructorChoices('');
   select.replaceChildren(new Option('Personeelslijst laden…',''));
   if(!dept||!profile?.permissions?.[dept]?.['training.log']&&
