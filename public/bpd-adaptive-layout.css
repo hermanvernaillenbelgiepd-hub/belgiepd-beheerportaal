@@ -85,7 +85,7 @@
       .card,.panel,.sheet-block,.dossier-pane,.dossier-sheet,
       .summary-grid,.stats-grid,.form-grid,.filter-grid,.service-grid,
       .staff-filters,.two,.three,.counts,.tablewrap
-    ) > * {
+    ) > :not(table):not(.mr-table):not(.staff-roster-table) {
     min-width:0;
     box-sizing:border-box;
   }
