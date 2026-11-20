@@ -118,6 +118,25 @@ test('Historische overnames en correcties verhogen inhoudelijke prestaties niet'
  assert.equal(r.actieveRegistratiedagen,2);
  assert.equal(r.totaal,4);
 });
+test('Verlofbeslissingen tellen alleen geregistreerde politiebeslissingen door het kader',()=>{
+ const person={dept:'politie',personId:midId,call:'720',
+   rank:'Hoofdinspecteur',name:'Collega',status:'ACTIEF'};
+ const period=cadreActivityPeriod(30,'2026-11-20');
+ const leave=[
+   {decidedByDiscordId:midId,decisionDate:'2026-11-19',
+     subjectDepartments:['politie'],status:'approved'},
+   {decidedByDiscordId:midId,decisionDate:'2026-11-19',
+     subjectDepartments:['politie'],status:'rejected',historicalImport:true},
+   {decidedByDiscordId:midId,decisionDate:'2026-11-19',
+     subjectDepartments:['ambulance'],status:'approved'},
+   {decidedByDiscordId:midId,decisionDate:'2026-11-19',
+     subjectDepartments:['politie'],status:'pending'}
+ ];
+ const [row]=cadreActivityCounts([person],[],[],period,leave);
+ assert.equal(row.verlofbeslissingen,1);
+ assert.equal(row.totaal,1);
+ assert.equal(row.actieveRegistratiedagen,1);
+});
 test('Alle API-calls blijven achter dezelfde serverauthenticatie',()=>{
  const src=readFileSync(new URL('../src/cadre-activity-routes.js',import.meta.url),'utf8');
  const index=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
