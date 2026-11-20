@@ -93,11 +93,11 @@ export function cadreActivityPeriod(value,today){
    .toISOString().slice(0,10);
  return {start,end:today,days};
 }
-export function cadreActivityCounts(people,cases,trainings,period){
+export function cadreActivityCounts(people,cases,trainings,period,leaveDecisions=[]){
  const byId=new Map(people.map(p=>[p.personId,{
    discordId:p.personId,name:p.name,call:p.call||'',rank:p.rank||'',series:p.series||'',
    observaties:0,notities:0,sancties:0,opvolgingen:0,overig:0,
-   opleidingsregistraties:0,overgenomen:0,correcties:0,dagen:new Set()
+   opleidingsregistraties:0,verlofbeslissingen:0,overgenomen:0,correcties:0,dagen:new Set()
  }]));
  for(const e of cases){
    if(!e||!validDate(e.eventDate)||e.eventDate<period.start||e.eventDate>period.end)
@@ -133,9 +133,19 @@ export function cadreActivityCounts(people,cases,trainings,period){
    person.opleidingsregistraties++;
    person.dagen.add(r.eventDate);
  }
+ for(const d of leaveDecisions){
+   if(!d||d.historicalImport===true||d.subjectDepartments?.includes('politie')!==true||
+     !['approved','rejected'].includes(d.status)||
+     !validDate(d.decisionDate)||d.decisionDate<period.start||
+     d.decisionDate>period.end)continue;
+   const person=byId.get(d.decidedByDiscordId);
+   if(!person)continue;
+   person.verlofbeslissingen++;
+   person.dagen.add(d.decisionDate);
+ }
  return [...byId.values()].map(({dagen,...p})=>({
    ...p,actieveRegistratiedagen:dagen.size,
    totaal:p.observaties+p.notities+p.sancties+p.opvolgingen+p.overig+
-     p.opleidingsregistraties
+     p.opleidingsregistraties+p.verlofbeslissingen
  })).sort((a,b)=>b.totaal-a.totaal||a.name.localeCompare(b.name,'nl-BE'));
 }
