@@ -33,7 +33,7 @@ export function listDesignPages(){
  // Every current and future HTML page is recognized without giving a client
  // access to server-side files. The emergency board has an independent palette.
  return readdirSync(PUBLIC_DIR).filter(name=>PAGE_NAME.test(name)&&
-  name!=='to-dienstbord.html').sort();
+  name!=='to-dienstbord.html'&&name!=='organogram.html').sort();
 }
 export function validDesignPage(page,pages=listDesignPages()){
  return typeof page==='string'&&PAGE_NAME.test(page)&&pages.includes(page);
