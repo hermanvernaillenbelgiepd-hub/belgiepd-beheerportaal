@@ -5,6 +5,7 @@ import {canManageCadreActivity,canReadCadreActivity,
  CADRE_ACTIVITY_DEPARTMENTS,CADRE_ACTIVITY_OPTIONAL,
  cadreActivitySettings,validateCadreActivityToggle,isCadreActivitySubject,
  cadreActivityPeriod,cadreActivityCounts} from './cadre-activity-policy.js';
+import {TRAINING_SESSION_COLLECTION} from './training-session-policy.js';
 
 const validId=id=>/^\d{15,22}$/.test(String(id||''));
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
@@ -32,9 +33,8 @@ async function querySources(db,subjects,dept,period){
        db.collection(dept==='burger'?'bpd_citizen_staff_dossiers':'bpd_cases')
          .doc(dept==='burger'?person.personId:key).collection('entries')
          .where('eventDate','>=',period.start).orderBy('eventDate','desc').limit(151).get(),
-       dept==='burger'?Promise.resolve({docs:[],size:0}):
-         db.collection('bpd_training').doc(key).collection('records')
-           .where('eventDate','>=',period.start).orderBy('eventDate','desc').limit(151).get()
+       db.collection('bpd_training').doc(key).collection('records')
+         .where('eventDate','>=',period.start).orderBy('eventDate','desc').limit(151).get()
      ];
      return Promise.all(sources);
    }));
@@ -55,6 +55,13 @@ async function querySources(db,subjects,dept,period){
    });
  }
  return {cases,trainings,incomplete,examined};
+}
+async function lessonSessionsForPeriod(db,department,period){
+ const snap=await db.collection(TRAINING_SESSION_COLLECTION).doc(department)
+   .collection('sessions').where('eventDate','>=',period.start)
+   .orderBy('eventDate','desc').limit(501).get();
+ return {sessions:snap.docs.slice(0,500).map(d=>({id:d.id,...d.data()})),
+   incomplete:snap.size>=501};
 }
 async function policeLeaveDecisions(db,period){
  const lower=new Date(period.start+'T00:00:00Z');
@@ -149,21 +156,24 @@ export function installCadreActivityRoutes(app,{requireUser,getSnapshot,getDb=ge
      const personnel=uniquePeople(roster,dept);
      if(personnel.length>250)return fail(res);
      const cadre=personnel.filter(isCadreActivitySubject);
-     const [events,leaveDecisions]=await Promise.all([
+     const [events,leaveDecisions,lessonData]=await Promise.all([
        querySources(db,personnel,dept,period),
        dept==='politie'?policeLeaveDecisions(db,period):
-         Promise.resolve({rows:[],incomplete:false})
+         Promise.resolve({rows:[],incomplete:false}),
+       lessonSessionsForPeriod(db,dept,period)
      ]);
      const {cases,trainings,examined}=events;
-     const incomplete=events.incomplete||leaveDecisions.incomplete;
-     const people=cadreActivityCounts(cadre,cases,trainings,period,leaveDecisions.rows);
+     const incomplete=events.incomplete||leaveDecisions.incomplete||lessonData.incomplete;
+     const people=cadreActivityCounts(cadre,cases,trainings,period,
+       leaveDecisions.rows,lessonData.sessions,dept);
      const totals={observaties:0,notities:0,sancties:0,opvolgingen:0,overig:0,
-       opleidingsregistraties:0,verlofbeslissingen:0,overgenomen:0,correcties:0};
+       opleidingsregistraties:0,lesmomenten:0,lesdeelnames:0,
+       verlofbeslissingen:0,overgenomen:0,correcties:0};
      for(const person of people)
        for(const key of Object.keys(totals))totals[key]+=person[key];
      return res.json({department:dept,period,people,totals,incomplete,
        examinedSubjects:examined,cadreMembers:cadre.length,
-       info:'Aantallen zijn geregistreerde acties, niet automatisch gegeven lessen of kwaliteitsbeoordelingen. Historische overnames en correcties staan apart.',
+       info:'Geverifieerde lesmomenten zijn unieke, door de opleider bevestigde lessen met minstens één gekoppeld, actief deelnemersresultaat. Oude registraties zonder lesmoment tellen alleen als opleidingsregistratie. Historische overnames en correcties staan apart.',
        dataSource:'Firestore-dossiers en opleidingsregistraties',readOnly:true});
    }catch(e){
      console.warn('Kaderactiviteit overzicht',e?.code||'query-failed');
