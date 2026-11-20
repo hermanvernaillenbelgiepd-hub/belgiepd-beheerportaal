@@ -40,6 +40,18 @@
     reference.href='/bpd-reference-dashboard.css';
     document.head.append(reference);
   }
+  // One shared adaptive layer for all portal pages, including embedded
+  // personnel viewers. Layout only; the TO board keeps its fixed controls.
+  const adaptiveFile=window.location.pathname.split('/').pop()||'index.html';
+  const adaptivePage=/^[a-z0-9-]+[.]html$/.test(adaptiveFile)?
+    adaptiveFile.slice(0,-5):'unknown';
+  document.documentElement.setAttribute('data-bpd-adaptive-page',adaptivePage);
+  if(!document.getElementById('bpdAdaptiveLayoutStyles')){
+    const adaptive=document.createElement('link');
+    adaptive.id='bpdAdaptiveLayoutStyles';adaptive.rel='stylesheet';
+    adaptive.href='/bpd-adaptive-layout.css';
+    document.head.append(adaptive);
+  }
   // Display-only DD/MM/YYYY formatting for all services, including embedded views.
   // Input values and API payloads remain ISO dates for consistent sorting.
   if(!document.querySelector('script[data-bpd-display-dates]')){
