@@ -4541,12 +4541,8 @@ function renderLinkedTraining(p){
         x.result||'—'),
     x.instructorName||x.registeredBy?.name||'—'
   ],'Nog geen opleidingsregistraties.',linkedTrainingLimited||linkedCaseLimited);
-  const holder=$('staffLinkedTraining');holder.replaceChildren();
-  if(!all.length)holder.textContent=linkedTrainingFetchError?
-    'Opleidingsregister beperkt toegankelijk ('+linkedTrainingFetchError+').'+
-    ' Uitgevoerde opleidingsaanvragen blijven zichtbaar via de dossierhistoriek.':
-    'Geen zichtbare opleidingsregistraties.';
-  for(const row of all.slice(0,25)){
+  const holder=$('staffLinkedTraining');
+  renderRecentDossierEntries(holder,all,(mount,row)=>{
     const div=document.createElement('div');div.className='note-item';
     const title=document.createElement('strong');
     title.textContent=String(row.courseName||'Opleiding').slice(0,150)+
@@ -4565,16 +4561,26 @@ function renderLinkedTraining(p){
             (row.appliedSpecialtyLabel?' · Specialisatie: '+row.appliedSpecialtyLabel+
               ' ('+(row.result==='geslaagd'?'JA':'STAGE')+')':'');
     div.append(title,meta);
+    attachExpandableDossierText(div,meta,meta.textContent,{
+      label:'Lees volledige opleidingsgegevens'});
+    if(row.details){
+      const note=document.createElement('p');note.textContent=row.details;
+      div.append(note);
+      attachExpandableDossierText(div,note,row.details,{
+        label:'Lees volledige opleidingsevaluatie'});
+    }
     if(row._trainingSource==='register'&&row.canEdit===true&&
         trainingRights?.trainingWritesEnabled===true&&
         trainingRights.permissions?.[p.dept]?.['training.log']){
       const edit=document.createElement('button');edit.type='button';edit.className='alt small';
       edit.textContent='Opleiding wijzigen';edit.onclick=()=>staffTrainingEdit(row);div.append(edit);
     }
-    holder.append(div);
-  }
-  if(linkedTrainingLimited||linkedCaseLimited||all.length>25)
-    holder.append(document.createTextNode(' Er kunnen nog oudere registraties bestaan.'));
+    mount.append(div);
+  },{empty:linkedTrainingFetchError?
+    'Opleidingsregister beperkt toegankelijk ('+linkedTrainingFetchError+
+      '). Uitgevoerde opleidingsaanvragen blijven zichtbaar.':
+    'Geen zichtbare opleidingsregistraties.',
+    limited:linkedTrainingLimited||linkedCaseLimited,noun:'opleidingen'});
   if(linkedTrainingScope==='alleen_eigen_registraties')
     holder.append(document.createTextNode(' Je ziet uit het opleidingsregister alleen je eigen registraties.'));
 }
