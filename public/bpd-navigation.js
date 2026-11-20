@@ -48,6 +48,13 @@
     design.dataset.bpdVisualDesign='1';
     document.head.append(design);
   }
+  // Page-specific, validated visual layer; existing page role checks still apply.
+  if(!document.querySelector('script[data-bpd-page-design]')){
+    const pageStyle=document.createElement('script');
+    pageStyle.src='/bpd-page-design.js';
+    pageStyle.dataset.bpdPageDesign='1';
+    document.head.append(pageStyle);
+  }
   // Display-only DD/MM/YYYY formatting for all services, including embedded views.
   // Input values and API payloads remain ISO dates for consistent sorting.
   if(!document.querySelector('script[data-bpd-display-dates]')){
