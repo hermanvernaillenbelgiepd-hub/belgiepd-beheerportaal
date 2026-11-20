@@ -71,3 +71,24 @@ test('left sidebar is sectioned on home for all department-specific menus',()=>{
  assert.match(nav,/output\.append\(heading,\.\.\.links\)/);
  assert.match(nav,/verifyIdentity\(show\)/);
 });
+
+
+test('widescreen dashboard consumes full available width and uses fluid cards',()=>{
+ const css=read('public/bpd-reference-dashboard.css');
+ const index=read('public/index.html');
+ assert.match(css,/html\.bpd-reference-ui \.portal > \.surface \{/);
+ assert.match(css,/width:100%;\s*min-width:0;\s*max-width:100%;/);
+ assert.match(css,/html\.bpd-reference-ui \.portal > \.surface > main \{/);
+ assert.match(css,/max-width:none;/);
+ assert.match(css,/html\.bpd-reference-ui \.portal #staffDashboard \.grid,/);
+ assert.match(css,/grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,255px\),1fr\)\)/);
+ assert.match(css,/html\.bpd-reference-ui \.portal \.bottom \{/);
+ assert.match(css,/@media \(min-width:1281px\)/);
+ assert.match(css,/@media \(max-width:580px\)/);
+ for(const dashboard of ['staffDashboard','zoneDashboard','ambulanceDashboard'])
+   assert.match(index,new RegExp('id="'+dashboard+'"'));
+ // Keep the home route and authorization decisions independent of presentation.
+ const nav=read('public/bpd-navigation.js');
+ assert.match(nav,/verifyIdentity\(show\)/);
+ assert.match(nav,/groupHomeSidebar\(\)/);
+});
