@@ -4617,10 +4617,8 @@ async function loadLinkedPersonnelRecords(p,key){
           x.type==='opleiding'&&x.trainingRequestId&&x.reportCategory==='opleiding');
         linkedCaseLimited=Boolean(data.limited);
         renderLinkedTraining(p);
-        cases.replaceChildren();
-        const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type)).slice(0,60);
-        if(!allowed.length)cases.textContent='Geen toegelaten kadernotities gevonden.';
-        for(const row of allowed){
+        const allowed=(data.entries||[]).filter(row=>!['observatie','sanctie'].includes(row.type));
+        renderRecentDossierEntries(cases,allowed,(mount,row)=>{
           const div=document.createElement('div');div.className='note-item';
           const title=document.createElement('strong');
           title.textContent=(staffCaseLabels[row.type]||row.type||'Kaderregistratie')+
@@ -4633,6 +4631,8 @@ async function loadLinkedPersonnelRecords(p,key){
           const body=document.createElement('p');
           body.textContent=String(row.details||'').slice(0,4000);
           div.append(title,body);
+          attachExpandableDossierText(div,body,body.textContent,{
+            label:'Lees volledige kaderregistratie'});
           if(row.historicalImport){
             const provenance=document.createElement('small');
             provenance.textContent='Historische overname · oorspronkelijk: '+
@@ -4645,9 +4645,9 @@ async function loadLinkedPersonnelRecords(p,key){
           attachAdministrativeCaseCorrection(div,row);
           attachRetireButton(div,row,'cases');
           addManualCaseCorrectionControls(div,row,p,key);
-          cases.append(div);
-        }
-        if(data.limited)cases.append(document.createTextNode(' Er kunnen oudere registraties bestaan.'));
+          mount.append(div);
+        },{empty:'Geen toegelaten kadernotities gevonden.',
+          limited: data.limited,noun:'kaderregistraties'});
       }catch(e){if(same()){
         linkedCompletedRequestRecords=[];linkedCaseLimited=false;
         renderLinkedTraining(p);
