@@ -41,6 +41,7 @@ RUN node --test tests/training-specialty-approval.test.js
 RUN node --test tests/portal-date-display.test.js
 RUN node --test tests/sanction-measures-middenkader.test.js
 RUN node --test tests/reference-dashboard-style.test.js
+RUN node --test tests/portal-adaptive-layout.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
