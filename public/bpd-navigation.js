@@ -5,10 +5,12 @@
   // One page-independent preference, never tied to an account or a permission.
   const themeKey='bpdPortalThemeV1';
   function storedTheme(){
-    try{return window.localStorage?.getItem(themeKey)==='dark'?'dark':'light'}
-    catch{return 'light'}
+    try{const value=window.localStorage?.getItem(themeKey);
+      return value==='light'||value==='dark'?value:null}
+    catch{return null}
   }
-  let currentTheme=storedTheme();
+  let portalDefaultTheme='light';
+  let currentTheme=storedTheme()||portalDefaultTheme;
   function applyTheme(value,persist=false){
     currentTheme=value==='dark'?'dark':'light';
     document.documentElement?.setAttribute('data-bpd-theme',currentTheme);
@@ -32,6 +34,20 @@
     return button;
   }
   applyTheme(currentTheme);
+  // Keep each user's own light/dark switch; centrally managed theme is only
+  // the initial default for a browser with no explicit preference.
+  window.addEventListener('bpd:visual-design-default',event=>{
+    const value=event.detail?.themeDefault==='dark'?'dark':'light';
+    portalDefaultTheme=value;
+    if(event.detail?.preview===true||storedTheme()===null)applyTheme(value);
+    else applyTheme(storedTheme());
+  });
+  if(!document.querySelector('script[data-bpd-visual-design]')){
+    const design=document.createElement('script');
+    design.src='/bpd-visual-design.js';
+    design.dataset.bpdVisualDesign='1';
+    document.head.append(design);
+  }
   // Display-only DD/MM/YYYY formatting for all services, including embedded views.
   // Input values and API payloads remain ISO dates for consistent sorting.
   if(!document.querySelector('script[data-bpd-display-dates]')){
@@ -41,7 +57,9 @@
     document.head.append(dateScript);
   }
   window.addEventListener?.('storage',event=>{
-    if(event.key===themeKey)applyTheme(event.newValue==='dark'?'dark':'light');
+    if(event.key===themeKey)
+      applyTheme(event.newValue==='dark'?'dark':event.newValue==='light'?
+        'light':portalDefaultTheme);
   });
   if(window.self!==window.top)return; // Never duplicate inside embedded dossiers.
   const here=window.location.pathname;
