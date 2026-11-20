@@ -21,7 +21,11 @@ export function canManageLifecycleDepartment(actor,dept){
  return HIGH.has(actor.role)&&HIGH.has(scoped);
 }
 export function canReadPersonnelLifecycle(actor,person){
- if(!person||!canManageLifecycleDepartment(actor,person.dept))return false;
+ if(!person)return false;
+ // Central Police Officers/Corps may inspect archived service memberships
+ // for oversight and release decisions, not alter their service history.
+ if(canSupervisePersonnelLifecycle(actor))return true;
+ if(!canManageLifecycleDepartment(actor,person.dept))return false;
  // Burger dossiers remain retired; only membership and archive are accessible.
  return person.dept==='burger'||canReadPersonnelSubject(actor,person);
 }
@@ -34,14 +38,18 @@ export function canManagePersonnelLifecycle(actor,person){
 // FULL-SERVICE removal is a separate, Police-owned decision. A manager
 // of Brandweer, AZLS, Depannage or Burger may never trigger it by selecting
 // an ordinary service archive. Technical access alone is not a permission.
-export function canGloballyArchivePersonnel(actor,subject){
- return Boolean(subject&&LIFECYCLE_SERVICES.includes(subject.dept)&&
-   ID.test(String(subject.personId||''))&&actor?.discordId!==subject.personId&&
-   actor?.uid==='discord:'+actor?.discordId&&
+export function canSupervisePersonnelLifecycle(actor){
+ return Boolean(actor?.uid==='discord:'+actor?.discordId&&
+   ID.test(String(actor?.discordId||''))&&
    actor?.dossierNativeDepartments?.includes('politie')&&
    actor?.dossierAllowedDepartments?.includes('politie')&&
    canReadServiceDossier(actor,'politie')&&
    ['officierenkader','korpsleiding'].includes(verifiedPoliceRankAuthority(actor)));
+}
+export function canGloballyArchivePersonnel(actor,subject){
+ return Boolean(subject&&LIFECYCLE_SERVICES.includes(subject.dept)&&
+   ID.test(String(subject.personId||''))&&actor?.discordId!==subject.personId&&
+   canSupervisePersonnelLifecycle(actor));
 }
 // Reentry: the local service may register a pending request, but only
 // independently verified Police Officer cadre or Corps may release it.
