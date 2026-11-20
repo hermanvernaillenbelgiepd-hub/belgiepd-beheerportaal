@@ -6,7 +6,7 @@ import {PERSONNEL_LIFECYCLE_COLLECTION,LIFECYCLE_SERVICES,lifecycleKey,validateL
  honorablePreviousTraining} from './personnel-lifecycle-policy.js';
 import {canManageLifecycleDepartment,canReadPersonnelLifecycle,
  canManagePersonnelLifecycle,canGloballyArchivePersonnel,
- canApproveServiceReentry} from './personnel-lifecycle-access.js';
+ canApproveServiceReentry,canSupervisePersonnelLifecycle} from './personnel-lifecycle-access.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {departureEvidence} from './personnel-departure-evidence.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
@@ -204,7 +204,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
   try{
    const dept=String(req.query.dept||'');
    if(!LIFECYCLE_SERVICES.includes(dept)||
-      !canManageLifecycleDepartment(req.bpd,dept))
+      !(canManageLifecycleDepartment(req.bpd,dept)||
+        canSupervisePersonnelLifecycle(req.bpd)))
     throw fail(403,'Geen bevoegdheid tot dit personeelsarchief');
    const [records,snapshot]=await Promise.all([
      store().where('dept','==',dept).limit(600).get(),
@@ -221,9 +222,9 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
       revision:d.get('revision')||0,
       canRestore:d.get('state')==='archived'&&allowed(req.bpd,byId.get(d.get('discordId'))),
       canActivate:d.get('state')==='pending'&&d.get('honorableResignation')!==true&&
-        allowed(req.bpd,byId.get(d.get('discordId'))),
+        canApproveServiceReentry(req.bpd,byId.get(d.get('discordId'))),
       canActivateInp:d.get('state')==='pending'&&d.get('honorableResignation')===true&&
-        allowed(req.bpd,byId.get(d.get('discordId'))),
+        canApproveServiceReentry(req.bpd,byId.get(d.get('discordId'))),
       previousSpecializationTraining:d.get('honorableResignation')===true?
         honorablePreviousTraining(d.get('snapshot')):[],
       lastHours:Number.isFinite(d.get('snapshot')?.totalHours)?d.get('snapshot').totalHours:null}));
@@ -261,7 +262,13 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    res.set('Cache-Control','private, no-store');
    return res.json({state:['archived','pending'].includes(d.state)?d.state:'active',
     revision:Number.isSafeInteger(d.revision)?d.revision:0,
-    canManage:allowed(req.bpd,person),
+    canManage:allowed(req.bpd,person)||dept==='politie'&&
+      canGloballyArchivePersonnel(req.bpd,person),
+    canArchiveService:dept!=='politie'&&allowed(req.bpd,person),
+    canArchiveGlobally:canGloballyArchivePersonnel(req.bpd,person),
+    canRequestReentry:allowed(req.bpd,person),
+    canApproveReentry:canApproveServiceReentry(req.bpd,person),
+    archiveScope:d.globalArchiveId?'global':'service',
     cause:d.cause||'',cmsRoleSyncPending:d.cmsRoleSyncPending===true,
     honorableResignation:d.honorableResignation===true,
     previousSpecializationTraining:d.honorableResignation===true?
@@ -433,7 +440,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    try{input=validateLifecycleAction(req.body,action)}catch(e){return respond(res,fail(400,e.message))}
    try{
     const person=await resolve(dept,discordId);
-    const globalArchive=action==='archive'&&dept==='politie';
+    const globalArchive=action==='archive'&&
+      (dept==='politie'||input.scope==='global');
     if(globalArchive){
       if(!canGloballyArchivePersonnel(req.bpd,person))
         throw fail(403,'Volledige archivering vereist geverifieerd politioneel Officierenkader of Korpsleiding');
@@ -465,7 +473,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     const result=await db().runTransaction(async tx=>{
      const current=await tx.get(ref),prev=current.data()||{};
      const archivePlan=globalArchive?await prepareIdentityArchive(tx,db(),{
-       subjects:archiveSubjects,primaryDept:'politie',discordId}):null;
+       subjects:archiveSubjects,primaryDept:dept,discordId}):null;
      const revision=Number.isSafeInteger(prev.revision)?prev.revision:0;
      if(revision!==input.expectedRevision)throw fail(409,'Fiche is intussen gewijzigd. Vernieuw eerst');
      if(action==='archive'&&prev.state==='archived')
