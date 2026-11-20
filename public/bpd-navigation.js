@@ -16,7 +16,7 @@
     document.documentElement?.setAttribute('data-bpd-theme',currentTheme);
     if(persist)try{window.localStorage?.setItem(themeKey,currentTheme)}catch{}
     document.querySelectorAll?.('.bpd-theme-toggle').forEach(button=>{
-      setThemeButtonIcon(button);
+      button.textContent=currentTheme==='dark'?'☀ Licht':'☾ Donker';
       button.setAttribute('aria-label',
         currentTheme==='dark'?'Overschakelen naar licht thema':'Overschakelen naar donker thema');
       button.setAttribute('aria-pressed',String(currentTheme==='dark'));
@@ -26,14 +26,14 @@
   function makeThemeToggle(){
     const button=document.createElement('button');
     button.className='bpd-theme-toggle';button.type='button';
-    setThemeButtonIcon(button);
+    button.textContent=currentTheme==='dark'?'☀ Licht':'☾ Donker';
     button.setAttribute('aria-label',currentTheme==='dark'?
       'Overschakelen naar licht thema':'Overschakelen naar donker thema');
     button.setAttribute('aria-pressed',String(currentTheme==='dark'));
     button.addEventListener('click',()=>applyTheme(currentTheme==='dark'?'light':'dark',true));
     return button;
   }
-  // Theme init runs after the SVG helper/allowlist has been defined.
+  applyTheme(currentTheme);
   // Keep each user's own light/dark switch; centrally managed theme is only
   // the initial default for a browser with no explicit preference.
   window.addEventListener('bpd:visual-design-default',event=>{
@@ -66,12 +66,6 @@
     design.src='/bpd-visual-design.js';
     design.dataset.bpdVisualDesign='1';
     document.head.append(design);
-  }
-  // Standalone SVG icon library: names are fixed by the portal, never user input.
-  if(!document.getElementById('bpdUiIconStyles')){
-    const icons=document.createElement('link');
-    icons.id='bpdUiIconStyles';icons.rel='stylesheet';
-    icons.href='/bpd-ui-icons.css';document.head.append(icons);
   }
   // Page-specific, validated visual layer; existing page role checks still apply.
   if(!document.querySelector('script[data-bpd-page-design]')){
@@ -152,59 +146,6 @@
     notifications:{href:'/meldingen.html',icon:'✉',label:'Meldingen',short:'Meldingen'},
     profile:{href:'/discord-status.html',icon:'♙',label:'Mijn profiel',short:'Profiel'}
   });
-  const ICON_ROUTE=Object.freeze({
-    '/':'house','/index.html':'house','/personeelsbeheer.html':'users',
-    '/personeelslijst.html':'users','/activiteitscentrum.html':'activity',
-    '/dossiercentrum.html':'folder-open','/organogram-hierarchie.html':'network',
-    '/organogram.html':'network','/rollen-opleidingen.html':'graduation-cap',
-    '/opleidingscentrum.html':'graduation-cap','/documentencentrum.html':'book-open',
-    '/opleidingskalender.html':'calendar-days','/registraties.html':'clipboard-pen',
-    '/weekrapporten.html':'clipboard-list','/to-dienstbord.html':'radio',
-    '/vast-roepnummer-aanvragen.html':'hash','/roepnummers.html':'hash',
-    '/verlofbeheer.html':'calendar-check','/meldingen.html':'bell',
-    '/beheercentrum.html':'wrench','/gebruikersbeheer.html':'shield-check',
-    '/discord-status.html':'user-round','/burger-personeelsdossiers.html':'contact',
-    '/koppelritten.html':'clipboard-check','/beeldbibliotheek.html':'layers'
-  });
-  const STATIC_UI_ICONS=Object.freeze([
-    ...new Set(Object.values(ICON_ROUTE)),
-    'file-text','fire-truck','ambulance','lock-keyhole',
-    'sun','moon','menu','x','search'
-  ]);
-  function iconNameFor(href,label=''){
-    let path='';
-    try{path=new URL(href,window.location.origin).pathname}catch{}
-    const text=String(label).toLocaleLowerCase('nl');
-    if(path==='/personeelsbeheer.html'&&text.includes('brandweer'))
-      return 'fire-truck';
-    if(path==='/personeelsbeheer.html'&&text.includes('ambulance'))
-      return 'ambulance';
-    if(path==='/gebruikersbeheer.html'&&text.includes('gebruikersbeheer'))
-      return 'lock-keyhole';
-    return ICON_ROUTE[path]||'file-text';
-  }
-  function svgUiIcon(name){
-    const value=STATIC_UI_ICONS.includes(name)?name:'file-text';
-    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    icon.classList.add('bpd-svg-icon');
-    icon.setAttribute('viewBox','0 0 24 24');
-    icon.setAttribute('aria-hidden','true');
-    icon.setAttribute('focusable','false');
-    const use=document.createElementNS('http://www.w3.org/2000/svg','use');
-    use.setAttribute('href','/assets/bpd-ui-icons.svg#'+value);
-    icon.append(use);
-    return icon;
-  }
-  function setThemeButtonIcon(button){
-    const label=currentTheme==='dark'?'Licht':'Donker';
-    button.replaceChildren(svgUiIcon(currentTheme==='dark'?'sun':'moon'),
-      document.createTextNode(' '+label));
-  }
-  function setMenuIcon(button,open,label=''){
-    button.replaceChildren(svgUiIcon(open?'x':'menu'),
-      ...(label?[document.createTextNode(' '+label)]:[]));
-  }
-  applyTheme(currentTheme);
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
   const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
     'reports','to','leave','notifications','center','admin'];
@@ -220,8 +161,7 @@
     if(currentPage(item.href))link.setAttribute('aria-current','page');
     if(!compact){
       const symbol=document.createElement('span');symbol.className='bpd-side-icon';
-      symbol.append(svgUiIcon(iconNameFor(item.href,item.label)));
-      symbol.setAttribute('aria-hidden','true');
+      symbol.textContent=item.icon;symbol.setAttribute('aria-hidden','true');
       link.prepend(symbol);
     }
     return link;
@@ -238,7 +178,7 @@
     input.placeholder='Zoek module, naam of roepnummer';
     input.setAttribute('aria-label','Zoek module, personeelslid of roepnummer');
     const action=document.createElement('button');
-    action.type='submit';action.append(svgUiIcon('search'),document.createTextNode(' Zoek'));
+    action.type='submit';action.textContent='Zoek';
     form.append(input,action);
     form.addEventListener('submit',event=>{
       event.preventDefault();
@@ -285,7 +225,6 @@
     if(profile){
       const link=linkFor(profile,true);
       link.classList.add('bpd-ref-profile');
-      link.prepend(svgUiIcon('user-round'));
       bar.append(link);
     }
   }
@@ -310,20 +249,11 @@
       const symbol=match[1].trim(),label=match[2].trim();
       if(!symbol||!label)continue;
       const icon=document.createElement('span');
-      icon.className='bpd-home-side-icon';
-      icon.append(svgUiIcon(iconNameFor(link.getAttribute('href'),label)));
+      icon.className='bpd-home-side-icon';icon.textContent=symbol;
       icon.setAttribute('aria-hidden','true');
       const text=document.createElement('span');
       text.className='bpd-home-side-label';text.textContent=label;
       link.replaceChildren(icon,text);
-    }
-    // Consistent SVG module badges, without changing links or service rights.
-    for(const card of document.querySelectorAll('.portal a.module[href]')){
-      const badge=card.querySelector(':scope > .ico');
-      if(!badge)continue;
-      badge.replaceChildren(svgUiIcon(iconNameFor(
-        card.getAttribute('href'),card.querySelector('h3')?.textContent||'')));
-      badge.setAttribute('aria-hidden','true');
     }
     // Split the HOME sidebar into visible headings without creating or
     // authorizing any new links. Home mode selection and service-specific
@@ -396,14 +326,14 @@
     sidebar.id='homeRoleSidebar';
     const toggle=document.createElement('button');
     toggle.type='button';toggle.id='homeMenuToggle';
-    setMenuIcon(toggle,false,'Menu');
+    toggle.textContent='☰ Menu';
     toggle.setAttribute('aria-label','Hoofdmenu openen');
     toggle.setAttribute('aria-controls','homeRoleSidebar');
     toggle.setAttribute('aria-expanded','false');
     actions.prepend(toggle);
     const closeButton=document.createElement('button');
     closeButton.type='button';closeButton.id='homeMenuClose';
-    setMenuIcon(closeButton,true,'Sluiten');
+    closeButton.textContent='× Sluiten';
     closeButton.setAttribute('aria-label','Hoofdmenu sluiten');
     sidebar.prepend(closeButton);
     const scrim=document.createElement('button');
@@ -484,15 +414,15 @@
     aside.append(brand,links,foot);
     document.body.prepend(aside);
     const mobile=document.createElement('button');
-    mobile.id='bpdMenuToggle';mobile.type='button';setMenuIcon(mobile,false);
+    mobile.id='bpdMenuToggle';mobile.type='button';mobile.textContent='☰';
     mobile.setAttribute('aria-label','Hoofdmenu openen');mobile.setAttribute('aria-expanded','false');
     mobile.setAttribute('aria-controls','bpdSidebar');
     function closeMenu(){document.body.classList.remove('bpd-menu-open');
-      mobile.setAttribute('aria-expanded','false');setMenuIcon(mobile,false)}
+      mobile.setAttribute('aria-expanded','false');mobile.textContent='☰'}
     mobile.addEventListener('click',()=>{
       const open=document.body.classList.toggle('bpd-menu-open');
       mobile.setAttribute('aria-expanded',String(open));
-      setMenuIcon(mobile,open);
+      mobile.textContent=open?'×':'☰';
     });
     document.addEventListener('keydown',event=>{
       if(event.key==='Escape')closeMenu();
