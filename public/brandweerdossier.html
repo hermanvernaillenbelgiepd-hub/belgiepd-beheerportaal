@@ -388,7 +388,7 @@ function cards(root,items,heading,text,metadata){
     });
     addFireRetireControl(disclosure.content,item,root.id);
     mount.append(disclosure.element);
-    continue;
+    return; // Observation rendered in its own expandable card
   }
   const card=document.createElement('div');card.className='record';
   const title=document.createElement('h3');title.textContent=heading(item);
