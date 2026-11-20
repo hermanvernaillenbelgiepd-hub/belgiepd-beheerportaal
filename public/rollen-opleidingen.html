@@ -65,7 +65,7 @@ body.training-embedded #training h2{font-size:17px}
     <p class="mini">Dit wijzigt geen Discord-rollen of officiële rang. De registratie en beoordeling verschijnen in de bestaande dossiers en rapportage.</p>
   </form>
 </dialog>
-<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label>Datum<input id="date" type="date"></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Opleider (personeelslijst)
+<h3>Opleiding registreren</h3><div class="two"><label>Opleiding<select id="course"><option value="">Kies een opleiding…</option><option value="RADIO OPLEIDING (VERPLICHT)">RADIO OPLEIDING (VERPLICHT)</option><option value="RADIO OPLEIDING (VRIJWILLIG)">RADIO OPLEIDING (VRIJWILLIG)</option><option value="BASISCURSIS">BASISCURSIS</option><option value="GEWELDBEHEERSING">GEWELDBEHEERSING</option><option value="WAPENGEBRUIK">WAPENGEBRUIK</option><option value="VERKEERSBEGELEIDING">VERKEERSBEGELEIDING</option><option value="VERKEERSCONTROLE">VERKEERSCONTROLE</option><option value="PRIORITAIR RIJDEN">PRIORITAIR RIJDEN</option><option value="EHBO VOOR INTERVENIERENDEN">EHBO VOOR INTERVENIERENDEN</option><option value="BEVEILIGEN OPENBARE WEG">BEVEILIGEN OPENBARE WEG</option><option value="K-9">K-9</option><option value="RAGO">RAGO</option><option value="MOTARD">MOTARD</option><option value="MOTARD-OFF ROAD">MOTARD-OFF ROAD</option><option value="DISPATCH">DISPATCH</option><option value="BEVOEGDHEDEN TO">BEVOEGDHEDEN TO</option><option value="ERT AE-I">ERT AE-I</option><option value="ERT AE-T">ERT AE-T</option><option value="ERT-AE-F">ERT-AE-F</option><option value="ANDERE">ANDERE (zelf invullen)</option></select></label><label for="date">Datum (dd/mm/jjjj)<input id="date" type="date" required></label></div><label id="courseOtherWrap" hidden>Andere opleiding<input id="courseOther" maxlength="150" minlength="3" placeholder="Naam van de opleiding"></label><label>Opleider (personeelslijst)
  <select id="instructorChoice" required>
   <option value="">Kies een opleider…</option>
   <option value="__manual__">ANDERE · zelf invullen</option>
@@ -88,10 +88,15 @@ body.training-embedded #training h2{font-size:17px}
 </main>
 <script src="/personnel-list-visuals.js"></script>
 <script type="module">
+import {enhanceBelgianDateInputs,refreshBelgianDateInputs,
+ parseBelgianDateInput,formatBelgianDateInput} from '/bpd-date-inputs.js';
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
 import {sortTrainingPeople,populateInstructorOptions,syncManualInstructor,
  selectedInstructor,MANUAL_INSTRUCTOR_VALUE} from '/training-instructor-choices.js';
 const $=id=>document.getElementById(id);let auth,mods,profile,editing=null,reviewing=null;
+enhanceBelgianDateInputs(['date','expiry']);
+const brusselsToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+ year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const state=(msg,err=false)=>{$('state').textContent=msg;$('state').classList.toggle('error',err)};
 function text(parent,value,tag='span'){const el=document.createElement(tag);el.textContent=String(value);parent.append(el);return el}
 async function api(url,opts={}){const u=auth.currentUser;if(!u)throw Error('Meld eerst aan');const t=await u.getIdToken();const r=await fetch(url,{...opts,cache:'no-store',headers:{'Authorization':'Bearer '+t,...(opts.body?{'Content-Type':'application/json'}:{}),...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'HTTP '+r.status);return d}
@@ -231,6 +236,8 @@ function cancelEdit(){
   $('result').value='aanwezig';
   renderInstructorChoices('');
   $('qualificationStage').value='';
+  $('date').value=brusselsToday();
+  refreshBelgianDateInputs(['date']);
   refreshCourseOptions();
 }
 $('cancelEdit').onclick=cancelEdit;
@@ -247,7 +254,7 @@ async function showRecords(){
     const reviewLabels={nog_niet_beoordeeld:'Nog niet beoordeeld',ter_controle:'Ter controle',klaar_voor_manuele_invoer:'Goedgekeurd voor verwerking'};
     for(const r of d.records){
       const tr=document.createElement('tr');
-      for(const value of [r.eventDate,r.courseName,r.instructorName||'Niet vermeld',resultLabels[r.result]||r.result,(reviewLabels[r.rosterStatus]||r.rosterStatus||'Open')+(r.appliedSpecialtyLabel?' · patch: '+r.appliedSpecialtyLabel:''),r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
+      for(const value of [formatBelgianDateInput(r.eventDate)||'—',r.courseName,r.instructorName||'Niet vermeld',resultLabels[r.result]||r.result,(reviewLabels[r.rosterStatus]||r.rosterStatus||'Open')+(r.appliedSpecialtyLabel?' · patch: '+r.appliedSpecialtyLabel:''),r.createdAt?new Date(r.createdAt).toLocaleString('nl-BE'):'—'])text(tr,value,'td');
       const actions=document.createElement('td');
       if(profile.trainingWritesEnabled && r.canEdit){
         const edit=document.createElement('button');edit.type='button';edit.className='secondary small-action';edit.textContent='Wijzigen';
@@ -256,6 +263,7 @@ async function showRecords(){
           $('dept').value=dept;$('subject').value=subject;$('dept').disabled=true;
           $('subjectChoice').disabled=true;
           setCourse(r.courseName);$('date').value=r.eventDate;
+           refreshBelgianDateInputs(['date']);
           if(![...$('result').options].some(o=>o.value===r.result)){
             const historic=new Option('Historisch resultaat · '+(resultLabels[r.result]||r.result),r.result);
             historic.dataset.legacy='true';$('result').append(historic);
@@ -334,12 +342,17 @@ $('saveTraining').onclick=async()=>{
   if(courseName.length<3||courseName.length>150){
     $('trainingNote').textContent='Kies een opleiding of vul bij ANDERE de naam in.';return;
   }
+  const trainingDate=parseBelgianDateInput($('dateText')?.value||$('date').value);
+  if(!trainingDate||trainingDate!==$('date').value){
+    $('trainingNote').textContent='Vul de opleidingsdatum in als dd/mm/jjjj (bijvoorbeeld 20/11/2026).';
+    $('dateText')?.focus();return;
+  }
   const instructorName=selectedInstructor($('instructorChoice'),$('instructorName'));
   if(instructorName.length<2||instructorName.length>120){
     $('trainingNote').textContent='Vul de opleider in (naam of roepnummer, 2–120 tekens).';return;
   }
   const values={department:$('dept').value,discordId:$('subject').value.trim(),courseName,
-    eventDate:$('date').value,result:$('result').value,details:$('details').value,
+    eventDate:trainingDate,result:$('result').value,details:$('details').value,
     instructorName,qualificationStage:$('qualificationStage').value};
   let url='/api/training',method='POST';
   if(editing){
@@ -359,6 +372,6 @@ $('saveTraining').onclick=async()=>{
 };
 $('lookup').onclick=async()=>{try{const d=await api('/api/roles/overrides/'+encodeURIComponent($('target').value.trim()));$('overrideInfo').textContent=JSON.stringify(d.departments,null,2)}catch(e){$('overrideInfo').textContent='Fout: '+e.message}};
 $('saveOverride').onclick=async()=>{try{const d=await api('/api/roles/overrides/'+encodeURIComponent($('target').value.trim()),{method:'PATCH',body:JSON.stringify({department:$('overrideDept').value,permission:$('perm').value,action:$('action').value,reason:$('reason').value,expiresOn:$('expiry').value})});$('overrideInfo').textContent=d.saved?'Wijziging bewaard met audit. Discord-rollen en Google Sheets niet gewijzigd.':'Niet opgeslagen';$('lookup').click()}catch(e){$('overrideInfo').textContent='Fout: '+e.message}};
-async function init(){try{const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());if(!config.enabled)throw Error('Firebase-configuratie ontbreekt');const appMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');mods=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');auth=mods.getAuth(appMod.initializeApp(config.firebaseConfig));$('date').value=new Date().toLocaleDateString('en-CA');mods.onAuthStateChanged(auth,()=>refresh())}catch(e){state('Verbinding mislukt: '+e.message,true)}}init();
+async function init(){try{const config=await fetch('/api/client-config',{cache:'no-store'}).then(r=>r.json());if(!config.enabled)throw Error('Firebase-configuratie ontbreekt');const appMod=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');mods=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');auth=mods.getAuth(appMod.initializeApp(config.firebaseConfig));$('date').value=brusselsToday();refreshBelgianDateInputs(['date']);mods.onAuthStateChanged(auth,()=>refresh())}catch(e){state('Verbinding mislukt: '+e.message,true)}}init();
 </script><script defer src="/bpd-navigation.js"></script>
 </body></html>
