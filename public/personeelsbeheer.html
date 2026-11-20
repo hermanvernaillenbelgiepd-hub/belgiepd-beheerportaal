@@ -1141,6 +1141,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
   <small>Alleen volledig afgelopen verlofperiodes. Je eigen account blijft als invoerder gelogd.</small>
  </div>
 </div>
+<p id="historicalLeaveAvailability" class="subtle" role="status"></p>
 <p id="leaveManualGuidance" class="subtle" role="status" aria-live="polite">Middenkader mag maximaal 30 dagen rechtstreeks goedkeuren. Meer dan 30 dagen gaat naar Officierenkader of Korpsleiding.</p>
 <div id="manualLeaveEscalationToast" class="dossier-date-toast" role="status" aria-live="polite" hidden>
  <strong>Verlof van 31 dagen of langer</strong>
@@ -2077,6 +2078,10 @@ function setupDossierTabs(){
     </details>
   `);
   panes.overzicht.prepend(sheet);
+  // De tijdelijke migratieschakelaar hoort bij de centrale registratiehub,
+  // ook bereikbaar wanneer de gebruiker verlof registreert.
+  $('formalInlineArea').querySelector('.registration-hub-heading')
+    .after($('historicalMigrationManage'));
   // Drie kolommen met twee rijen; rechts drie compacte samenvattingen.
   const summaryGrid=sheet.querySelector('.landscape-grid');
   const makeTile=key=>summaryGrid.querySelector('[data-sheet-tile="'+key+'"]');
@@ -4778,7 +4783,15 @@ function updateHistoricalMigrationUi(){
  const cfg=formalPermissions?.historicalMigration;
  const manager=police&&formalPermissions?.canManageHistoricalObservationImport===true;
  const enabled=manager&&cfg?.enabled===true&&formalPermissions?.writesEnabled===true;
- $('historicalMigrationManage').hidden=!manager;
+ const kind=$('registrationKind').value;
+ const migrationKinds=['leave','sanctie','case:notitie',
+   'case:algemene_notitie','case:inactiviteitsping'];
+ $('historicalMigrationManage').hidden=!(manager&&migrationKinds.includes(kind));
+ $('historicalLeaveAvailability').textContent=kind!=='leave'?'':enabled?
+   'Historische verlofovername is tijdelijk ingeschakeld. Vink overname alleen aan voor volledig afgelopen verlof met oorspronkelijke registrator.':
+   manager?
+     'Historische verlofovername staat uit. Schakel hierboven ‘Overname tijdelijk inschakelen’ in voor een oude verlofperiode, of registreer gewoon verlof zonder overname.':
+     'Gewone manuele verlofregistratie blijft mogelijk. Historische overname vereist tijdelijke inschakeling door geverifieerd Officierenkader of Korpsleiding.';
  if(manager){
    $('historicalMigrationStatus').textContent=enabled?
      'Ingeschakeld voor deze overdracht: bestaande verlofperioden, sancties, notities en activiteitenpings kunnen met oorspronkelijke registrator overgenomen worden.':
@@ -4786,7 +4799,6 @@ function updateHistoricalMigrationUi(){
    $('historicalMigrationToggle').textContent=cfg?.enabled?
      'Overname na overdracht uitschakelen':'Overname tijdelijk inschakelen';
  }
- const kind=$('registrationKind').value;
  const choices=formalPermissions?.representatives||[];
  for(const [prefix,visible] of [
    ['historicalLeave',enabled&&kind==='leave'&&registrationManualLeave],
