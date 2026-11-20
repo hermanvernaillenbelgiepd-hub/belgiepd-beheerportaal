@@ -1004,6 +1004,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <p id="personnelPlaytime" class="subtle">Speeltijd: broncontrole vereist.</p>
  <div class="controls">
   <button id="personnelArchiveAction" type="button" class="alt" hidden>Uit dienst plaatsen en archiveren</button>
+  <button id="personnelGlobalArchiveAction" type="button" class="alt" hidden>Politie · volledig uit dienst (alle diensten)</button>
  </div>
  <p class="subtle">Discord/CMS-rollen worden niet automatisch verwijderd: vraag de overeenkomende CMS-rolwijziging aan. Een archiefstatus blokkeert heractivering van portaalrechten tot goedgekeurde herintreding.</p>
 </section>
@@ -2684,12 +2685,26 @@ function render(){
       restricted.setAttribute('aria-label','Dossier afgeschermd');
       cell.append(restricted);
     }
-    if(person.canManageLifecycle===true){
-      const button=document.createElement('button');button.type='button';
-      button.className='alt small';button.textContent='Uit dienst';
-      button.title='Centraal archiveren: alle gekoppelde dienstfiches en openstaand verlof afsluiten';
-      button.onclick=()=>archiveServiceMembership(person);
-      cell.append(button);
+    if(person.canManageLifecycle===true||person.canArchiveGlobally===true){
+      const local=person.dept!=='politie'&&person.canManageLifecycle===true;
+      const global=person.dept==='politie'&&person.canArchiveGlobally===true;
+      if(local||global){
+       const button=document.createElement('button');button.type='button';
+       button.className='alt small';
+       button.textContent=global?'Volledig uit dienst':'Uit dienst';
+       button.title=global?
+         'Politionele archivering: alle gekoppelde diensten en openstaand centraal verlof afsluiten':
+         'Alleen dit dienstverband archiveren; andere diensten en centraal verlof blijven actief';
+       button.onclick=()=>archiveServiceMembership(person,{scope:global?'global':'service'});
+       cell.append(button);
+      }
+      if(person.dept!=='politie'&&person.canArchiveGlobally===true){
+       const central=document.createElement('button');central.type='button';
+       central.className='alt small';central.textContent='Politie: volledig uit dienst';
+       central.title='Alle gekoppelde dienstverbanden centraal archiveren (alleen politioneel Officierenkader en Korpsleiding)';
+       central.onclick=()=>archiveServiceMembership(person,{scope:'global'});
+       cell.append(central);
+      }
     }
     tr.append(cell);
     const discordCell=document.createElement('td');discordCell.className='discord-id-cell';
@@ -6624,6 +6639,7 @@ async function loadPersonnelLifecycle(p){
  const key=p.dept+':'+p.discordId;
  $('personnelLifecyclePanel').hidden=false;
  $('personnelArchiveAction').hidden=true;
+ $('personnelGlobalArchiveAction').hidden=true;
  $('personnelLifeStatus').textContent='Archiefstatus controleren…';
  const hrs=x=>Number.isFinite(x)?x.toLocaleString('nl-BE')+' uur':'Niet beschikbaar';
  $('personnelPlaytime').textContent='Speeltijd (bron): '+hrs(p.hours)+
@@ -6636,7 +6652,14 @@ async function loadPersonnelLifecycle(p){
   currentLifecycleRevision=data.revision||0;
   $('personnelLifeStatus').textContent=(data.state==='archived'?'Gearchiveerd':'Actieve personeelsfiche')+
     (data.cmsRoleSyncPending?' · CMS-rolcontrole vereist':'');
-  $('personnelArchiveAction').hidden=!(data.canManage&&data.state==='active');
+  const localAllowed=data.state==='active'&&
+    (p.dept==='politie'?data.canArchiveGlobally:data.canArchiveService);
+  $('personnelArchiveAction').hidden=!localAllowed;
+  $('personnelArchiveAction').textContent=p.dept==='politie'?
+    'Politie: volledig uit dienst (alle diensten)':
+    'Alleen '+(departments[p.dept]||p.dept)+' uit dienst plaatsen';
+  $('personnelGlobalArchiveAction').hidden=p.dept==='politie'||
+    !(data.state==='active'&&data.canArchiveGlobally);
   $('archiveFromActivityPing').hidden=$('personnelArchiveAction').hidden||
     $('staffCaseType').value!=='inactiviteitsping';
  }catch(e){
@@ -6645,13 +6668,15 @@ async function loadPersonnelLifecycle(p){
  }
 }
 // Eén handmatige, geauditeerde dienstactie voor alle vijf de diensten.
-async function archiveServiceMembership(p,{fromActivityPing=false,presetCause=null}={}){
+async function archiveServiceMembership(p,{fromActivityPing=false,presetCause=null,
+  scope=p?.dept==='politie'?'global':'service'}={}){
  if(!p||!lifecycleDepartments.includes(p.dept))return;
  const url='/api/personnel-lifecycle/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId);
  let current;
  try{current=await request(url)}catch(e){return notice('Dienstverband niet beschikbaar: '+e.message,true)}
- if(!current.canManage||current.state!=='active')
-  return notice('Dit dienstverband is niet actief of je hebt geen wijzigingsrecht.',true);
+ if(current.state!=='active'||(scope==='global'?
+    !current.canArchiveGlobally:!current.canArchiveService))
+  return notice('Dit dienstverband is niet actief of je hebt geen bevoegdheid voor deze archivering.',true);
  let cause=presetCause;
  if(!cause){
    const code=prompt('Reden uitdiensttreding?\n1 = Discord verlaten\n2 = Ontslag door leiding\n3 = Vrijwillig vertrek uit dienst\n4 = Ontslag wegens inactiviteit\n5 = Andere reden',
@@ -6667,15 +6692,21 @@ async function archiveServiceMembership(p,{fromActivityPing=false,presetCause=nu
  if(explanation===null)return;
  const reason=explanation.trim();
  if(reason.length<10||reason.length>500)return notice('Motivering moet 10 tot 500 tekens zijn.',true);
- if(!confirm(p.name+' centraal archiveren vanuit '+(departments[p.dept]||p.dept)+'?'+
-   '\nALLE gekoppelde dienstverbanden worden gearchiveerd. Openstaand verlof wordt afgesloten en alle dienstendossiers behouden hun historiek. CMS-rollen afzonderlijk nakijken.'))return;
+ const message=scope==='global'?
+   p.name+' VOLLEDIG uit dienst plaatsen via Politie?'+
+   '\nALLE gekoppelde dienstverbanden worden gearchiveerd. Openstaand centraal verlof wordt administratief afgesloten. Alle dossierhistoriek blijft behouden.':
+   p.name+' alleen bij '+(departments[p.dept]||p.dept)+' uit dienst plaatsen?'+
+   '\nAndere hulpdiensten en centraal verlof blijven ongewijzigd. Het eigen dienstendossier blijft bewaard.';
+ if(!confirm(message+'\nDiscord/CMS-rollen afzonderlijk controleren.'))return;
  try{
   const result=await request(url+'/archive',{method:'POST',
-   body:{cause,reason,expectedRevision:current.revision}});
+   body:{cause,reason,scope,expectedRevision:current.revision}});
   const services=(result.archivedDepartments||[]).map(d=>departments[d]||d).join(', ');
-  notice('Centrale archivering opgeslagen voor '+(services||'alle gekoppelde diensten')+
-   '. Dossierhistoriek behouden; '+(result.closedLeaveRequests||0)+
-   ' openstaande verlofperiode(n) administratief afgesloten.');
+  notice(scope==='global'?
+    'Volledige politionele archivering geregistreerd voor '+(services||'alle gekoppelde diensten')+
+    '. Historiek behouden; '+(result.closedLeaveRequests||0)+
+    ' openstaande verlofperiode(n) afgesloten.':
+    'Alleen '+(departments[p.dept]||p.dept)+' gearchiveerd. Andere dienstverbanden en centraal verlof zijn behouden.');
   if(selected?.dept===p.dept&&selected?.discordId===p.discordId){
    $('panel').hidden=true;selected=null;
   }
@@ -6684,6 +6715,9 @@ async function archiveServiceMembership(p,{fromActivityPing=false,presetCause=nu
 }
 $('personnelArchiveAction').onclick=async()=>{
  if(selected)await archiveServiceMembership(selected);
+};
+$('personnelGlobalArchiveAction').onclick=async()=>{
+ if(selected)await archiveServiceMembership(selected,{scope:'global'});
 };
 $('archiveFromActivityPing').onclick=async()=>{
  if(selected)await archiveServiceMembership(selected,{fromActivityPing:true});
