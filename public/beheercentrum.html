@@ -302,7 +302,8 @@ const $=id=>document.getElementById(id);
 let auth=null,context=null,loading=false,aePeople=[],aeHasAccess=false;
 const {setupTechnicalServiceEditors}=await import('/technical-service-editors.js');
 const {setupVisualDesignEditor}=await import('/visual-design-editor.js');
-let serviceEditor=null,visualDesignEditor=null;
+const {setupVisualDesignGrantsEditor}=await import('/visual-design-grants-editor.js');
+let serviceEditor=null,visualDesignEditor=null,visualGrantsEditor=null;
 function notice(message,error=false){
  const element=$('feedback');element.textContent=message;
  element.className='notice'+(error?' bad':'');
@@ -439,6 +440,7 @@ async function load(){
  if(!auth?.currentUser){
   context=null;aeHasAccess=false;aePeople=[];
   for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
+  if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
@@ -454,6 +456,13 @@ async function load(){
     $('visualDesign').hidden=true;$('visualDesignTile').hidden=true;
     console.warn('Vormgeving laden:',error?.message||'Onbekend');
   });
+  if(next.canEdit){
+   if(!visualGrantsEditor)visualGrantsEditor=setupVisualDesignGrantsEditor({api,$});
+   void visualGrantsEditor.load().catch(error=>{
+    $('visualGrantPanel').hidden=true;
+    console.warn('Vormgevingsrechten laden:',error?.message||'Onbekend');
+   });
+  }else if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
   $('next').hidden=false;$('historyPanel').hidden=!next.canEdit;
   $('accessLabel').textContent=next.canEdit?'Technisch Beheer':'Operationeel kader';
    $('cleanupTile').hidden=!next.canEdit;
@@ -474,6 +483,16 @@ async function load(){
  }catch(error){
   context=null;
   for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
+  // A delegated design editor must not open any general management section.
+  if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
+  try{
+   if(!visualDesignEditor)visualDesignEditor=setupVisualDesignEditor({api,$});
+   await visualDesignEditor.load();
+   if(!$('visualDesign').hidden){
+    notice('Je hebt uitsluitend toegang tot Vormgeving; de andere beheerschermen blijven afgesloten.');
+    return;
+   }
+  }catch{}
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }
