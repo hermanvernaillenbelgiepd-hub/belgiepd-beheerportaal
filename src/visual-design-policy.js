@@ -8,10 +8,29 @@ export const VISUAL_DESIGN_DOC='global';
 export const VISUAL_FONTS=Object.freeze(['inter','system','arial','serif']);
 export const VISUAL_ACCENTS=Object.freeze(['blue','teal','violet','amber']);
 export const VISUAL_DENSITIES=Object.freeze(['compact','normal','comfortable']);
+export const VISUAL_CARD_RADIUS=Object.freeze(['square','soft','rounded']);
+export const VISUAL_BUTTON_RADIUS=Object.freeze(['square','soft','pill']);
+export const VISUAL_FIELD_RADIUS=Object.freeze(['square','soft','rounded']);
+export const VISUAL_SHADOW=Object.freeze(['none','subtle','medium']);
+export const VISUAL_TITLES=Object.freeze(['compact','normal','large']);
+export const VISUAL_LINE_HEIGHT=Object.freeze(['tight','normal','relaxed']);
+export const VISUAL_SECTION_GAP=Object.freeze(['compact','normal','wide']);
+export const VISUAL_NAV_DENSITY=Object.freeze(['compact','normal','comfortable']);
+export const VISUAL_LINK_STYLE=Object.freeze(['normal','underline','bold']);
+export const VISUAL_FOCUS=Object.freeze(['normal','strong']);
 export const VISUAL_THEMES=Object.freeze(['light','dark']);
 export const DEFAULT_VISUAL_DESIGN=Object.freeze({
  themeDefault:'light',accent:'blue',fontFamily:'inter',
- fontScale:100,density:'normal'
+ fontScale:100,density:'normal',
+ cardRadius:'soft',buttonRadius:'soft',fieldRadius:'soft',
+ shadowDepth:'subtle',titleSize:'normal',lineHeight:'normal',
+ sectionGap:'normal',navDensity:'normal',linkStyle:'normal',focusStyle:'normal'
+});
+const VISUAL_EXTRA_CHOICES=Object.freeze({
+ cardRadius:VISUAL_CARD_RADIUS,buttonRadius:VISUAL_BUTTON_RADIUS,
+ fieldRadius:VISUAL_FIELD_RADIUS,shadowDepth:VISUAL_SHADOW,titleSize:VISUAL_TITLES,
+ lineHeight:VISUAL_LINE_HEIGHT,sectionGap:VISUAL_SECTION_GAP,
+ navDensity:VISUAL_NAV_DENSITY,linkStyle:VISUAL_LINK_STYLE,focusStyle:VISUAL_FOCUS
 });
 const KEYS=Object.keys(DEFAULT_VISUAL_DESIGN);
 export function visualDesignFrom(raw){
@@ -24,6 +43,8 @@ export function visualDesignFrom(raw){
    result.fontScale%5!==0)
    result.fontScale=DEFAULT_VISUAL_DESIGN.fontScale;
  if(!VISUAL_DENSITIES.includes(result.density))result.density=DEFAULT_VISUAL_DESIGN.density;
+ for(const [key,choices] of Object.entries(VISUAL_EXTRA_CHOICES))
+  if(!choices.includes(result[key]))result[key]=DEFAULT_VISUAL_DESIGN[key];
  return result;
 }
 export function canManageVisualDesign(actor){
@@ -41,8 +62,9 @@ export function validateVisualDesignWrite(raw){
    !VISUAL_FONTS.includes(raw.fontFamily)||
    !VISUAL_DENSITIES.includes(raw.density)||
    !Number.isSafeInteger(raw.fontScale)||raw.fontScale<90||raw.fontScale>120||
-   raw.fontScale%5!==0)
-   throw Object.assign(Error('Kies toegelaten kleuren, lettertype en tekstgrootte (90–120%)'),
+   raw.fontScale%5!==0||
+   Object.entries(VISUAL_EXTRA_CHOICES).some(([key,choices])=>!choices.includes(raw[key])))
+   throw Object.assign(Error('Kies uitsluitend toegelaten vormgevingsinstellingen'),
      {status:400});
  if(!Number.isSafeInteger(raw.expectedRevision)||raw.expectedRevision<0)
    throw Object.assign(Error('Ongeldige revisie: laad de instellingen opnieuw'),{status:400});
