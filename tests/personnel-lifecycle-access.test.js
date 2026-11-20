@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {canManageLifecycleDepartment,canManagePersonnelLifecycle,
  canReadPersonnelLifecycle,canGloballyArchivePersonnel,
  canApproveServiceReentry,canSupervisePersonnelLifecycle} from '../src/personnel-lifecycle-access.js';
@@ -55,4 +56,20 @@ test('only verified Police Officer/Corps can globally retire every service; loca
  const local=actor('burger');
  assert.equal(canManagePersonnelLifecycle(local,citizen),true);
  assert.equal(canGloballyArchivePersonnel(local,citizen),false);
+});
+
+test('Burgerraad with fresh signed guild role may archive only Burger, not all services',()=>{
+ const council={...actor(),role:'basiskader',
+  departmentRoles:{burger:'basiskader'},citizenCouncilVerified:true};
+ assert.equal(canManageLifecycleDepartment(council,'burger'),true);
+ assert.equal(canManagePersonnelLifecycle(council,citizen),true);
+ assert.equal(canGloballyArchivePersonnel(council,citizen),false);
+ assert.equal(canApproveServiceReentry(council,citizen),false);
+ assert.equal(canManageLifecycleDepartment({...council,citizenCouncilVerified:false},'burger'),false);
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ const routes=readFileSync(new URL('../src/personnel-lifecycle-routes.js',import.meta.url),'utf8');
+ assert.match(server,/actor\.citizenCouncilVerified=Boolean/);
+ assert.match(server,/verifiedCitizenCouncil\(actor,discordMember/);
+ assert.match(routes,/if\(dept==='burger'&&!globalArchive\)\{/);
+ assert.match(routes,/collection\('bpd_citizen_staff_dossiers'\)/);
 });
