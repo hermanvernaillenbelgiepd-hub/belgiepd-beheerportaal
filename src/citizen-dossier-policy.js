@@ -140,6 +140,44 @@ export function validateCitizenEntry(raw){
   return {kind:raw.kind,eventDate:raw.eventDate,
     details:raw.details.trim(),...(raw.kind==='observatie'?{score:raw.score}:{})};
 }
+// Administratieve burger-dossierrol: nooit een Discord-bevoegdheid of rangtoekenning.
+export const CITIZEN_DOSSIER_ROLE_LABELS=Object.freeze({
+ bio:'Burger in opleiding',burger:'Volwaardige Burger'
+});
+export function citizenDossierRole({savedRole,verifiedRole,rosterRank,hasPromotion=false}={}){
+ if(Object.hasOwn(CITIZEN_DOSSIER_ROLE_LABELS,savedRole||''))return savedRole;
+ if(['Burger','Burgerraad'].includes(verifiedRole))return 'burger';
+ if(verifiedRole==='BIO')return 'bio';
+ if(hasPromotion)return 'burger';
+ const value=String(rosterRank||'').trim().toLowerCase()
+   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[_-]+/g,' ');
+ if(/^(bio|burger in opleiding|burger io|burgerio|stagiair burger)$/.test(value))return 'bio';
+ if(/^(burger|volwaardige burger|burgerraad)$/.test(value))return 'burger';
+ return null;
+}
+export function validateCitizenProfile(raw,{today=new Date().toLocaleDateString('sv-SE',
+ {timeZone:'Europe/Brussels'})}={}){
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+   Object.keys(raw).length!==4||
+   !['role','volwaardigSince','reason','expectedRevision'].every(key=>
+     Object.hasOwn(raw,key)))
+   throw Error('Ongeldige burgerpersoneelsgegevens');
+ if(!Object.hasOwn(CITIZEN_DOSSIER_ROLE_LABELS,raw.role))
+   throw Error('Kies Burger in opleiding of Volwaardige Burger');
+ const date=raw.volwaardigSince===''||raw.volwaardigSince===null?
+   null:raw.volwaardigSince;
+ if(date!==null&&(!validDate(date)||date>today))
+   throw Error('Volwaardig sinds moet een geldige datum tot vandaag zijn');
+ if(raw.role==='bio'&&date!==null)
+   throw Error('Een Burger in opleiding heeft geen datum Volwaardig sinds');
+ if(typeof raw.reason!=='string'||raw.reason.trim().length<10||
+   raw.reason.length>500||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(raw.reason))
+   throw Error('Vul een motivering van 10 tot 500 tekens in');
+ if(!Number.isSafeInteger(raw.expectedRevision)||raw.expectedRevision<0)
+   throw Error('Ongeldige dossierrevisie; laad het dossier opnieuw');
+ return {role:raw.role,volwaardigSince:date,
+   reason:raw.reason.trim(),expectedRevision:raw.expectedRevision};
+}
 export function observationAverage(entries,{today,limited=false}={}){
   const summary=threeMonthObservationScore(entries,{...(today?{today}:{}),limited});
   return {count:summary.count,average:summary.average,trend:summary.trend,
