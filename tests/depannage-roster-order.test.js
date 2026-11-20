@@ -94,3 +94,24 @@ test('Ambulance, Brandweer and Police sorts are unchanged',()=>{
  assert.deepEqual(sortDossiers([{call:'008'},{call:'920'},{call:'900'}],'callsign-bpd').map(p=>p.call),
    ['900','920','008']);
 });
+
+test('Depannage dossier shows service function, never Ambulance rank',()=>{
+ const visual=globalThis.BPDPersonnelVisuals;
+ const expected=[
+  [{dept:'depannage',call:'—',rank:'Ambulancier'},'Niet geregistreerd'],
+  [{dept:'depannage',call:'—',rank:'Arts'},'Niet geregistreerd'],
+  [{dept:'depannage',call:'AWV-01',rank:'Ambulancier'},'Agentschap Wegen en Verkeer'],
+  [{dept:'depannage',call:'FAST-02',rank:'Arts'},'F.A.S.T'],
+  [{dept:'depannage',call:'LSRA-03',rank:'Ambulancier'},'LSRA'],
+  [{dept:'depannage',call:'LSRA-03',rank:'Ambulancier',verifiedFunction:'leiding'},'Agentschap Wegen en Verkeer']
+ ];
+ for(const [person,result] of expected)
+  assert.equal(visual.depannageDossierFunction(person),result);
+ assert.equal(visual.depannageDossierFunction({dept:'ambulance',call:'ARTS-03',rank:'Arts'}),'');
+ const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.match(html,/<small id="sheetRankTitle">Graad<\/small>/);
+ assert.match(html,/\$\('sheetRankTitle'\)\.textContent=towing\?'Functie':'Graad'/);
+ assert.match(html,/const towing=p\.dept==='depannage'/);
+ assert.match(html,/label\.textContent=BPDPersonnelVisuals\.depannageDossierFunction\(p\)/);
+ assert.match(html,/person\.dept==='depannage'\?\s*BPDPersonnelVisuals\.depannageDossierFunction\(person\):person\.rank/);
+});

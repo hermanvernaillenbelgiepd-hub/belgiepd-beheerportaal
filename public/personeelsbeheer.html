@@ -1987,7 +1987,7 @@ function setupDossierTabs(){
   sheet.insertAdjacentHTML('afterbegin',`
     <div class="sheet-identity" aria-label="Personeelsinformatie">
       <div><small>Roepnummer</small><strong id="sheetCall">—</strong></div>
-      <div><small>Graad</small><strong id="sheetRank">—</strong></div>
+      <div><small id="sheetRankTitle">Graad</small><strong id="sheetRank">—</strong></div>
       <div><small>Naam</small><strong id="sheetName">—</strong></div>
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
@@ -4095,17 +4095,26 @@ function sheetIdentity(p){
   $('sheetCall').textContent=p.call||'—';
   const rankSlot=$('sheetRank');
   rankSlot.replaceChildren();
-  const grade=BPDPersonnelVisuals.rankInfo(p.rank,p.dept);
-  if(grade.image){
-    const compact=document.createElement('span');compact.className='dossier-rank-inline';
-    const image=document.createElement('img');
-    image.src=grade.image;image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';
-    image.setAttribute('aria-hidden','true');
-    compact.append(image);
-    rankSlot.append(compact);
+  const towing=p.dept==='depannage';
+  $('sheetRankTitle').textContent=towing?'Functie':'Graad';
+  if(towing){
+    // No shared/legacy rank is allowed as a Depannage function label.
+    const label=document.createElement('span');label.className='dossier-rank-label';
+    label.textContent=BPDPersonnelVisuals.depannageDossierFunction(p);
+    rankSlot.append(label);
+  }else{
+    const grade=BPDPersonnelVisuals.rankInfo(p.rank,p.dept);
+    if(grade.image){
+      const compact=document.createElement('span');compact.className='dossier-rank-inline';
+      const image=document.createElement('img');
+      image.src=grade.image;image.alt='';image.loading='lazy';image.referrerPolicy='no-referrer';
+      image.setAttribute('aria-hidden','true');
+      compact.append(image);
+      rankSlot.append(compact);
+    }
+    const label=document.createElement('span');label.className='dossier-rank-label';
+    label.textContent=p.rankDisplay||p.rank||'—';rankSlot.append(label);
   }
-  const label=document.createElement('span');label.className='dossier-rank-label';
-  label.textContent=p.rankDisplay||p.rank||'—';rankSlot.append(label);
   $('sheetName').textContent=p.name||'—';
   const seriesSlot=$('sheetSeries');
   seriesSlot.replaceChildren();
@@ -4218,7 +4227,10 @@ function sheetDossierProfile(profile={}){
   const person=selected||{};
   const fields=[
     ['Naam',person.name],['Roepnummer',person.call],
-    ['Graad',person.rank],['Status',person.status],
+    [person.dept==='depannage'?'Functie':'Graad',
+      person.dept==='depannage'?
+        BPDPersonnelVisuals.depannageDossierFunction(person):person.rank],
+    ['Status',person.status],
     ['Reeks',person.series],['Discord ID',person.discordId],
     ['Aanstellingsdatum',profile.startDate],
     ['Eenheid / ploeg',profile.unit],['Functie / opdracht',profile.functionTitle]
