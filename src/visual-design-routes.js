@@ -13,7 +13,7 @@ import {
 
 // This check reads Firestore on every delegated request (no cache). A revoked
 // design-only grant cannot keep saving via an old session or cached UI state.
-async function canEditVisualDesign(db,actor){
+export async function canEditVisualDesign(db,actor){
  if(canManageVisualDesign(actor))return true;
  try{
   const id=String(actor?.discordId||'');

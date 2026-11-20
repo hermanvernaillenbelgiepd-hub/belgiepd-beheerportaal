@@ -1,0 +1,28 @@
+/* Adaptive grid defaults. Keeps operational boards, uniform art and personnel
+ * tables intact; custom page/card choices can override these fallbacks. */
+html[data-bpd-page-design] body,
+html[data-bpd-page-design] main {min-width:0}
+html[data-bpd-page-design] main :is(.card,.panel,.tile,.grid,.form-grid,.cards,.tiles,
+ .filter-grid,.card-grid,.tile-grid,.stats-grid) > * {min-width:0;max-width:100%}
+html[data-bpd-page-design] main :is(.grid,.form-grid,.cards,.tiles,.filter-grid,
+ .card-grid,.tile-grid,.stats-grid) {min-width:0}
+html[data-bpd-page-design] main :is(input,select,textarea) {max-width:100%}
+@media (max-width:980px){
+ html[data-bpd-page-design] body:not(:has(#toBoardRoot)) main
+ :is(.grid,.form-grid,.cards,.tiles,.filter-grid,.card-grid,.tile-grid,.stats-grid)
+ :not(.landscape-grid):not(.sheet-identity):not(.dossier-summary) {
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)) !important;
+ }
+}
+@media (max-width:620px){
+ html[data-bpd-page-design] body:not(:has(#toBoardRoot)) main
+ :is(.grid,.form-grid,.cards,.tiles,.filter-grid,.card-grid,.tile-grid,.stats-grid)
+ :not(.landscape-grid):not(.sheet-identity):not(.dossier-summary) {
+  grid-template-columns:minmax(0,1fr) !important;
+ }
+ html[data-bpd-page-design] main :is(.card,.panel,.tile,section,article){max-width:100%}
+}
+/* Preserve tables' semantic structure and all status/rank/specialty visuals. */
+html[data-bpd-page-design] main .scroller,
+html[data-bpd-page-design] main .tablewrap,
+html[data-bpd-page-design] main .staff-roster-holder {max-width:100%}
