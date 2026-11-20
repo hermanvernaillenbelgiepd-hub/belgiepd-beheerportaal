@@ -4,7 +4,7 @@ import {
   CITIZEN_ROLES,verifiedCitizenCouncil,canAccessCitizenDossier,
   canWriteCitizenDossier,canDeleteCitizenEntry,canManageCitizenDeletions,
   citizenMemberType,citizenSubject,validateCitizenEntry,validateCitizenDeletion,
-  observationAverage
+  observationAverage,citizenDossierRole,CITIZEN_DOSSIER_ROLE_LABELS,validateCitizenProfile
 } from '../src/citizen-dossier-policy.js';
 
 const now=Date.parse('2026-11-04T12:00:00.000Z');
@@ -129,4 +129,59 @@ test('observation score average uses only the last three months, excluding notes
   assert.equal(empty.count,0);
   assert.equal(empty.average,null);
   assert.equal(empty.trend,'insufficient');
+});
+
+test('Burger role labels are fixed, citizen-scoped and never taken from other services',()=>{
+ assert.deepEqual(CITIZEN_DOSSIER_ROLE_LABELS,{bio:'Burger in opleiding',burger:'Volwaardige Burger'});
+ assert.equal(citizenDossierRole({savedRole:'bio',verifiedRole:'Burger'}),'bio');
+ assert.equal(citizenDossierRole({savedRole:'burger',verifiedRole:'BIO'}),'burger');
+ assert.equal(citizenDossierRole({verifiedRole:'Burgerraad'}),'burger');
+ assert.equal(citizenDossierRole({verifiedRole:'BIO'}),'bio');
+ assert.equal(citizenDossierRole({rosterRank:'Burger IO'}),'bio');
+ assert.equal(citizenDossierRole({rosterRank:'Volwaardige Burger'}),'burger');
+ assert.equal(citizenDossierRole({rosterRank:'Ambulancier'}),null);
+ assert.equal(citizenDossierRole({rosterRank:'Inspecteur'}),null);
+ assert.equal(citizenDossierRole({rosterRank:'Arts'}),null);
+});
+
+test('Burgerraad/Korpsleiding/technical profile input is exact, validated and revisioned',()=>{
+ const valid={role:'burger',volwaardigSince:'2026-11-19',
+  reason:'Volwaardig na positieve evaluatie',expectedRevision:0};
+ assert.deepEqual(validateCitizenProfile(valid,{today:'2026-11-20'}),valid);
+ assert.deepEqual(validateCitizenProfile({...valid,role:'bio',volwaardigSince:null},{today:'2026-11-20'}),
+   {...valid,role:'bio',volwaardigSince:null});
+ for(const invalid of [
+  {...valid,role:'Ambulancier'},
+  {...valid,role:'Burgerraad'},
+  {...valid,volwaardigSince:'2026-11-21'},
+  {...valid,volwaardigSince:'2026-02-30'},
+  {...valid,role:'bio'},
+  {...valid,expectedRevision:-1},
+  {...valid,expectedRevision:1.5},
+  {...valid,reason:'te kort'},
+  {...valid,byDiscordId:'333333333333333333'},
+  {...valid,reason:'Wijziging'+String.fromCharCode(0)}
+ ])assert.throws(()=>validateCitizenProfile(invalid,{today:'2026-11-20'}));
+});
+
+test('Burgerdossier heeft geen verlof/callsign en schrijft profiel uitsluitend met audit',()=>{
+ const fs=await import('node:fs');
+ const read=path=>fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
+ const html=read('public/burger-personeelsdossiers.html');
+ const routes=read('src/citizen-dossier-routes.js');
+ assert.match(html,/id="citizenPicker"/);
+ assert.match(html,/id="citizenColleague"/);
+ assert.match(html,/id="profileRole"/);
+ assert.match(html,/id="profileSince"/);
+ assert.match(html,/id="citizenProfileForm"/);
+ assert.doesNotMatch(html,/id="citizenLeave"/);
+ assert.doesNotMatch(html,/id="personCall"/);
+ assert.doesNotMatch(html,/id="leave"/);
+ assert.match(routes,/app\.post\('\/api\/citizen-staff\/:discordId\/profile'/);
+ assert.match(routes,/canWriteCitizenDossier\(req\.bpd,req\.citizenCouncilVerified,person\.personId\)/);
+ assert.match(routes,/expectedRevision!==previousRevision/);
+ assert.match(routes,/action:'update-citizen-profile'/);
+ assert.match(routes,/tx\.create\(audit,/);
+ assert.doesNotMatch(routes,/collection\('bpd_leave_requests'\)/);
+ assert.doesNotMatch(routes,/discordRolesChanged:true/);
 });
