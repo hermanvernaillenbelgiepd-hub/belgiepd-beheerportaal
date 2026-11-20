@@ -380,7 +380,28 @@
       identityConfirmed=verified===true;
       const items=list.map(key=>key==='profile'&&!identityConfirmed?
         {...NAV.profile,label:'Aanmelden',short:'Aanmelden'}:NAV[key]).filter(Boolean);
-      links.replaceChildren(...items.map(item=>linkFor(item)));
+      // Group only the ALREADY verified links; labels add no authority.
+      // No inaccessible module may be constructed from a group heading.
+      const groupCatalog=[
+        ['Algemeen',['home','notifications','leave','profile']],
+        ['Personeel',['personnel','organogram','education','observations','citizen']],
+        ['Operationeel',['activity','dossiers','to','calendar','reports']],
+        ['Documenten',['documents']],
+        ['Beheer',['center','admin']]
+      ];
+      const grouped=document.createDocumentFragment(),seen=new Set();
+      for(const [title,keys] of groupCatalog){
+        const available=keys.map(key=>items.find(item=>item.href===NAV[key]?.href))
+          .filter(item=>item&&!seen.has(item.href));
+        if(!available.length)continue;
+        const heading=document.createElement('span');
+        heading.className='bpd-ref-side-heading';heading.textContent=title;
+        heading.setAttribute('aria-hidden','true');
+        grouped.append(heading);
+        for(const item of available){grouped.append(linkFor(item));seen.add(item.href)}
+      }
+      for(const item of items)if(!seen.has(item.href))grouped.append(linkFor(item));
+      links.replaceChildren(grouped);
       renderQuick(items,top);
     }
     // Hide privileged links until the CURRENT authenticated user is checked.
