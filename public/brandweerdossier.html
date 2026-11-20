@@ -239,6 +239,7 @@ import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fi
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {threeMonthObservationScore,observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 const $=id=>document.getElementById(id);
 enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
@@ -375,12 +376,7 @@ function addFireRetireControl(card,record,containerId){
  card.append(button);
 }
 function cards(root,items,heading,text,metadata){
- root.replaceChildren();
- if(!items.length){
-  const empty=document.createElement('p');empty.className='muted';
-  empty.textContent='Geen registraties beschikbaar.';root.append(empty);return;
- }
- for(const item of items){
+ renderRecentDossierEntries(root,items,(mount,item)=>{
   if(root.id==='observations'){
     const disclosure=createObservationDisclosure({
       title:heading(item),
@@ -391,7 +387,7 @@ function cards(root,items,heading,text,metadata){
         (item.createdAt?' · geregistreerd '+item.createdAt:'')
     });
     addFireRetireControl(disclosure.content,item,root.id);
-    root.append(disclosure.element);
+    mount.append(disclosure.element);
     continue;
   }
   const card=document.createElement('div');card.className='record';
@@ -399,6 +395,8 @@ function cards(root,items,heading,text,metadata){
   const details=document.createElement('p');details.textContent=text(item)||'—';
   const meta=document.createElement('small');meta.textContent=metadata(item)||'';
   card.append(title,details,meta);
+  // The original service-verified metadata remains the sole source of detail.
+  attachExpandableDossierText(card,meta,meta.textContent,{label:'Lees volledige gegevens'});
   if(['entries','basicNotes','sanctions'].includes(root.id)){
    attachDossierRecordPreview(card,{row:item,title:title.textContent,
      text:text(item)||'—',bodyNode:details,metaNode:meta,
@@ -409,8 +407,9 @@ function cards(root,items,heading,text,metadata){
        ['Status',item.status]]:[]});
   }
   addFireRetireControl(card,item,root.id);
-  root.append(card);
- }
+  mount.append(card);
+ },{empty:'Geen registraties beschikbaar.',
+   noun:root.id==='leavePeriods'?'verlofperiodes':'registraties'});
 }
 function displayFirePromotionProposals(data){
  const root=$('promotionRecords');root.replaceChildren();
