@@ -89,7 +89,7 @@
   if(file!=='personeelsbeheer.html')return;
   const table=document.querySelector('.staff-roster-table');if(!table)return;
   const headers=[...table.querySelectorAll('thead th')].map((th,i)=>
-   String(th.getAttribute('title')||th.textContent||'Kolom '+(i+1)).replace(/\\s+/g,' ').trim().slice(0,50));
+   String(th.getAttribute('title')||th.textContent||'Kolom '+(i+1)).replace(/\s+/g,' ').trim().slice(0,50));
   if(!headers.length)return;
   for(const row of table.querySelectorAll('tbody tr:not(.police-kader-divider)')){
    const cells=[...row.children].filter(el=>el.tagName==='TD');
