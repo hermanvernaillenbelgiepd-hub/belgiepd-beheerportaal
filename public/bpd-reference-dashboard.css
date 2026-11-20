@@ -603,3 +603,50 @@ html.bpd-reference-ui body:has(> .portal) .portal > .surface {
   min-width:0;
   max-width:none;
 }
+
+/* TEST: balanced 6 + 6 daily cards on widescreen (12 real module links).
+ * Container queries follow available CONTENT width, independent of browser
+ * zoom, sidebar width and viewport breakpoints. Never modify admin cards. */
+html.bpd-reference-ui .portal #staffDashboard {
+  container-type:inline-size;
+  container-name:bpd-daily-cards;
+}
+html.bpd-reference-ui .portal #staffDashboard > .grid {
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:clamp(10px,0.9vw,16px);
+  width:100%;
+  min-width:0;
+  align-items:stretch;
+}
+html.bpd-reference-ui .portal #staffDashboard > .grid > .module {
+  min-width:0;
+  max-width:100%;
+  height:100%;
+}
+/* Always retain even rows, without creating narrow unreadable cards. */
+@container bpd-daily-cards (max-width:1449px) {
+  html.bpd-reference-ui .portal #staffDashboard > .grid {
+    grid-template-columns:repeat(5,minmax(0,1fr));
+  }
+}
+@container bpd-daily-cards (max-width:1199px) {
+  html.bpd-reference-ui .portal #staffDashboard > .grid {
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+}
+@container bpd-daily-cards (max-width:959px) {
+  html.bpd-reference-ui .portal #staffDashboard > .grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@container bpd-daily-cards (max-width:719px) {
+  html.bpd-reference-ui .portal #staffDashboard > .grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@container bpd-daily-cards (max-width:479px) {
+  html.bpd-reference-ui .portal #staffDashboard > .grid {
+    grid-template-columns:minmax(0,1fr);
+  }
+}
