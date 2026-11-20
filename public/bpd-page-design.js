@@ -62,7 +62,7 @@
  }
  let published={},previewState=null,frames=[],revision=0,scheduled=false;
  let sheet=null;
- const candidate='.card,.panel,.tile,.widget,.box,section,article,.sheet,.stat-card,.info-card,.dossier-block,.form-section,[data-bpd-design-frame]';
+ const candidate='.card,.panel,.tile,.widget,.box,section,article,.sheet,.stat-card,.info-card,.dossier-block,.form-section,.grid,.form-grid,.card-grid,.tile-grid,.stats-grid,[data-bpd-design-frame]';
  function discover(){
   const root=document.querySelector('main')||document.querySelector('.surface')||document.body;
   if(!root)return [];
@@ -134,7 +134,8 @@
   if(style.buttonFontSize!==undefined)b.push('font-size:'+style.buttonFontSize+'px !important');
   if(b.length)lines.push(button+'{'+b.join(';')+'}');
   if(style.columns||style.minColumnWidth){
-   const grids=target+' :is(.grid,.form-grid,.cards,.tiles,.card-grid,.tile-grid,.stats-grid,[data-bpd-responsive-grid])';
+   const kinds=':is(.grid,.form-grid,.cards,.tiles,.card-grid,.tile-grid,.stats-grid,[data-bpd-responsive-grid])';
+   const grids=target+kinds+','+target+' '+kinds;
    const min=style.minColumnWidth||260;
    const value=style.columns&&style.columns!=='auto'?
     'repeat('+style.columns+',minmax(0,1fr))':
