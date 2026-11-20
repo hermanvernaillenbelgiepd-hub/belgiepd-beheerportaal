@@ -14,7 +14,10 @@ const officer={uid:'discord:'+id,discordId:id,role:'officierenkader',
  departments:['politie'],departmentRoles:{politie:'officierenkader'},
  portalTechnicalMode:false};
 const settings={themeDefault:'dark',accent:'teal',fontFamily:'system',
- fontScale:110,density:'comfortable'};
+ fontScale:110,density:'comfortable',
+ cardRadius:'rounded',buttonRadius:'pill',fieldRadius:'square',shadowDepth:'medium',
+ titleSize:'large',lineHeight:'relaxed',sectionGap:'wide',navDensity:'comfortable',
+ linkStyle:'underline',focusStyle:'strong'};
 const proposal={...settings,expectedRevision:0,reason:'Verbetering van toegankelijkheid'};
 
 test('centrale vormgeving heeft veilige standaardwaarden en filtert corruptie',()=>{
@@ -49,6 +52,7 @@ test('uitsluitend vooraf toegelaten stijltokens, geen CSS-injectie of onverwacht
   {...proposal,fontScale:125},
   {...proposal,fontScale:91},
   {...proposal,density:'unknown'},
+  {...proposal,cardRadius:'url(evil)'},
   {...proposal,expectedRevision:-1},
   {...proposal,reason:'kort'},
   {...proposal,reason:'Toegestaan <script>alert(1)</script>'},
@@ -64,7 +68,7 @@ test('public API bevat uitsluitend configuratie; writes met serverrecht, audit e
  assert.match(routes,/app\.get\('\/api\/visual-design\/public',async\(_req,res\)=>/);
  assert.match(routes,/app\.get\('\/api\/visual-design\/admin',requireUser/);
  assert.match(routes,/app\.put\('\/api\/visual-design\/admin',requireUser/);
- assert.match(routes,/if\(!canManageVisualDesign\(req\.bpd\)\)/);
+ assert.match(routes,/if\(!await canEditVisualDesign\(dbFactory\(\),req\.bpd\)\)/);
  assert.match(routes,/validateVisualDesignWrite\(req\.body\)/);
  assert.match(routes,/db\.runTransaction\(async tx=>/);
  assert.match(routes,/oldRevision!==input\.expectedRevision/);

@@ -1,10 +1,26 @@
 // Beheercentrum -> Vormgeving. Preview is local until a guarded PUT succeeds.
 // The server revalidates all fields, permissions and the revision.
 export function setupVisualDesignEditor({api,$}){
- const fieldNames=['themeDefault','accent','fontFamily','fontScale','density'];
- const defaults={themeDefault:'light',accent:'blue',fontFamily:'inter',fontScale:100,density:'normal'};
+ const fieldNames=['themeDefault','accent','fontFamily','fontScale','density','cardRadius','buttonRadius','fieldRadius','shadowDepth','titleSize','lineHeight','sectionGap','navDensity','linkStyle','focusStyle'];
+ const defaults={themeDefault:'light',accent:'blue',fontFamily:'inter',fontScale:100,density:'normal',
+cardRadius:'soft',buttonRadius:'soft',fieldRadius:'soft',shadowDepth:'subtle',titleSize:'normal',lineHeight:'normal',sectionGap:'normal',navDensity:'normal',linkStyle:'normal',focusStyle:'normal'};
  let loaded=null,active=false;
  const form=$('visualDesignForm');
+ // This schema is only a UI for server-validated, fixed design tokens.
+ // All option labels and values are predefined; no untrusted HTML is used.
+ const extras={"cardRadius":["Hoeken van kaarten",["square","soft","rounded"],["Recht","Licht afgerond","Sterk afgerond"]],"buttonRadius":["Vorm van knoppen",["square","soft","pill"],["Hoekig","Afgerond","Pilvorm"]],"fieldRadius":["Hoeken van invulvelden",["square","soft","rounded"],["Hoekig","Afgerond","Sterk afgerond"]],"shadowDepth":["Schaduw op panelen",["none","subtle","medium"],["Geen","Subtiel","Duidelijk"]],"titleSize":["Koptitels",["compact","normal","large"],["Compact","Normaal","Groot"]],"lineHeight":["Tekstregelafstand",["tight","normal","relaxed"],["Compact","Normaal","Ruim"]],"sectionGap":["Afstand tussen panelen",["compact","normal","wide"],["Compact","Normaal","Ruim"]],"navDensity":["Hoogte van zijmenu-items",["compact","normal","comfortable"],["Compact","Normaal","Ruim"]],"linkStyle":["Tekstlinks",["normal","underline","bold"],["Standaard","Onderstreept","Vetgedrukt"]],"focusStyle":["Toetsenbordfocus",["normal","strong"],["Standaard","Extra zichtbaar"]]};
+ const grid=form.querySelector('.form-grid');
+ for(const [key,[title,values,labels]] of Object.entries(extras)){
+  const label=document.createElement('label');label.htmlFor='visual-'+key;
+  label.append(document.createTextNode(title+' '));
+  const select=document.createElement('select');select.id='visual-'+key;
+  for(let i=0;i<values.length;i++){
+   const option=document.createElement('option');
+   option.value=values[i];option.textContent=labels[i];select.append(option);
+  }
+  label.append(select);grid.append(label);
+ }
+
  const status=(message,bad=false)=>{
   $('visualDesignStatus').textContent=message;
   $('visualDesignStatus').classList.toggle('bad',bad);
@@ -28,6 +44,8 @@ export function setupVisualDesignEditor({api,$}){
     (Number($('visual-fontScale').value)*.14)+'px';
   $('visualDesignPreview').style.padding=$('visual-density').value==='comfortable'?
     '20px':$('visual-density').value==='compact'?'10px':'15px';
+  $('visualDesignPreview').style.borderRadius=({square:'2px',soft:'10px',rounded:'18px'})[$('visual-cardRadius').value];
+  $('visualDesignPreview').style.lineHeight=({tight:'1.3',normal:'1.55',relaxed:'1.8'})[$('visual-lineHeight').value];
  }
  function history(rows){
   const root=$('visualDesignHistory');root.replaceChildren();
