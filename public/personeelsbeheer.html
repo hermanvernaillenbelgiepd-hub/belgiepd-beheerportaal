@@ -1468,6 +1468,7 @@ import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol}
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
 import {newestDossierEntries} from '/dossier-entry-order.js';
+import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {effectiveTemporarySanctionStatus} from '/temporary-sanction-state.js';
 import {renderPoliceRosterSeries,POLICE_SERIES_HEADS,POLICE_SERIES_RELIEF} from '/police-roster-series.js';
 import {mountPersonnelGroupedViews} from '/personnel-grouped-ui.js';
@@ -3932,9 +3933,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
   const root=$('sheet'+group[0].toUpperCase()+group.slice(1));
   if(!root)return;
   const entries=Array.isArray(rows)?rows:[];
-  const wasExpanded=root.dataset.expanded==='true';
-  root.replaceChildren();
-  const append=(row)=>{
+  const append=(mount,row)=>{
     if((group==='observations'||group==='formal')&&row.type==='observatie'){
       const {element,content}=createObservationDisclosure({
         title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
@@ -3948,7 +3947,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       attachObservationEditButton(content,row);
       attachAdministrativeCaseCorrection(content,row);
       attachRetireButton(content,row,'cases');
-      root.append(element);
+      mount.append(element);
       return;
     }
     if(group==='notes'||group==='activityPings'){
@@ -3990,7 +3989,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       }
       attachAdministrativeCaseCorrection(item,row);
       attachRetireButton(item,row,'cases');
-      root.append(item);return;
+      mount.append(item);return;
     }
     if(group==='basisNotes'){
       const item=document.createElement('div');item.className='overview-preview general-note-preview';
@@ -4007,7 +4006,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
           (row.registeredBy?.rank?' · '+row.registeredBy.rank:'')+
           (row.registeredBy?.call?' · '+row.registeredBy.call:'')});
       attachRetireButton(item,row,row._dossierSource==='cases'?'cases':'staff');
-      root.append(item);return;
+      mount.append(item);return;
     }
     const cells=toCells(row).map(value=>value===null||value===undefined||value===''?'—':String(value));
     const item=document.createElement('div');item.className='overview-preview';
@@ -4037,27 +4036,10 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         selected.dept+':'+selected.discordId);
     else attachAdministrativeCaseCorrection(item,row);
     attachRetireButton(item,row,group==='leave'?'leave':group==='basisNotes'?'staff':'cases');
-    root.append(item);
+    mount.append(item);
   };
-  if(!entries.length){
-    const note=document.createElement('span');note.className='overview-no-data';
-    note.textContent=empty;root.append(note);return;
-  }
-  const previewCount=group==='leave'?5:3;
-  for(const row of (wasExpanded?entries:entries.slice(0,previewCount)))append(row);
-  if(entries.length>previewCount){
-    const toggle=document.createElement('button');toggle.type='button';
-    toggle.className='sheet-show-more';
-    toggle.textContent=wasExpanded?'Minder tonen':'Toon alle '+entries.length+(limited?'+':'')+' registraties';
-    toggle.onclick=()=>{
-      root.dataset.expanded=wasExpanded?'false':'true';
-      sheetSetRows(group,entries,toCells,empty,limited);
-    };
-    root.append(toggle);
-  }else if(limited){
-    const notice=document.createElement('span');notice.className='overview-no-data';
-    notice.textContent='De bron toont niet alle oudere registraties.';root.append(notice);
-  }
+  return renderRecentDossierEntries(root,entries,append,{
+    empty,limited,noun:'registraties'});
 }
 const sheetWho=row=>row.registeredBy?.name||row.submittedByActor?.name||'Onbekend';
 function makeScoreBadge(score){
