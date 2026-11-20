@@ -63,7 +63,8 @@ import { installLeaveRoutes } from './leave-routes.js';
 import {installPolicePromotionRoutes} from './police-promotion-routes.js';
 import { installUserRoutes } from './user-routes.js';
 import {installManualRoleRoutes} from './manual-role-routes.js';
-import {activeManualCitizenCouncil} from './citizen-dossier-policy.js';
+import {activeManualCitizenCouncil,verifiedCitizenCouncil,verifiedManualCitizenCouncil}
+ from './citizen-dossier-policy.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
@@ -480,6 +481,13 @@ async function requireUser(req,res,next){
     }
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    // Burgerraad lifecycle rights require the same fresh, guild-bound
+    // membership evidence as citizen dossier writes. A saved portal title
+    // or the user's callsign is never sufficient.
+    actor.citizenCouncilVerified=Boolean(
+      verifiedCitizenCouncil(actor,discordMember,process.env.DISCORD_GUILD_ID)||
+      verifiedManualCitizenCouncil(actor,discordMember,process.env.DISCORD_GUILD_ID)
+    );
     // Personnel rank decisions use the independently verified operational
     // Discord role. A member's existing role snapshot can outlive the short
     // privileged-role window while the portal login remains active. Refresh
