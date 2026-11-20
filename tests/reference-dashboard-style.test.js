@@ -103,3 +103,24 @@ test('widescreen startdashboard has no 1600px or 1390px width cap',()=>{
  assert.match(css,/html\.bpd-reference-ui body:has\(#memberDashboard:not\(\[hidden\]\)\)/);
  assert.match(css,/width:100%;\s*max-width:none;\s*min-width:0;/);
 });
+
+test('daily staff module cards are 6 + 6 on widescreen, and adapt by available content width',()=>{
+ const css=read('public/bpd-reference-dashboard.css');
+ const home=read('public/index.html');
+ const start=home.indexOf('<div id="staffDashboard"');
+ const firstGrid=home.indexOf('<div class="grid">',start);
+ const end=home.indexOf('</div>',firstGrid);
+ const modules=home.slice(firstGrid,end).match(/<a class="module"/g)||[];
+ assert.match(home,/id="staffDashboard"/);
+ assert.match(css,/container-type:inline-size/);
+ assert.match(css,/container-name:bpd-daily-cards/);
+ assert.match(css,/html\.bpd-reference-ui \.portal #staffDashboard > \.grid \{/);
+ assert.match(css,/grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+ for(const [bound,columns] of [[1449,5],[1199,4],[959,3],[719,2]])
+   assert.match(css,new RegExp('@container bpd-daily-cards \\(max-width:'+bound+'px\\) \\{[\\s\\S]*?grid-template-columns:repeat\\('+columns+',minmax\\(0,1fr\\)\\)'));
+ assert.match(css,/@container bpd-daily-cards \(max-width:479px\)/);
+ assert.match(css,/grid-template-columns:minmax\(0,1fr\)/);
+ // Admin section remains independent; this selector only targets direct children.
+ assert.doesNotMatch(css,/\.portal #adminRights > \.grid\s*\{\s*grid-template-columns:repeat\(6/);
+ assert.match(home,/id="adminRights"/);
+});
