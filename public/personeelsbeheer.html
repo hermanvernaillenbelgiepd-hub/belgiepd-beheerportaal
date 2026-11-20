@@ -5764,8 +5764,7 @@ function renderReceived(group,rows,limited){
   if(!root)return;
   root.replaceChildren();
   if(rows===null){root.textContent='Je hebt geen inzagerecht voor deze rubriek.';return}
-  if(!rows?.length){root.textContent='Geen ontvangen registraties voor deze medewerker.';return}
-  for(const entry of rows){
+  renderRecentDossierEntries(root,rows,(mount,entry)=>{
     const div=document.createElement('article');div.className='received-record';
     const title=document.createElement('strong');
     const labels={observatie:'Observatie',sanctie:'Sanctie',notitie:'Personeelsnotitie',
@@ -5784,6 +5783,8 @@ function renderReceived(group,rows,limited){
     const description=document.createElement('p');description.className='received-details';
     description.textContent=entry.details||'Geen omschrijving opgegeven.';
     div.append(title,meta,description);
+    attachExpandableDossierText(div,description,description.textContent,{
+      label:'Lees volledige registratie'});
     if(entry.type==='sanctie'){
       const detail=document.createElement('small');
       detail.textContent='Ernst: '+(entry.severity??'—')+'/10'+
@@ -5794,13 +5795,9 @@ function renderReceived(group,rows,limited){
       const badge=document.createElement('span');badge.className='received-test';
       badge.textContent='TEST – uitgesloten van weekrapport';div.append(badge);
     }
-    root.append(div);
-  }
-  if(limited){
-    const note=document.createElement('p');note.className='subtle';
-    note.textContent='Alleen de recentste registraties zijn geladen. Oudere registraties blijven bewaard.';
-    root.append(note);
-  }
+    mount.append(div);
+  },{empty:'Geen ontvangen registraties voor deze medewerker.',
+    limited,noun:'ontvangen registraties'});
 }
 async function loadReceivedRegistrations(person){
   const key=person.dept+':'+person.discordId,serial=++receivedRequestSerial;
