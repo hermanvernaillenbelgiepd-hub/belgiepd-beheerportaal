@@ -48,6 +48,15 @@
     design.dataset.bpdVisualDesign='1';
     document.head.append(design);
   }
+  // Reference dashboard skin on TEST. The shared appearance and per-page
+  // editors still apply later and can override these visual defaults.
+  document.documentElement.classList.add('bpd-reference-ui');
+  if(!document.getElementById('bpdReferenceDashboardStyles')){
+    const reference=document.createElement('link');
+    reference.id='bpdReferenceDashboardStyles';reference.rel='stylesheet';
+    reference.href='/bpd-reference-dashboard.css';
+    document.head.append(reference);
+  }
   // Page-specific, validated visual layer; existing page role checks still apply.
   if(!document.querySelector('script[data-bpd-page-design]')){
     const pageStyle=document.createElement('script');
@@ -147,10 +156,67 @@
     }
     return link;
   }
+  // Search exposes ONLY module links already provided by the verified
+  // role-aware navigation, with a fallback to the existing protected roster.
+  // It never performs a privileged personnel API call.
+  function makeReferenceSearch(source){
+    const form=document.createElement('form');
+    form.className='bpd-ref-search';form.role='search';
+    form.setAttribute('aria-label','Portaalmodules en personeelslijst zoeken');
+    const input=document.createElement('input');
+    input.type='search';input.autocomplete='off';input.maxLength=110;
+    input.placeholder='Zoek module, naam of roepnummer';
+    input.setAttribute('aria-label','Zoek module, personeelslid of roepnummer');
+    const action=document.createElement('button');
+    action.type='submit';action.textContent='Zoek';
+    form.append(input,action);
+    form.addEventListener('submit',event=>{
+      event.preventDefault();
+      const q=input.value.trim();
+      if(!q)return;
+      const value=q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl');
+      const allowed=source().filter(item=>item.href&&item.label);
+      const exact=allowed.find(item=>
+        item.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .toLocaleLowerCase('nl')===value);
+      const partial=allowed.find(item=>
+        item.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .toLocaleLowerCase('nl').includes(value));
+      if(exact||partial){
+        window.location.assign((exact||partial).href);
+        return;
+      }
+      // Backend on /personeelslijst.html still independently verifies access.
+      window.location.assign('/personeelslijst.html?zoek='+encodeURIComponent(q));
+    });
+    return form;
+  }
   function renderQuick(items,bar){
     bar.replaceChildren();
-    for(const item of items)bar.append(linkFor(item,true));
-    bar.append(makeThemeToggle());
+    const current=items.find(item=>currentPage(item.href))||NAV.home;
+    const breadcrumb=document.createElement('span');
+    breadcrumb.className='bpd-ref-breadcrumb';
+    breadcrumb.append(document.createTextNode('BelgiëPD / '));
+    const strong=document.createElement('strong');
+    strong.textContent=current.label;
+    breadcrumb.append(strong);
+    const search=makeReferenceSearch(()=>items);
+    const shortcuts=document.createElement('details');
+    shortcuts.className='bpd-ref-shortcuts';
+    const summary=document.createElement('summary');
+    summary.textContent='Modules';
+    const menu=document.createElement('div');
+    menu.className='bpd-ref-shortcuts-menu';
+    menu.append(...items.filter(item=>item.href!==current.href)
+      .map(item=>linkFor(item,true)));
+    shortcuts.append(summary,menu);
+    const profile=items.find(item=>item.href===NAV.profile.href);
+    bar.append(breadcrumb,search,shortcuts,makeThemeToggle());
+    if(profile){
+      const link=linkFor(profile,true);
+      link.classList.add('bpd-ref-profile');
+      bar.append(link);
+    }
   }
   function makeQuick(){
     const nav=document.createElement('nav');
@@ -186,6 +252,12 @@
     const theme=makeThemeToggle();
     theme.id='homeThemeToggle';
     actions.prepend(theme);
+    const search=makeReferenceSearch(()=>[...sidebar.querySelectorAll('nav:not([hidden]) a[href]')]
+      .filter(a=>!a.closest('[hidden]')&&a.offsetParent!==null)
+      .map(a=>({href:a.getAttribute('href'),label:String(a.textContent||'').trim()
+        .replace(/^[^\\p{L}\\p{N}]+/u,'').trim()})));
+    search.classList.add('bpd-ref-home-search');
+    actions.prepend(search);
     const portal=sidebar.closest('.portal');
     sidebar.id='homeRoleSidebar';
     const toggle=document.createElement('button');
