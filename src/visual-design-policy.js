@@ -20,7 +20,8 @@ export function visualDesignFrom(raw){
  if(!VISUAL_THEMES.includes(result.themeDefault))result.themeDefault=DEFAULT_VISUAL_DESIGN.themeDefault;
  if(!VISUAL_ACCENTS.includes(result.accent))result.accent=DEFAULT_VISUAL_DESIGN.accent;
  if(!VISUAL_FONTS.includes(result.fontFamily))result.fontFamily=DEFAULT_VISUAL_DESIGN.fontFamily;
- if(!Number.isSafeInteger(result.fontScale)||result.fontScale<90||result.fontScale>120)
+ if(!Number.isSafeInteger(result.fontScale)||result.fontScale<90||result.fontScale>120||
+   result.fontScale%5!==0)
    result.fontScale=DEFAULT_VISUAL_DESIGN.fontScale;
  if(!VISUAL_DENSITIES.includes(result.density))result.density=DEFAULT_VISUAL_DESIGN.density;
  return result;
@@ -39,7 +40,8 @@ export function validateVisualDesignWrite(raw){
    !VISUAL_ACCENTS.includes(raw.accent)||
    !VISUAL_FONTS.includes(raw.fontFamily)||
    !VISUAL_DENSITIES.includes(raw.density)||
-   !Number.isSafeInteger(raw.fontScale)||raw.fontScale<90||raw.fontScale>120)
+   !Number.isSafeInteger(raw.fontScale)||raw.fontScale<90||raw.fontScale>120||
+   raw.fontScale%5!==0)
    throw Object.assign(Error('Kies toegelaten kleuren, lettertype en tekstgrootte (90–120%)'),
      {status:400});
  if(!Number.isSafeInteger(raw.expectedRevision)||raw.expectedRevision<0)
