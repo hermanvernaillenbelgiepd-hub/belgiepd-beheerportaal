@@ -1,0 +1,387 @@
+/* BelgiëPD design study — Reference dashboard, TEST only
+ * Single scoped layer for the three supplied images. Presentation only:
+ * no changes to service colors, ranks, scores, operational status or access.
+ * Appearance still honors the signed-in user's light/dark preference and
+ * the per-page visual editor (which is loaded after this stylesheet). */
+html.bpd-reference-ui {
+  --ref-bg:#0b1120;
+  --ref-sidebar:#101728;
+  --ref-header:#0f1729;
+  --ref-card:#151d31;
+  --ref-card-hover:#1b2743;
+  --ref-line:#26324c;
+  --ref-line-strong:#334463;
+  --ref-ink:#ecf2ff;
+  --ref-muted:#94a8cb;
+  --ref-accent:#537af0;
+  --ref-accent-soft:#1d3058;
+  --ref-input:#10182c;
+  --ref-radius:13px;
+  --ref-gap:16px;
+  --ref-padding:17px;
+}
+html.bpd-reference-ui[data-bpd-theme="light"] {
+  --ref-bg:#f4f7fc;
+  --ref-sidebar:#172443;
+  --ref-header:#fff;
+  --ref-card:#fff;
+  --ref-card-hover:#edf3ff;
+  --ref-line:#d9e3f0;
+  --ref-line-strong:#bfcbdf;
+  --ref-ink:#172b49;
+  --ref-muted:#586d8c;
+  --ref-accent:#3865dc;
+  --ref-accent-soft:#e5edff;
+  --ref-input:#f7faff;
+}
+html.bpd-reference-ui body {
+  background:var(--ref-bg);
+  color:var(--ref-ink);
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  letter-spacing:-.005em;
+}
+html.bpd-reference-ui body,
+html.bpd-reference-ui main,
+html.bpd-reference-ui .surface {min-width:0}
+html.bpd-reference-ui :is(h1,h2,h3) {
+  letter-spacing:-.025em;
+}
+html.bpd-reference-ui a:focus-visible,
+html.bpd-reference-ui button:focus-visible,
+html.bpd-reference-ui input:focus-visible,
+html.bpd-reference-ui select:focus-visible {
+  outline:2px solid #82a5ff;
+  outline-offset:2px;
+}
+/* Reusable shell (internal pages). Navigation content remains role-projected. */
+html.bpd-reference-ui #bpdSidebar {
+  background:var(--ref-sidebar);
+  border-right:1px solid var(--ref-line);
+  box-shadow:none;
+  width:244px;
+  padding:18px 10px 14px;
+  gap:19px;
+}
+html.bpd-reference-ui body.bpd-shell {--bpd-shell-width:244px}
+html.bpd-reference-ui #bpdSidebar .bpd-brand {
+  padding:4px 8px 14px;
+  border-bottom:1px solid var(--ref-line);
+  margin-bottom:3px;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-brand-mark {
+  width:40px;height:40px;border-radius:12px;
+  background:#202f53;border:1px solid #2c4167;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-brand-text strong {
+  color:#f3f6ff;font-size:15px;letter-spacing:-.025em;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-brand-text small {
+  color:#92aadb;font-size:10px;letter-spacing:0;text-transform:none;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-side-links {gap:3px}
+html.bpd-reference-ui #bpdSidebar .bpd-side-links a {
+  min-height:38px;padding:8px 12px;border-radius:8px;
+  color:#b7c7e6;font-size:12.5px;font-weight:550;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-side-links a:hover {
+  background:#1d2a47;color:#fff;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-side-links a[aria-current="page"] {
+  background:#203358;color:#fff;font-weight:750;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-side-icon {color:#b0bfdb}
+html.bpd-reference-ui #bpdSidebar .bpd-side-footer {
+  border-color:#273657;color:#8499bb;
+}
+html.bpd-reference-ui body.bpd-shell > header {
+  min-height:64px;
+  background:var(--ref-header)!important;
+  border-bottom:1px solid var(--ref-line)!important;
+  color:var(--ref-ink)!important;
+  padding:11px clamp(16px,2.2vw,30px)!important;
+  gap:14px;
+}
+html.bpd-reference-ui body.bpd-shell > header :is(strong,h1) {color:var(--ref-ink)}
+html.bpd-reference-ui body.bpd-shell > header a {color:var(--ref-muted)}
+html.bpd-reference-ui body.bpd-shell > main {
+  padding:24px clamp(14px,2.2vw,32px) 56px;
+  max-width:1740px;
+  margin-inline:auto;
+}
+html.bpd-reference-ui body.bpd-shell > main > h1,
+html.bpd-reference-ui body.bpd-shell > main > .personnel-overview h1 {
+  font-size:clamp(24px,2.2vw,31px);
+  color:var(--ref-ink);
+  line-height:1.2;
+}
+html.bpd-reference-ui #bpdQuicknav {
+  background:var(--ref-header);
+  border-bottom:1px solid var(--ref-line);
+  color:var(--ref-muted);
+  min-height:43px;
+}
+html.bpd-reference-ui #bpdQuicknav a {
+  color:var(--ref-muted);border-radius:7px;
+}
+html.bpd-reference-ui #bpdQuicknav a:hover,
+html.bpd-reference-ui #bpdQuicknav a[aria-current="page"] {
+  background:var(--ref-accent-soft);color:var(--ref-ink);
+}
+/* Useful navigation search for a real, authorized module, never fake personnel data. */
+html.bpd-reference-ui .bpd-ref-search {
+  display:flex;gap:7px;align-items:center;min-width:180px;
+  max-width:380px;flex:1 1 220px;position:relative;
+}
+html.bpd-reference-ui .bpd-ref-search input {
+  width:100%;height:36px;min-height:36px;min-width:0;
+  border:1px solid var(--ref-line-strong)!important;
+  border-radius:9px;padding:7px 12px!important;
+  font:500 12px/1.35 Inter,system-ui,Arial,sans-serif;
+  color:var(--ref-ink)!important;background:var(--ref-input)!important;
+}
+html.bpd-reference-ui .bpd-ref-search input::placeholder {
+  color:var(--ref-muted);opacity:1;
+}
+html.bpd-reference-ui .bpd-ref-search button {
+  height:35px;padding:7px 11px;
+  background:var(--ref-accent-soft);color:var(--ref-ink);
+  border:1px solid var(--ref-line-strong);border-radius:8px;font-size:12px;
+}
+html.bpd-reference-ui .bpd-ref-search-hint {
+  display:block;color:var(--ref-muted);font-size:11px;
+}
+html.bpd-reference-ui .bpd-ref-breadcrumb {
+  color:var(--ref-muted);white-space:nowrap;
+  font:600 12px/1.3 Inter,system-ui,Arial,sans-serif;
+  padding-right:8px;
+}
+html.bpd-reference-ui .bpd-ref-breadcrumb strong {color:var(--ref-ink)}
+/* Shared cards and form styling — keep colored semantic states untouched. */
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(.card,.panel,.counter,.stat,.tile,.dossier-sheet,.citizen-sheet) {
+  background-color:var(--ref-card);
+  border-color:var(--ref-line);
+  border-radius:var(--ref-radius);
+  box-shadow:none;
+}
+html.bpd-reference-ui[data-bpd-theme="light"] body.bpd-shell main
+ :is(.card,.panel,.counter,.tile) {
+  border-radius:var(--ref-radius);
+  box-shadow:0 5px 18px #1a31500a;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(h1,h2,h3,h4,legend) {color:var(--ref-ink)}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(p,.muted,.subtle,small,.caption) {color:var(--ref-muted)}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+  background:var(--ref-input);border:1px solid var(--ref-line-strong);
+  border-radius:8px;color:var(--ref-ink);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(input:not([type="checkbox"]):not([type="radio"]),textarea)::placeholder {
+  color:var(--ref-muted);opacity:1;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ button:not(.danger):not(.critical):not([data-operational]):not(.bpd-theme-toggle) {
+  border-radius:8px;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ button.alt {background:#1d2d4b;border-color:var(--ref-line-strong);color:#dbe7ff}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(.grid,.form-grid,.cards,.tiles,.stats-grid) {gap:var(--ref-gap)}
+html.bpd-reference-ui[data-bpd-theme="dark"] body.bpd-shell main
+ :is(.card,.panel) {overflow-wrap:break-word}
+/* Homepage: existing module visibility and links are untouched. */
+html.bpd-reference-ui .portal {grid-template-columns:244px minmax(0,1fr)}
+html.bpd-reference-ui .portal>aside {
+  background:var(--ref-sidebar);
+  color:#b8c8e6;
+  border-right:1px solid var(--ref-line);
+  padding:18px 12px;gap:16px;
+}
+html.bpd-reference-ui .portal .brand {
+  border-bottom:1px solid var(--ref-line);
+  margin:0;padding:2px 8px 17px;
+}
+html.bpd-reference-ui .portal .brand-icon {
+  background:#23365e;box-shadow:none;border-color:#334971;border-radius:11px;
+}
+html.bpd-reference-ui .portal .brand small {
+  color:#9bb5e7;letter-spacing:0;text-transform:none;font-size:10px;
+}
+html.bpd-reference-ui .portal>aside nav a {
+  border-radius:8px;min-height:38px;color:#b8c8e6;
+  background:transparent;font-size:12.5px;font-weight:550;
+}
+html.bpd-reference-ui .portal>aside nav a:hover {background:#1d2a47}
+html.bpd-reference-ui .portal>aside nav a[aria-current="page"] {
+  background:#203358;color:white;font-weight:750;
+}
+html.bpd-reference-ui .portal .topbar {
+  background:var(--ref-header);min-height:64px;
+  border-bottom:1px solid var(--ref-line);
+  padding:12px clamp(16px,2.2vw,32px);
+  gap:12px;
+}
+html.bpd-reference-ui .portal .topbar .path {color:var(--ref-muted)}
+html.bpd-reference-ui .portal main {
+  max-width:1720px;padding:25px clamp(18px,2.1vw,34px) 55px;
+  background:var(--ref-bg);
+}
+html.bpd-reference-ui .portal .eyebrow {
+  color:#8daeff;font-size:11px;letter-spacing:.08em;
+}
+html.bpd-reference-ui .portal h1 {color:var(--ref-ink)}
+html.bpd-reference-ui .portal .lead {color:var(--ref-muted);max-width:75ch}
+html.bpd-reference-ui .portal .hero {
+  border-bottom:none;padding-bottom:13px;
+}
+html.bpd-reference-ui .portal .hero-icon {display:none}
+html.bpd-reference-ui .portal .section-title {
+  font-size:16px;color:var(--ref-ink);margin:25px 0 13px;
+}
+html.bpd-reference-ui #staffDashboard .grid {
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));
+  gap:14px;
+}
+html.bpd-reference-ui #staffDashboard .module,
+html.bpd-reference-ui #memberDashboard .module {
+  background:var(--ref-card);
+  border:1px solid var(--ref-line);
+  border-radius:13px;min-height:168px;
+  padding:18px;gap:9px;box-shadow:none;
+  transition:background .15s,border-color .15s;
+}
+html.bpd-reference-ui #staffDashboard .module:hover,
+html.bpd-reference-ui #memberDashboard .module:hover {
+  background:var(--ref-card-hover);border-color:#48659a;
+  transform:none;box-shadow:none;
+}
+html.bpd-reference-ui #staffDashboard .module h3,
+html.bpd-reference-ui #memberDashboard .module h3 {
+  color:var(--ref-ink);font-size:14px;font-weight:750;
+}
+html.bpd-reference-ui #staffDashboard .module p,
+html.bpd-reference-ui #memberDashboard .module p {
+  color:var(--ref-muted);font-size:12px;line-height:1.55;
+}
+html.bpd-reference-ui #staffDashboard .module .ico {
+  width:38px;height:38px;border-radius:11px;background:#233660;
+  color:#97b9ff;font-size:19px;
+}
+html.bpd-reference-ui #staffDashboard .module .open {color:#8fb2ff}
+html.bpd-reference-ui .portal .bottom a {
+  background:var(--ref-card);border-color:var(--ref-line);
+  color:var(--ref-ink);border-radius:12px;
+}
+html.bpd-reference-ui .portal .bottom a:hover {background:var(--ref-card-hover)}
+/* Staff roster: preserve the real colgroup, role flags and specializations. */
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-list-panel,
+html.bpd-reference-ui[data-bpd-theme="dark"] main #personnelPublicView {
+  background:var(--ref-bg);border-color:var(--ref-line);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-holder,
+html.bpd-reference-ui[data-bpd-theme="dark"] main .tablewrap,
+html.bpd-reference-ui[data-bpd-theme="dark"] main .scroller {
+  border:1px solid var(--ref-line);border-radius:12px;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table th,
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table thead th {
+  background:#101a2d;color:#9bb1d5;border-color:var(--ref-line);
+  text-transform:uppercase;letter-spacing:.02em;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table tbody td {
+  border-color:#27354e;background:transparent;color:var(--ref-ink);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table tbody tr:nth-child(even) {
+  background:#101a2e;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table tbody tr:hover {
+  background:#1b2a46;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table .police-kader-divider {
+  background:#172239;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .staff-roster-table .police-kader-divider td {
+  border-color:#344663;
+}
+/* Dossier layout: identity header, tab strip, metrics and two-column groups. */
+html.bpd-reference-ui[data-bpd-theme="dark"] main #panel {
+  background:transparent;border:0;box-shadow:none;
+  padding:0;margin:10px auto;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main :is(.sheet-identity,.dossier-header,.dossier-identity) {
+  background:var(--ref-card);border-color:var(--ref-line);
+  border-radius:13px;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main :is(.dossier-tabbar,.personnel-tabs,.tabs) {
+  border-color:var(--ref-line);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .dossier-tabbar button {
+  background:transparent;color:var(--ref-muted);border-color:transparent;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main .dossier-tabbar button[aria-selected="true"] {
+  color:var(--ref-ink);border-bottom-color:var(--ref-accent);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main
+ :is(.dossier-pane,.landscape-cell,.dossier-right-column>.landscape-cell) {
+  border-color:var(--ref-line);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main
+ :is(.dossier-summary,.dossier-stats,.profile-stats) > * {
+  border-radius:11px;
+}
+/* Activity and leave: neutral surfaces, operational colors remain semantic. */
+html.bpd-reference-ui[data-bpd-theme="dark"] main
+ :is(.counts .counter,.counter,.activity-card,.training-card,.leave-card,.report-card) {
+  background:var(--ref-card);border:1px solid var(--ref-line);border-radius:12px;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main
+ :is(.tablewrap,.scroller) table th {
+  background:#19253b;color:#a9bde0;border-color:var(--ref-line);
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] main
+ :is(.tablewrap,.scroller) table td {border-color:var(--ref-line)}
+/* Layout adapts to cards, not by shrinking type to illegibility. Real roster
+ * tables remain horizontally scrollable with their sticky headings. */
+@media (min-width:1250px) and (max-width:1480px) {
+  html.bpd-reference-ui body.bpd-shell {padding-left:244px}
+  html.bpd-reference-ui #bpdSidebar {transform:none;box-shadow:none}
+  html.bpd-reference-ui #bpdMenuToggle {display:none}
+  html.bpd-reference-ui body.bpd-shell > header {padding-left:clamp(16px,2.2vw,30px)!important}
+  html.bpd-reference-ui body.bpd-shell.bpd-menu-open::before {display:none}
+  html.bpd-reference-ui .portal {display:grid}
+  html.bpd-reference-ui .portal>aside {position:relative;display:flex;flex-direction:column}
+  html.bpd-reference-ui .portal>aside nav {display:grid;overflow:visible;flex-direction:column}
+}
+@media (max-width:1249px) {
+  html.bpd-reference-ui body.bpd-shell {padding-left:0}
+  html.bpd-reference-ui #bpdSidebar {transform:translateX(-105%);}
+  html.bpd-reference-ui body.bpd-shell.bpd-menu-open #bpdSidebar{transform:translateX(0)}
+  html.bpd-reference-ui #bpdMenuToggle{display:inline-flex}
+  html.bpd-reference-ui body.bpd-shell > header {padding-left:54px!important}
+}
+@media (max-width:1080px) {
+  html.bpd-reference-ui .portal{display:block}
+  html.bpd-reference-ui .portal>aside {position:relative;display:flex;flex-wrap:wrap}
+  html.bpd-reference-ui .portal>aside nav {display:flex;overflow-x:auto}
+  html.bpd-reference-ui #staffDashboard .grid {
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));
+  }
+}
+@media (max-width:640px) {
+  html.bpd-reference-ui .portal main,
+  html.bpd-reference-ui body.bpd-shell > main {padding:15px 12px 38px}
+  html.bpd-reference-ui #staffDashboard .grid {grid-template-columns:1fr}
+  html.bpd-reference-ui #staffDashboard .module{min-height:130px}
+  html.bpd-reference-ui .bpd-ref-search{max-width:none;width:100%}
+  html.bpd-reference-ui #bpdQuicknav{flex-wrap:wrap}
+  html.bpd-reference-ui .portal .topbar{flex-wrap:wrap;min-height:60px}
+  html.bpd-reference-ui .bpd-ref-breadcrumb{font-size:11px}
+}
+@media (prefers-reduced-motion: reduce){
+ html.bpd-reference-ui #staffDashboard .module {transition:none}
+}
+/* Excluded from cosmetic refactoring: TO intervention surfaces, radio,
+ * colored series/rank plates, specialization patch assets and all dialogs. */
