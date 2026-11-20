@@ -1,4 +1,5 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {discordBotToken} from './discord-bot-refresh.js';
 import {brusselsEventDate} from './personnel-event-date.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
 import {overlayVerifiedCitizenRankDisplay} from './burger-organogram-projection.js';
@@ -672,13 +673,19 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
       if(matches.length!==1)throw userError(409,'Personeelsfiche is niet eenduidig');
       const subject=matches[0];
-      if(!canChangePoliceGrade(req.bpd,subject))
-        throw userError(
-          req.bpd.policeRankVerificationStatus==='bot_unavailable'?503:403,
-          req.bpd.policeRankVerificationStatus==='bot_unavailable'?
-          'Discord-rolcontrole is tijdelijk niet beschikbaar. De promotie is niet opgeslagen; probeer opnieuw wanneer de Discord-bot bereikbaar is.':
-          'Geen actueel geverifieerde Politie-kaderbevoegdheid. Controleer je Police Officierenkader- of Korpsleidingrol via Mijn Discord.'
-        );
+      if(!canChangePoliceGrade(req.bpd,subject)){
+        // The bot's absence is a configuration error, NOT evidence that
+        // the member lacks a Police cadre. The signed Discord OAuth login
+        // is an independent, fresh guild-role proof and remains a valid way
+        // to authorize a personnel action while bot settings are repaired.
+        const unavailable=req.bpd.policeRankVerificationStatus==='bot_unavailable';
+        const botMissing=unavailable&&!discordBotToken(process.env);
+        throw userError(unavailable?503:403,botMissing?
+          'MAIN: Discord-bot-token ontbreekt of is ongeldig in Render. Er is niets opgeslagen. Stel BPD_DISCORD_BOT_TOKEN veilig in bij de Render-omgevingsvariabelen of verifieer je eigen Discord-account opnieuw via Aanmelden met Discord.':
+          unavailable?
+          'De Discord-bot kon jouw rol momenteel niet controleren. Er is niets opgeslagen. Verifieer je eigen Discord-account opnieuw via Aanmelden met Discord of controleer de Discord-botverbinding.':
+          'Geen actueel geverifieerde Politie-kaderbevoegdheid. Controleer je eigen Officierenkader- of Korpsleidingrol en meld je zo nodig opnieuw aan met Discord.');
+      }
       if(!allowedPoliceGradeChoices(req.bpd).includes(proposal.newRank))
         throw userError(403,'Deze nieuwe rang valt buiten jouw kaderbevoegdheid');
       if(proposal.expectedRank!==subject.rank)
