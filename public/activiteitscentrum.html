@@ -458,6 +458,11 @@ $('cadreDept').onchange=loadCadre;
 $('cadreDays').onchange=loadCadre;
 $('cadreSearch').oninput=drawCadre;
 $('cadreRefresh').onclick=loadCadre;
+// Hercontroleer de servermachtigingen als een beheerder terugkeert na
+// promotie, degradatie of gewijzigde zichtbaarheid.
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&auth?.currentUser)void loadCadreConfig();
+});
 for(const control of ['department','filter','search'])$(control).addEventListener('input',render);
 $('refresh').addEventListener('click',load);
 (async()=>{
