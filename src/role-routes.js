@@ -538,11 +538,12 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       if(!subject)return res.status(404).json({error:'Geen eenduidig personeelslid binnen deze hulpdienst'});
       if(!mayAccessSubject(actor,subject,await verifiedSubjects([subject])))
         return res.status(403).json({error:'Dit dossier is afgeschermd'});
+      data=await resolveLessonForRecord(data);
       const record=db().collection('bpd_training').doc(`${data.department}_${data.subjectDiscordId}`).collection('records').doc();
       await record.create({...data,registeredByDiscordId:actor.discordId,registeredByProvider:actor.provider,
         status:'geregistreerd',cmNotified:false,rosterStatus:'nog_niet_beoordeeld',createdAt:FieldValue.serverTimestamp()});
       res.status(201).json({saved:true,id:record.id,discordRoleUpdated:false,googleSheetsUpdated:false});
-    }catch(e){error(res,e)}
+    }catch(e){if(e.status===400)return res.status(400).json({error:e.message});error(res,e)}
   });
   // Editing always preserves subject, department, review authority and the audit trail.
   app.patch('/api/training/:department/:discordId/:recordId',resolveActor,guardTrainingSubject,async(req,res)=>{
