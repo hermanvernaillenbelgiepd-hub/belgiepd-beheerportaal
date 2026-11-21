@@ -752,3 +752,88 @@ body.dossier-onepage #staffActivityPingField label {
     grid-template-columns:minmax(0,1fr)!important;
   }
 }
+
+/* Dossieroverzicht — consistente kaarten en echte responsieve leesvolgorde.
+   De vier rubrieken uit de vroegere rechterkolom worden gelijkwaardige
+   rasteritems: geen verloren witruimte of samengedrukte opleidingskoppen. */
+body.dossier-onepage .dossier-main-row,
+body.dossier-onepage .dossier-lower-row {
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px!important;
+  align-items:start;
+  margin-bottom:12px!important;
+  padding:0 0 12px!important;
+}
+body.dossier-onepage .dossier-right-column {
+  display:contents!important;
+  grid-column:auto!important;
+}
+body.dossier-onepage .dossier-main-row .landscape-cell,
+body.dossier-onepage .dossier-lower-row .landscape-cell {
+  min-width:0;max-width:100%;
+  border:1px solid #385a7d!important;
+  border-radius:8px!important;
+  background:#122943!important;
+  padding:10px 12px 12px!important;
+  overflow-wrap:anywhere;
+}
+body.dossier-onepage .dossier-right-column>.landscape-cell+.landscape-cell {
+  border-top:1px solid #385a7d!important;
+  padding-top:10px!important;
+}
+body.dossier-onepage .dossier-main-row .landscape-cell>h3,
+body.dossier-onepage .dossier-lower-row .landscape-cell>h3 {
+  display:flex;flex-wrap:wrap;align-items:center;
+  justify-content:space-between;gap:6px 10px;
+  min-width:0;line-height:1.45;
+  padding:2px 0 8px!important;
+}
+body.dossier-onepage .dossier-main-row .landscape-cell :is(.sheet-records,.sheet-specialties),
+body.dossier-onepage .dossier-lower-row .landscape-cell .sheet-records {
+  min-width:0;max-width:100%;
+}
+body.dossier-onepage .dossier-main-row .overview-preview,
+body.dossier-onepage .dossier-lower-row .overview-preview {
+  flex-wrap:wrap;min-width:0;gap:4px 10px;
+}
+body.dossier-onepage .dossier-main-row .overview-preview>*,
+body.dossier-onepage .dossier-lower-row .overview-preview>* {
+  min-width:0;max-width:100%;overflow-wrap:anywhere;
+}
+body.dossier-onepage .dossier-main-row .overview-preview>span,
+body.dossier-onepage .dossier-lower-row .overview-preview>span {
+  flex:1 1 150px;text-align:left;
+}
+body.dossier-onepage .training-overview-links {
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:5px 14px;padding:0 0 10px;
+}
+body.dossier-onepage .training-overview-links .training-register-link {
+  margin:0!important;font-size:11px;
+  white-space:normal;
+}
+body.dossier-onepage .dossier-main-row [data-sheet-tile="training"]>h3>button {
+  flex:0 0 auto;max-width:none!important;white-space:nowrap;
+}
+body.dossier-onepage .dossier-main-row [data-sheet-tile="training"]>h4 {
+  margin:12px 0 8px;padding-top:10px;border-top:1px solid #2e4b69;
+}
+@media(max-width:1280px){
+  body.dossier-onepage .dossier-main-row,
+  body.dossier-onepage .dossier-lower-row {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  body.dossier-onepage .dossier-lower-row>.landscape-cell:last-child {
+    grid-column:1/-1!important;
+  }
+}
+@media(max-width:820px){
+  body.dossier-onepage .dossier-main-row,
+  body.dossier-onepage .dossier-lower-row {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  body.dossier-onepage .dossier-lower-row>.landscape-cell:last-child {
+    grid-column:auto!important;
+  }
+}
