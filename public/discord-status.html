@@ -140,7 +140,7 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 </section>
 <section class="leave-box" id="myLeave" aria-labelledby="leaveHeading">
 <h3 id="leaveHeading">Mijn verlofaanvragen</h3>
-<p class="muted">Eén centrale verlofaanvraag voor al je actieve hulpdiensten. Bekijk hier je aanvraagstatus of dien een nieuwe aanvraag in.</p>
+<p class="muted">Bekijk hier je lopende verlofperiodes en historiek. Nieuwe aanvragen verlopen via één centraal formulier in Verlofbeheer.</p>
 <div id="leaveStatus" class="leave-state" role="status" aria-live="polite">Je verlofaanvragen worden gecontroleerd…</div>
 <form id="leaveForm" hidden>
   <div class="leave-form-grid">
@@ -155,7 +155,7 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
   <summary>Historiek <span id="leaveArchiveCount" class="leave-archive-count">0</span></summary>
   <div id="leaveArchivedRequests" aria-label="Afgehandelde en afgelopen verlofaanvragen"></div>
 </details>
-<p><a href="/verlofbeheer.html">Open het volledige verlofbeheer →</a></p>
+<p><a class="button" href="/verlofbeheer.html">Verlof aanvragen of beheren →</a></p>
 </section>
 <section class="leave-box" id="myHonorable" hidden aria-labelledby="honorableHeading">
 <h3 id="honorableHeading">Aanvraag eervol ontslag · Politie</h3>
@@ -421,7 +421,7 @@ async function loadLeave(){
     if(!Array.isArray(leaves.mine))throw Error('Ongeldig antwoord van verlofbeheer');
     mayWithdrawLeaves=context.writesEnabled===true;
     renderLeaves(leaves.mine);
-    $('leaveForm').hidden=context.writesEnabled!==true;
+    $('leaveForm').hidden=true; // Nieuwe aanvragen uitsluitend via het centrale Verlofbeheer.
     $('leaveStatus').textContent=context.writesEnabled===true?
       'Je lopende verlofperiodes en aanvragen staan hieronder. Afgehandelde aanvragen staan onder Historiek.':
       'Verlof aanvragen is momenteel uitgeschakeld; je kunt je eerdere aanvragen wel bekijken.';

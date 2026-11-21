@@ -1480,6 +1480,7 @@ let personnelManagementRequested=false;
 let personnelGroupView='lijst';
 let personnelGroupSettingsAllowed=false;
 const initialQuery=new URLSearchParams(window.location.search);
+const portalPersonnelSearch=String(initialQuery.get('zoek')||'').trim().slice(0,110);
 const dossierEmbedded=initialQuery.get('embed')==='1';
 const ficheMode=!dossierEmbedded&&initialQuery.get('fiche')==='1';
 if(!dossierEmbedded&&!ficheMode)document.body.classList.add('personnel-ui-redesign');
@@ -1610,6 +1611,14 @@ function sendPersonnelRosterSeries(){
 }
 $('personnelRosterSeries').addEventListener('change',sendPersonnelRosterSeries);
 $('personnelDirectoryFrame').addEventListener('load',sendPersonnelRosterSeries);
+function forwardPersonnelSearch(){
+ if(!portalPersonnelSearch)return;
+ const frame=$('personnelDirectoryFrame');
+ if(frame?.contentWindow)frame.contentWindow.postMessage({
+  type:'bpd-directory-search-filter',query:portalPersonnelSearch
+ },location.origin);
+}
+$('personnelDirectoryFrame').addEventListener('load',forwardPersonnelSearch);
 $('personnelServiceMode').addEventListener('click',()=>{
  personnelServiceDirectoryActive=true;updatePersonnelServiceMode();
 });

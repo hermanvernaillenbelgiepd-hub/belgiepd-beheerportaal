@@ -198,7 +198,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/activiteitscentrum.html">◷ &nbsp; Activiteitscentrum</a>
     <a href="/dossiercentrum.html">▣ &nbsp; Dossiercentrum</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
-    <a href="/rollen-opleidingen.html">🎓 &nbsp; Opleidingscentrum</a>
+    <a href="/opleidingscentrum.html?pane=register">🎓 &nbsp; Opleidingscentrum</a>
     <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
     <a id="staffNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
@@ -212,7 +212,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   <nav id="zoneNav" aria-label="Brandweer Zonecommandant" hidden>
     <a href="/" aria-current="page">⌂ &nbsp; Startpagina</a>
     <a href="/personeelsbeheer.html">👥 &nbsp; Personeelslijst</a>
-    <a href="/personeelsbeheer.html">🚒 &nbsp; Brandweerpersoneel</a>
+    
     <a href="/activiteitscentrum.html">◷ &nbsp; Activiteitscentrum</a>
     <a href="/dossiercentrum.html">📁 &nbsp; Brandweerdossiers</a>
     <a href="/organogram-hierarchie.html">♧ &nbsp; Organogram</a>
@@ -246,6 +246,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a href="/documentencentrum.html">📚 &nbsp; Documentencentrum</a>
     <a href="/opleidingskalender.html">📅 &nbsp; Multidisciplinaire agenda</a>
     <a id="memberNavObservations" href="/registraties.html" hidden>▤ &nbsp; Observaties Basiskader</a>
+    <a href="/sollicitatiecentrum.html">📋 &nbsp; Sollicitatiecentrum</a>
     <a id="memberNavCallsign" href="/vast-roepnummer-aanvragen.html" hidden>🔢 &nbsp; Vast roepnummer aanvragen</a>
     <a id="memberNavLeave" href="/verlofbeheer.html" hidden>📅 &nbsp; Mijn verlof</a>
     <a id="memberNavNotices" href="/meldingen.html" hidden>📬 &nbsp; Meldingen</a>
@@ -271,7 +272,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <a class="module" href="/activiteitscentrum.html"><span class="ico" aria-hidden="true">📊</span><h3>Activiteitscentrum</h3><p>FiveM-activiteit, statusverschillen en opvolging per dienst. Voorlopig alleen-lezen vanuit de activiteitsspreadsheet.</p><span class="open">Open activiteitscentrum →</span></a>
     <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Dossiercentrum</h3><p>Afzonderlijke personeelsdossiers en historiek voor Politie, Brandweer, Ambulance en Depannage.</p><span class="open">Open dossiers →</span></a>
     <a class="module" href="/organogram-hierarchie.html"><span class="ico" aria-hidden="true">🌳</span><h3>Organogram · alle diensten</h3><p>Visuele personeelsstructuur per hulpdienst, met beveiligde inzage en fictieve voorbeelden.</p><span class="open">Bekijk organogram →</span></a>
-    <a class="module" href="/rollen-opleidingen.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum</h3><p>Opleidingen registreren, resultaten opvolgen en opleidingshistoriek bekijken per hulpdienst. Toegang volgens je Discord-rol.</p><span class="open">Open opleidingscentrum →</span></a>
+    <a class="module" href="/opleidingscentrum.html?pane=register"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum</h3><p>Opleidingen registreren, resultaten opvolgen en opleidingshistoriek bekijken per hulpdienst. Toegang volgens je Discord-rol.</p><span class="open">Open opleidingscentrum →</span></a>
     <a class="module" href="/documentencentrum.html"><span class="ico" aria-hidden="true">📚</span><h3>Documentencentrum</h3><p>Lees en presenteer geverifieerde handboeken, ook met tijdelijk roepnummer. Beheerrechten volgens je dienst.</p><span class="open">Open documenten →</span></a>
     <a class="module" href="/registraties.html"><span class="ico" aria-hidden="true">📝</span><h3>Observaties vanuit Basiskader</h3><p>Basiskader observeert alleen lagere politiegraden. Ontvangen observaties zijn uitsluitend voor bevoegd kader en Bestuur.</p><span class="open">Open observaties →</span></a>
     <a class="module" href="/weekrapporten.html"><span class="ico" aria-hidden="true">📋</span><h3>Weekrapporten</h3><p>Dossierregistraties, conceptweekrapporten, controles en opvolging.</p><span class="open">Open weekrapporten →</span></a>
@@ -336,7 +337,7 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <h2 class="section-title">Brandweerleiding en eigen functies</h2>
     <div class="grid" id="zoneModules">
       <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">👥</span><h3>Algemene personeelslijst</h3><p>Alleen-lezen inzage in de algemene personeelslijst; geen politiedossiers.</p><span class="open">Open →</span></a>
-      <a class="module" href="/personeelsbeheer.html"><span class="ico" aria-hidden="true">🚒</span><h3>Personeelslijst Brandweer</h3><p>Beheer personeelsgegevens volgens je geverifieerde ZONE-rechten.</p><span class="open">Open →</span></a>
+      
       <a class="module" href="/dossiercentrum.html"><span class="ico" aria-hidden="true">📁</span><h3>Brandweerdossiers</h3><p>Brandweerdossiers, observaties, notities, sancties en opleidingen.</p><span class="open">Open →</span></a>
       <a class="module" href="/organogram-hierarchie.html"><span class="ico" aria-hidden="true">🌳</span><h3>Organogram · alle diensten</h3><p>Bekijk de boomstructuur per dienst; interne gegevens enkel volgens rechten.</p><span class="open">Bekijk organogram →</span></a>
       <a class="module" href="/opleidingscentrum.html"><span class="ico" aria-hidden="true">🎓</span><h3>Opleidingscentrum Brandweer</h3><p>Opleidingsaanvragen binnen de eigen hulpdienst.</p><span class="open">Open →</span></a>
@@ -371,7 +372,8 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
     <p class="eyebrow">BelgiëPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
     <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account via Mijn profiel om je toegelaten startpagina te openen.</p>
     <div class="grid" style="margin-top:25px"><a class="module" href="/discord-status.html"><span class="ico">👤</span><h3>Mijn profiel en aanmelden</h3><p>Koppel en verifieer je Discord-account.</p><span class="open">Open Mijn profiel →</span></a>
-      <a class="module" href="/organogram-hierarchie.html"><span class="ico">🌳</span><h3>Organogram · alle diensten</h3><p>Bekijk de fictieve voorbeeldstructuur. Echte personeelsgegevens vereisen aanmelding.</p><span class="open">Bekijk organogram →</span></a></div>
+      <a class="module" href="/organogram-hierarchie.html"><span class="ico">🌳</span><h3>Organogram · alle diensten</h3><p>Bekijk de fictieve voorbeeldstructuur. Echte personeelsgegevens vereisen aanmelding.</p><span class="open">Bekijk organogram →</span></a>
+      <a class="module" href="/sollicitatiecentrum.html"><span class="ico">📋</span><h3>Sollicitatiecentrum</h3><p>Bekijk de toekomstige instroomprocedure per hulpdienst. Solliciteren is nog niet geopend.</p><span class="open">Bekijk procedure →</span></a></div>
   </section>
 </main>
 </div></div>
