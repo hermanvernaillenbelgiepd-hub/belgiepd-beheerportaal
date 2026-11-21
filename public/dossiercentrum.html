@@ -55,6 +55,10 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .service-button[data-service="burger"]{--service-accent:#b79cff}
 .service-heading{font-size:16px;margin:9px 0 0;font-weight:800}
 .service-notice{font-size:12px;color:#b8cce7;margin:4px 0 8px}
+.dossier-quick-switch{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 5px;padding:10px 12px;border:1px solid #41648b;border-radius:9px;background:#102943}
+.dossier-quick-switch label{margin:0;font-weight:750;color:#e2efff}
+.dossier-quick-switch select{flex:1 1 300px;width:auto;min-width:220px;max-width:640px}
+@media(max-width:600px){.dossier-quick-switch label,.dossier-quick-switch select{width:100%;min-width:0}}
 .dossier-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:15px 0}
 .dossier-tab{border-color:#57769c;background:#1a3759}
 .dossier-tab[aria-pressed="true"]{background:#3662df;border-color:#80a1ff}
@@ -170,7 +174,11 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <div class="scroller"><table><thead><tr><th>Naam</th><th>Roepnummer</th><th id="dossierFunctionColumn">Graad</th><th>Dienst</th><th>Status</th><th>Discord-ID</th><th>Actie</th></tr></thead><tbody id="rows"></tbody></table></div>
 
 </section>
-<section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><div id="detailService" class="dossier-service-label"></div><p class="muted" id="matchWarning"></p>
+<section class="card" id="detail" hidden><h2 id="detailTitle">Dossier</h2><div id="detailService" class="dossier-service-label"></div>
+<div id="dossierQuickSwitchWrap" class="dossier-quick-switch" hidden>
+<label for="dossierQuickSwitch">Andere collega selecteren</label>
+<select id="dossierQuickSwitch" aria-label="Open een ander toegelaten dossier van dezelfde hulpdienst" disabled></select>
+</div><p class="muted" id="matchWarning"></p>
 <div class="dossier-tabs" role="group" aria-label="Onderdelen van dit dienstdossier"><button type="button" class="dossier-tab" data-dossier-tab="fiche" aria-pressed="true">📋 Personeelsfiche</button><button type="button" class="dossier-tab" data-dossier-tab="historiek" aria-pressed="false">🕘 Diensthistoriek</button></div>
 <section id="dossierFiche"><h3>Personeelsfiche</h3><div id="staff"></div></section>
 <section id="dossierHistoriek" hidden><div class="pager"><h3 style="margin:0">Geregistreerde historiek</h3>
@@ -198,7 +206,7 @@ const dossierDeepLink=new URLSearchParams(location.search);
 const requestedDossierDept=dossierDeepLink.get('dept')||'';
 const requestedDossierSearch=(dossierDeepLink.get('zoek')||'').slice(0,110);
 let applyInitialDossierLink=true;
-let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[];
+let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[],dossierOpenSequence=0;
 function message(text,bad=false){$('message').textContent=text;$('message').classList.toggle('error',bad)}
 function node(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text??'');if(cls)x.className=cls;return x}
 function item(root,key,value){const div=node('div',undefined,'kv');div.append(node('strong',key),node('span',value??'—'));root.append(div)}
@@ -237,7 +245,29 @@ function renderServiceButtons(allowed=[]){
     :'Meld je aan met de juiste dienstrechten om een dossier te openen.';
 }
 function closeDossier(){
+  ++dossierOpenSequence;
   shown=null;timelineEntries=[];$('detail').hidden=true;document.body.classList.remove('dossier-wide');$('inlinePersonnelFrame')?.remove();
+  $('dossierQuickSwitch').replaceChildren();$('dossierQuickSwitch').disabled=true;
+  $('dossierQuickSwitchWrap').hidden=true;
+}
+function updateDossierQuickSwitch(person){
+  // Alleen reeds server-side toegelaten dossiers van dezelfde hulpdienst.
+  // De iframe-pagina controleert de toegang opnieuw bij het openen.
+  const choices=rows.filter(p=>p?.personnel===true&&p.canOpen===true&&p.dept===person.dept);
+  const sorting={
+    politie:'callsign-police',brandweer:'callsign-fire',
+    ambulance:'callsign-ambulance',depannage:'callsign-depannage',burger:'name-asc'
+  };
+  const ordered=sortDossiers(choices,sorting[person.dept]||'name-asc');
+  const select=$('dossierQuickSwitch');
+  select.replaceChildren(...ordered.map(p=>{
+    const entry=node('option',(p.call||'—')+' · '+(p.name||'—'));
+    entry.value=p.dept+':'+p.discordId;
+    return entry;
+  }));
+  select.value=person.dept+':'+person.discordId;
+  select.disabled=ordered.length<2;
+  $('dossierQuickSwitchWrap').hidden=ordered.length===0;
 }
 function synchronizeDossierSort(dept){
   const order=$('sortOrder'),fireOption=order.querySelector('[value="callsign-fire"]'),
@@ -371,8 +401,9 @@ function renderHistory(){
 async function openDossier(r){
   if(r?.canOpen!==true)return message('Geen geverifieerde toegang tot dit dossier.',true);
   shown=r.dept+':'+r.discordId;
-  const active=shown;
+  const active=shown,openSequence=++dossierOpenSequence;
   $('detail').hidden=false;document.body.classList.add('dossier-wide');
+  updateDossierQuickSwitch(r);
   $('detailTitle').textContent=(departments[r.dept]||r.dept)+
     ' · afzonderlijk personeelsdossier · '+r.name;
   $('detailService').dataset.service=r.dept;
@@ -400,11 +431,11 @@ async function openDossier(r){
   try{
     const data=await request('/api/dossiercentrum/'+
       encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
-    if(shown!==active)return;
+    if(shown!==active||openSequence!==dossierOpenSequence)return;
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
     renderHistory();
   }catch(e){
-    if(shown!==active)return;
+    if(shown!==active||openSequence!==dossierOpenSequence)return;
     $('history').textContent='Diensthistoriek niet beschikbaar: '+e.message+
       '. De personeelsfiche blijft afzonderlijk toegankelijk.';
   }
@@ -469,6 +500,22 @@ $('serviceButtons').addEventListener('click',event=>{
 for(const button of document.querySelectorAll('button[data-dossier-tab]'))
   button.onclick=()=>switchDossierTab(button.dataset.dossierTab);
 $('historyKind').onchange=renderHistory;
+$('dossierQuickSwitch').onchange=()=>{
+  const select=$('dossierQuickSwitch'),target=select.value;
+  if(target===shown)return;
+  const person=rows.find(p=>p?.personnel===true&&p.canOpen===true&&
+    p.dept+':'+p.discordId===target);
+  if(!person){
+    select.value=shown||'';
+    return message('Dit dossier is niet beschikbaar met je huidige toegangsrechten.',true);
+  }
+  if(person.dept==='burger'){
+    window.location.assign('/burger-personeelsdossiers.html?'+
+      new URLSearchParams({discordId:person.discordId}).toString());
+    return;
+  }
+  void openDossier(person);
+};
 $('clear').onclick=()=>{
   $('query').value='';$('sortOrder').value='callsign-bpd';$('series').value='all';selectDepartment('all');
 };
