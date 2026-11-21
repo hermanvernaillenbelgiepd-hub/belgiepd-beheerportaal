@@ -1236,7 +1236,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div id="staffCaseLinkedField" style="grid-column:1/-1" hidden>
   <label for="staffCaseLinkedColleague">Ook tonen in dossier van collega (optioneel)</label>
   <select id="staffCaseLinkedColleague"><option value="">Niet koppelen</option></select>
-  <small>De oorspronkelijke notitie blijft één registratie; de collega krijgt een leesbare verwijzing zonder extra weekrapportregel.</small>
+  <small>Eén registratie, ook bij de collega zichtbaar. Geen dubbele weekrapportregel.</small>
 </div>
 <div id="staffCaseExtra" class="grid" style="grid-column:1/-1" hidden>
 <div id="staffCourseField" hidden>
@@ -1246,12 +1246,12 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <label for="staffCourseOther">Andere opleiding</label>
 <input id="staffCourseOther" minlength="3" maxlength="150" placeholder="Vul de naam van de opleiding in">
 </div>
-<p class="subtle" id="staffCourseRegisterNote">Deze dossierregistratie komt in het weekrapport. Ze markeert de opleiding niet automatisch als geslaagd in het afzonderlijke opleidingsregister.</p>
+<p class="subtle" id="staffCourseRegisterNote">Wel in het weekrapport; geen geslaagd-status in het opleidingsregister.</p>
 </div>
 <div id="staffActivityPingField" hidden style="grid-column:1/-1">
  <div class="grid">
   <div>
-   <label for="staffActivityStatus">Activiteitenstatus voor dossier en weekrapport</label>
+   <label for="staffActivityStatus">Opvolgstatus</label>
    <select id="staffActivityStatus">
     <option value="">Kies de opvolgstatus…</option>
     <option value="ACTIEF">🟢 Actief</option>
@@ -1265,7 +1265,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
    </select>
   </div>
   <div>
-   <label for="staffActivityDiscordContact">Is deze persoon daadwerkelijk via Discord gepingd?</label>
+   <label for="staffActivityDiscordContact">Discord-ping werkelijk verstuurd?</label>
    <select id="staffActivityDiscordContact">
     <option value="">Kies de werkelijke situatie…</option>
     <option value="ja">Ja, handmatig Discord-bericht verstuurd</option>
@@ -1273,14 +1273,13 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
    </select>
   </div>
   <div id="staffActivityDiscordDateWrap" hidden>
-   <label for="staffActivityDiscordDate">Datum van het verstuurde Discord-bericht</label>
+   <label for="staffActivityDiscordDate">Datum Discord-bericht</label>
    <input id="staffActivityDiscordDate" type="date">
   </div>
  </div>
- <p class="subtle">Gebruik ‘Geen activiteitsverbetering na eerdere ping’ om een hercontrole te loggen als de medewerker na een eerdere Discord-ping nog steeds onvoldoende activiteit toont. Vermeld de eerdere ping en de actuele vaststellingen in de verplichte reden. Deze registratie legt de opvolging en het daadwerkelijke Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
- De status van de officiële personeelslijst verandert niet automatisch. Verwijdering na 60 dagen vereist een afzonderlijke bevoegde beslissing. Goedgekeurd verlof moet in de beoordeling worden meegenomen.</p>
+ <p class="subtle">Bij hercontrole: vermeld de vorige ping en de actuele activiteit in de motivering. Houd rekening met goedgekeurd verlof. Geen automatische Discord-ping of wijziging van de personeelsstatus.</p>
  <button id="archiveFromActivityPing" type="button" class="alt small" hidden>Uitdiensttreding beoordelen en archiveren…</button>
- <small class="subtle">Selecteer een verwijderingsreden om onmiddellijk de afzonderlijke archiveringsprocedure te doorlopen. Alleen na motivering én bevestiging worden automatisch de personeelsbeweging en afsluitende activiteitenregistratie opgeslagen. Een losse 60+-controle blijft alleen een opvolgregistratie.</small>
+ <small class="subtle">Archiveren vereist een bevoegde beslissing, motivering en bevestiging. Alleen een 60+-controle loggen archiveert niemand.</small>
 </div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
@@ -1881,11 +1880,11 @@ function displaySelectedRegistration(){
   const trainingDestination=$('trainingDestination');
   trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
-    trainingDestination.textContent='Opslag: opleidingsregister. Aanwezig, geslaagd, niet geslaagd en onderbroken verschijnen automatisch in het dossier, weekrapport en leidingoverzicht. Rangen en Discord-rollen worden niet aangepast.';
+    trainingDestination.textContent='Opleidingsresultaat komt in dossier, weekrapport en leidingoverzicht. Geen wijziging van rang of Discord-rollen.';
   }else if(kind==='case:opleiding'){
-    trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
+    trainingDestination.textContent='Dossiernotitie en weekrapport; niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen / geen verbetering na eerdere ping) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Er wordt niet automatisch een Discord-bericht verstuurd; dit formulier verandert ook de officiële personeelsstatus niet.';
+    trainingDestination.textContent='Activiteitenping wordt gelogd in dossier en weekrapport. Het portaal verstuurt geen Discord-bericht en wijzigt de personeelsstatus niet.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -2082,7 +2081,7 @@ function setupDossierTabs(){
             <option value="">Bevoegdheden controleren…</option>
           </select>
         </label>
-        <p id="registrationKindHint" role="status">De beschikbare categorieën worden bepaald door je goedgekeurde rol binnen deze hulpdienst.</p>
+        <p id="registrationKindHint" role="status">Enkel categorieën waarvoor je bevoegd bent.</p>
         <p id="registrationAccessHint" class="registration-access-hint" role="status" aria-live="polite"></p>
       </div>
       <p id="trainingDestination" class="training-destination" role="status" aria-live="polite" hidden></p>
