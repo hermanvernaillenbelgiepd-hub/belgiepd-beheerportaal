@@ -38,8 +38,8 @@ function menu({dept='politie',types=null,formal=true,training=true,leave=true}={
       voordracht_ereteken:'Voordracht ereteken',naamswijziging:'Naamswijziging'
     }
   };
-  return new Script(code).runInNewContext(context).availablePersonnelRegistrationKinds()
-    .map(([key])=>key);
+  return Array.from(new Script(code).runInNewContext(context).availablePersonnelRegistrationKinds(),
+    ([key])=>key);
 }
 
 test('politie Officierenkader ziet alle bevoegde bestaande dossierregistraties',()=>{
@@ -58,10 +58,10 @@ test('politie Middenkader heeft notities en ping, geen hogere-kaderacties',()=>{
   const types=MANAGEMENT_TYPES.filter(t=>mayWriteManagement(mid,'politie',t));
   const kinds=menu({types,formal:false,training:false,leave:false});
   for(const key of ['case:notitie','case:algemene_notitie',
-    'case:activiteit','case:inactiviteitsping'])
+    'case:activiteit','case:inactiviteitsping','case:voordracht_ereteken'])
     assert.ok(kinds.includes(key),key);
   for(const key of ['case:promotievoorstel','case:naamswijziging',
-    'case:personeelsbeweging','case:voordracht_ereteken'])
+    'case:personeelsbeweging'])
     assert.ok(!kinds.includes(key),key);
 });
 test('de andere hulpdiensten krijgen geen extra operationele rechten uit het menu',()=>{
