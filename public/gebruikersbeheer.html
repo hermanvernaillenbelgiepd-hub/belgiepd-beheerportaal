@@ -1690,7 +1690,16 @@ $('leaveGrantRevoke').onclick=async()=>{
 };
 $('leaveGrantReload').onclick=()=>loadLeaveGrantManager().then(showManageTabs);
 async function refresh(){
-  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection','roleArtworkSection','uniformSection'])$(name).dataset.authorized='no';
+  // On logout / switching Discord accounts, clear the previous management
+  // VIEW synchronously. Permissions are loaded afresh by the server below.
+  for(const name of ['admin','manualRoleSection','toSection','boardSection','dossierGrantSection','leaveGrantSection','roleArtworkSection','uniformSection']){
+    $(name).dataset.authorized='no';
+    $(name).hidden=true;
+  }
+  $('manageTabs').hidden=true;
+  $('profileSwitcher').hidden=true;
+  $('discordDiagnosticsLaunch').hidden=true;
+  tabChoice=tabFromHash();
   dossierGrants.reset();
   if(!auth?.currentUser){$('discordDiagnosticsLaunch').hidden=true;$('profileSwitcher').hidden=true;$('self').textContent='Meld je aan om je toegang te controleren.';$('admin').hidden=true;$('request').hidden=true;$('boardSection').hidden=true;$('toSection').hidden=true;return}
   const isDiscord=auth.currentUser.uid.startsWith('discord:');

@@ -41,3 +41,16 @@ test('grant scope helper describes, but cannot change, service-bound rights',()=
  assert.match(html,/\$\('dossierGrantDept'\)\.addEventListener\('change',updateDossierGrantScope\)/);
  assert.match(center,/href="\/gebruikersbeheer\.html#rolbadges"/);
 });
+
+test('manager panels are immediately hidden when account or permissions change',()=>{
+ const page=read('public/gebruikersbeheer.html');
+ const start=page.indexOf('async function refresh(){');
+ const end=page.indexOf("  if(!auth?.currentUser)",start);
+ assert.ok(start>=0&&end>start);
+ const setup=page.slice(start,end);
+ assert.match(setup,/\$\(name\)\.dataset\.authorized='no'/);
+ assert.match(setup,/\$\(name\)\.hidden=true/);
+ assert.match(setup,/\$\('manageTabs'\)\.hidden=true/);
+ assert.match(setup,/\$\('profileSwitcher'\)\.hidden=true/);
+ assert.match(setup,/tabChoice=tabFromHash\(\)/);
+});
