@@ -715,6 +715,11 @@
     }
   }
   function init(){
+    // An embedded training register is part of its parent work area.
+    // Do not create a second sidebar or six redundant notification polls.
+    if(here==='/rollen-opleidingen.html'&&
+      new URLSearchParams(location.search).get('embedded')==='1'&&
+      window.parent!==window)return;
     watchUnreadLeaveReturns();
     if(here==='/'||here==='/index.html')homepage();
     else shell();

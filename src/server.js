@@ -110,6 +110,7 @@ import {publicDeploymentInfo} from './deployment-info.js';
 import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject,isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre,verifiedCorpsSelfDossier} from './verified-police-cadre.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
+import {publicStaticCacheControl} from './static-cache-policy.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
@@ -154,7 +155,10 @@ app.get('/personeelslijst.html',(req,res,next)=>{
  const suffix=search&&search.length<=110?'?zoek='+encodeURIComponent(search):'';
  res.redirect(302,'/personeelsbeheer.html'+suffix);
 });
-app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
+// HTML and private data are never cached. Immutable public code/assets can be
+// retained locally, but must revalidate after deployment so stale JS is not used.
+app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',
+ setHeaders:(res,filename)=>res.set('Cache-Control',publicStaticCacheControl(filename))}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
 // Basiskaderobservaties have their OWN POST route. Without a JSON parser,

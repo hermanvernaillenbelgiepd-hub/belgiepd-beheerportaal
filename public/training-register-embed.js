@@ -5,7 +5,9 @@
  let latest=0,pending=false;
  const measure=()=>{
   pending=false;
-  const raw=Math.max(document.documentElement?.scrollHeight||0,document.body?.scrollHeight||0);
+  // Body height measures content. documentElement.scrollHeight can equal the
+  // iframe viewport and create a feedback loop (+16px on every resize).
+  const raw=document.body?.scrollHeight||0;
   const height=Math.ceil(raw);
   if(height<320||height>16000||Math.abs(height-latest)<8)return;
   latest=height;
