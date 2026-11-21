@@ -1,9 +1,9 @@
 import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canInspectServiceDossier} from './service-dossier-access.js';
 import {policeOfficialRankLabel} from './personnel-rank-policy.js';
 const SERVICES=Object.freeze(['politie','ambulance','brandweer','depannage']);
 export function dossierScopes(actor){
-  return {personnelDepartments:SERVICES.filter(dept=>canReadServiceDossier(actor,dept)),
+  return {personnelDepartments:SERVICES.filter(dept=>canInspectServiceDossier(actor,dept)),
     canReadSubject:person=>canReadPersonnelSubject(actor,person),applicationDepartments:[]};
 }
 export function dossierOverviewRows(personnel,_unused,scopes){
