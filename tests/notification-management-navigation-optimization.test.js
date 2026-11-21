@@ -10,8 +10,8 @@ test('notification jump lists only panels left visible by permission-scoped load
  assert.match(html,/for\(const panel of group\.querySelectorAll\('\.notification-tile\[id\]'\)\)/);
  assert.match(html,/if\(panel\.hidden\)continue/);
  assert.match(html,/syncNotificationJump\(\);/);
- assert.match(html,/panel\.classList\.contains\('notification-tile'\)\|\|panel\.hidden/);
- assert.match(html,/if\(details\)details\.open=true/);
+ assert.match(html,/panel\?\.classList\.contains\('notification-tile'\)\|\|panel\.hidden/);
+ assert.match(html,/if\(details\)details\.setAttribute\('open',''\)/);
  assert.match(html,/bar\.hidden=!visibleCount/);
  assert.match(html,/Promise\.allSettled\(loaders\.map\(fn=>fn\(\)\)\)/);
 });

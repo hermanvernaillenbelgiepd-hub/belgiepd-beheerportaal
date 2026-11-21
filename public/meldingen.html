@@ -830,7 +830,7 @@ $('notificationJump').addEventListener('change',event=>{
  const panel=document.getElementById(id);
  if(!panel?.classList.contains('notification-tile')||panel.hidden)return;
  const details=panel.querySelector('details.notification-fold');
- if(details)details.open=true;
+ if(details)details.setAttribute('open','');
  panel.scrollIntoView({behavior:'smooth',block:'start'});
  (details?.querySelector('summary')||panel).focus({preventScroll:true});
 });
