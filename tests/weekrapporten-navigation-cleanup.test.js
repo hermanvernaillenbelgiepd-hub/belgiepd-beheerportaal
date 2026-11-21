@@ -10,14 +10,13 @@ test('single weekrapport page has no former three navigation buttons',()=>{
  assert.match(html,/<section id="reportsView">/);
  assert.ok(html.indexOf('id="reportsView"')<html.indexOf('id="casesView"'));
 });
-test('report registrations remain available through native closed details, not duplicate dossier view',()=>{
- assert.match(html,/<details id="reportRegistrations" class="report-archive"/);
- assert.match(html,/<summary>Historische dossierregistraties \(raadplegen\)<\/summary>/);
- assert.match(html,/<section id="casesView">/);
- assert.doesNotMatch(html,/<details id="reportRegistrations"[^>]* open[ >]/);
- assert.match(html,/openReportRegistrations\(\)/);
- assert.match(html,/location\.hash==='#registraties'/);
- assert.match(html,/<a href="\/dossiercentrum\.html">Dossiercentrum<\/a>/);
+test('oude rapportregistraties en manuele formulieren zijn ontoegankelijk vanuit de UI',()=>{
+ assert.match(html,/<details id="reportRegistrations" class="report-archive" hidden inert aria-hidden="true"/);
+ assert.match(html,/<div class="card hidden" id="legacyReportCreator" hidden inert aria-hidden="true"/);
+ assert.match(html,/<section id="legacyReportEntry" hidden inert aria-hidden="true">/);
+ assert.ok(!html.includes("if(location.hash==='#registraties'"));
+ assert.ok(!html.includes('Registraties staan uit. Controleer BPD_ENABLE_MANAGEMENT_WRITES'));
+ assert.ok(html.includes('<a href="/dossiercentrum.html">Dossiercentrum</a>'));
 });
 test('weekrapporten & old registrations stay operational, with unchanged API',()=>{
  for(const required of [
