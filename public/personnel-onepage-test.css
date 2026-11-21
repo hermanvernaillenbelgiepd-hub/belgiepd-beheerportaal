@@ -714,3 +714,41 @@ body.dossier-onepage .training-destination{
   font-size:11px;line-height:1.5;padding:7px 10px;margin:8px 0 10px
 }
 body.dossier-onepage .training-destination[hidden]{display:none!important}
+
+/* Responsieve dossierregistraties: bruikbare velden op laptop en mobiel.
+   Het oude generieke span-2-grid kneep de activiteitenping in een kwartbreedte. */
+body.dossier-onepage .registration-hub-fields > form .grid {
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))!important;
+  gap:11px 14px;
+}
+body.dossier-onepage #registrationFields #staffCaseForm > .grid > #staffCaseExtra,
+body.dossier-onepage #registrationFields #staffCaseForm #staffCaseExtra > #staffActivityPingField {
+  grid-column:1 / -1!important;
+  min-width:0;
+}
+body.dossier-onepage #registrationFields #staffCaseForm #staffActivityPingField > .grid {
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px 16px;
+}
+body.dossier-onepage .registration-hub-fields > form .grid > *,
+body.dossier-onepage #staffActivityPingField > .grid > * {
+  min-width:0;
+}
+body.dossier-onepage #staffActivityPingField .subtle {
+  line-height:1.5;
+  max-width:92ch;
+  margin:9px 0;
+}
+body.dossier-onepage #staffActivityPingField label {
+  overflow-wrap:break-word;
+}
+@media(max-width:1150px) {
+  body.dossier-onepage #registrationFields #staffCaseForm #staffActivityPingField > .grid {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:760px) {
+  body.dossier-onepage #registrationFields #staffCaseForm #staffActivityPingField > .grid {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}
