@@ -369,35 +369,45 @@ function renderHistory(){
   }
 }
 async function openDossier(r){
+  if(r?.canOpen!==true)return message('Geen geverifieerde toegang tot dit dossier.',true);
   shown=r.dept+':'+r.discordId;
   const active=shown;
-  $('detail').hidden=false;document.body.classList.add('dossier-wide');$('detailTitle').textContent=(departments[r.dept]||r.dept)+' · afzonderlijk personeelsdossier · '+r.name;
+  $('detail').hidden=false;document.body.classList.add('dossier-wide');
+  $('detailTitle').textContent=(departments[r.dept]||r.dept)+
+    ' · afzonderlijk personeelsdossier · '+r.name;
   $('detailService').dataset.service=r.dept;
-  $('detailService').textContent='🔒 '+(departments[r.dept]||r.dept)+' · alleen de bevoegde leiding van deze hulpdienst';
+  $('detailService').textContent='🔒 '+(departments[r.dept]||r.dept)+
+    ' · alleen de bevoegde leiding van deze hulpdienst';
   switchDossierTab('fiche');
-  timelineEntries=[];$('historyKind').value='all';$('detailLinks').replaceChildren();
-  $('staff').textContent='Laden…';$('history').textContent='Laden…';$('matchWarning').textContent='';
+  timelineEntries=[];$('historyKind').value='all';
+  $('matchWarning').textContent='Dit is uitsluitend het dossier van '+
+    (departments[r.dept]||r.dept)+'. Andere hulpdiensten beheren hun eigen dossier.';
+  $('history').textContent='Diensthistoriek laden…';
+  // The secure personnel fiche must open immediately. History is optional
+  // and must not prevent (or erase) the dossier when its endpoint fails.
+  // Each embedded personnel page independently verifies the viewer's rights.
+  const staff=$('staff');staff.replaceChildren();
+  const frame=document.createElement('iframe');
+  frame.id='inlinePersonnelFrame';
+  frame.title='Personeelsdossier voor '+r.name;
+  frame.referrerPolicy='no-referrer';
+  frame.style.cssText='display:block;width:100%;height:1100px;min-height:650px;border:0;border-radius:7px;background:#0b1b32';
+  frame.src=r.dept==='brandweer'?
+    '/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId}).toString():
+    '/personeelsbeheer.html?'+new URLSearchParams({embed:'1',dept:r.dept,discordId:r.discordId}).toString();
+  staff.append(frame);
+  $('detail').scrollIntoView({behavior:'smooth',block:'start'});
   try{
-    const data=await request('/api/dossiercentrum/'+encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
+    const data=await request('/api/dossiercentrum/'+
+      encodeURIComponent(r.dept)+'/'+encodeURIComponent(r.discordId));
     if(shown!==active)return;
-    $('matchWarning').textContent='Dit is uitsluitend het dossier van '+(departments[r.dept]||r.dept)+'. Andere hulpdiensten beheren hun eigen afzonderlijke dossier voor dezelfde Discord-gebruiker.';
-    const staff=$('staff');staff.replaceChildren();
-    if(data.personnel){
-      // Zelfde beveiligde personeelsfiche als in TEST, zonder een tweede gegevensbron.
-      const frame=document.createElement('iframe');
-      frame.id='inlinePersonnelFrame';
-      frame.title='Personeelsdossier voor '+r.name;
-      frame.referrerPolicy='no-referrer';
-      frame.style.cssText='display:block;width:100%;height:1100px;min-height:650px;border:0;border-radius:7px;background:#0b1b32';
-      frame.src=r.dept==='brandweer'?
-        '/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId}).toString():
-        '/personeelsbeheer.html?'+new URLSearchParams({embed:'1',dept:r.dept,discordId:r.discordId}).toString();
-      staff.append(frame);
-    }else staff.textContent='Geen zichtbare personeelsfiche.';
     timelineEntries=Array.isArray(data.timeline)?data.timeline:[];
     renderHistory();
-    $('detail').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){if(shown===active){$('staff').textContent='';$('history').textContent='';message(e.message,true)}}
+  }catch(e){
+    if(shown!==active)return;
+    $('history').textContent='Diensthistoriek niet beschikbaar: '+e.message+
+      '. De personeelsfiche blijft afzonderlijk toegankelijk.';
+  }
 }
 async function load(){
   if(!auth?.currentUser){rows=[];page=1;closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}

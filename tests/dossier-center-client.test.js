@@ -68,3 +68,34 @@ test('Police series selection follows existing server-authorized department scop
   assert.ok(html.includes("policeAllowed&&(current==='all'||current==='politie')"));
   assert.ok(html.includes("$('series').value='all';selectDepartment('all')"));
 });
+
+test('Beveiligde personeelsfiche opent zonder verdwenen detailLinks-element of diensthistoriek',async()=>{
+  const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
+  assert.doesNotMatch(html,/\$\('detailLinks'\)/);
+  const from=html.indexOf('async function openDossier(r){');
+  const to=html.indexOf('async function load(){',from);
+  assert.ok(from>0&&to>from);
+  const staff={children:[],replaceChildren(){this.children=[]},append(child){this.children.push(child)}};
+  const elems={
+    detail:{hidden:true,scrollIntoView(){}},
+    detailTitle:{textContent:''},detailService:{dataset:{},textContent:''},
+    historyKind:{value:''},history:{textContent:''},
+    matchWarning:{textContent:''},staff
+  };
+  const context={
+    shown:null,timelineEntries:[],departments:{politie:'Politie'},
+    $:id=>{if(!elems[id])throw Error('Ontbrekend element '+id);return elems[id]},
+    switchDossierTab:()=>{},renderHistory:()=>{},
+    document:{body:{classList:{add:()=>{}}},createElement:tag=>({tagName:tag,style:{}})},
+    request:async()=>{throw Error('Geschiedenis tijdelijk niet beschikbaar')},
+    URLSearchParams,message:()=>{}
+  };
+  await new Script(html.slice(from,to)+
+    "\\nopenDossier({dept:'politie',discordId:'123456789012345678',name:'seppie',canOpen:true})")
+    .runInNewContext(context);
+  assert.equal(staff.children.length,1);
+  assert.equal(staff.children[0].tagName,'iframe');
+  assert.match(staff.children[0].src,/personeelsbeheer\\.html\\?embed=1/);
+  assert.match(elems.history.textContent,/Diensthistoriek niet beschikbaar/);
+  assert.equal(elems.detail.hidden,false);
+});
