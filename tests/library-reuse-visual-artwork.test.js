@@ -56,7 +56,9 @@ test('the upload category no longer blocks visual targets in the image library',
 test('Uniformatelier remains directly accessible from management',()=>{
  const page=repoFile('public/gebruikersbeheer.html');
  const composer=repoFile('public/uniform-composer-ui.js');
- assert.match(page,/window\.location\.hash==='#uniformbeheer'\?'uniform'/);
+ assert.match(page,/uniform:'uniformbeheer'/);
+ assert.match(page,/let tabChoice=tabFromHash\(\)/);
+ assert.match(page,/btn\.hidden=!active\.includes\(btn\.dataset\.tab\)/);
  assert.match(composer,/const rights=await api\('\/api\/uniform-library\/status'\)/);
  assert.match(page,/id="uniformComposer"/);
 });
