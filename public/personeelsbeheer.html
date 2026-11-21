@@ -1847,7 +1847,7 @@ function availablePersonnelRegistrationKinds(){
     for(const type of casePermissions.typesByDepartment?.[dept]||[]){
       // Opleiding blijft als dossierregistratie beschikbaar wanneer het
       // formele opleidingsregister hier niet actief is, zonder dubbel menu.
-      if(type==='activiteit'||type==='verlof')continue;
+      if(type==='verlof')continue;
       // Geen algemene naamcorrecties of activiteitenpings bij nevendiensten.
       if(dept!=='politie'&&['naamswijziging','inactiviteitsping'].includes(type))continue;
       // Opleidingen zijn altijd centrale trainingsregistraties. Een losse
@@ -1932,9 +1932,11 @@ function refreshPersonnelRegistrationOptions(){
     old==='case:opleiding'&&kinds.some(([key])=>key==='training')?'training':'';
   $('formalInlineArea').hidden=!kinds.length;
   displaySelectedRegistration();
-  // Alleen werkelijk beschikbare formulieren tonen, geen diagnostische
-  // lijst met ontbrekende bevoegdheden op het normale personeelsblad.
-  $('registrationAccessHint').textContent='';
+  // A failed or denied secondary permissions request must not silently
+  // leave only Observation / Sanction / Training / Leave visible.
+  const caseState=registrationModuleStates.cases;
+  $('registrationAccessHint').textContent=
+    caseState==='beschikbaar'?'':'Overige dossiercategorieën: '+caseState+'.';
   $('registerTrainingQuick').hidden=!kinds.some(([key])=>key==='training');
   const addNote=$('registerGeneralNoteQuick');
   if(addNote)addNote.hidden=!kinds.some(([key])=>key==='case:algemene_notitie');
@@ -3600,11 +3602,11 @@ caseCourseSelect.onchange=syncStaffCaseOther;
 $('staffCaseType').onchange=updateStaffCaseFields;
 async function loadStaffCasePermissions(person,key,canManage){
   casePermissions=null;
-  registrationModuleStates.cases=canManage?'bevoegdheden laden…':
-    'niet vrijgegeven of geen kaderbevoegdheid voor deze dienst';
+  // Query the protected management endpoint independently. The preceding
+  // staff-cadre hint is not an authorization grant or a reliable all-types gate.
+  registrationModuleStates.cases='bevoegdheden laden…';
   $('staffCaseForm').hidden=true;
   refreshPersonnelRegistrationOptions();
-  if(!canManage)return;
   try{
     const overview=await request('/api/management/overview');
     if(!sameDossier(key))return;
@@ -3618,7 +3620,6 @@ async function loadStaffCasePermissions(person,key,canManage){
       !types.length?
         'geen goedgekeurd schrijfrecht voor deze dienst':'beschikbaar';
     $('staffCaseType').replaceChildren(...types
-      .filter(type=>type!=='activiteit')
       .map(type=>option(type,staffCaseLabels[type]||type)));
     $('staffCaseForm').hidden=!(overview.writesEnabled&&overview.actor&&types.length);
     if(!types.length)$('staffCaseHint').textContent='Geen schrijfrechten voor deze categorieën.';
