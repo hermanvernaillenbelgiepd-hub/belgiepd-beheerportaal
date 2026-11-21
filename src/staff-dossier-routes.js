@@ -52,9 +52,15 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
         subject:subjectDto(staff),
         discordRoles:staffRoleDisplay(member.data(),staff.dept,process.env.DISCORD_GUILD_ID),
         cadreActions:{
+          // All existing cadre case categories count. A role allowed to
+          // register a specialist restriction or another category must not
+          // lose the entire registration hub because 'notitie' is denied.
           cases:process.env.BPD_ENABLE_REGISTRATIONS==='true'&&
             process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true'&&
-            mayWriteManagement(req.bpd,staff.dept,'notitie'),
+            ['notitie','algemene_notitie','activiteit','specialisatiebeperking',
+              'inactiviteitsping','promotievoorstel','naamswijziging',
+              'personeelsbeweging','voordracht_ereteken','opleiding']
+              .some(type=>mayWriteManagement(req.bpd,staff.dept,type)),
           manualLeave:process.env.BPD_ENABLE_LEAVE_WRITES==='true'&&
             process.env.BPD_ENABLE_PERSONNEL_MANUAL_LEAVE==='true'&&
             req.bpd.discordId!==staff.personId&&
