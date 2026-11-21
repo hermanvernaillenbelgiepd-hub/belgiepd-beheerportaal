@@ -1,6 +1,8 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {staffRoleDisplay} from './staff-role-display.js';
-import {mayWriteManagement} from './management-utils.js';
+import {mayWriteManagement,MANAGEMENT_TYPES} from './management-utils.js';
+import {actorFromPersonnel} from './registrations.js';
+import {isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {roleForDepartment} from './leave-policy.js';
 import {
   STAFF_DOSSIER_COLLECTION,staffDossierEnabled,staffDossierWritesEnabled,
@@ -24,7 +26,7 @@ async function getSubject(req,getSnapshot){
   const snap=await getSnapshot();
   const staff=uniqueStaffSubject(snap.data,req.params.dept,req.params.discordId);
   if(!staff)throw failure(404,'Personeelsfiche ontbreekt of heeft meerdere identieke referenties');
-  return {staff,key};
+  return {staff,key,roster:snap.data};
 }
 function subjectDto(staff){
   return {dept:staff.dept,discordId:staff.personId,name:staff.name,
@@ -38,7 +40,7 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/staff-dossiers/:dept/:discordId',requireUser,async(req,res)=>{
     if(!staffDossierEnabled(process.env))return respond(res,503,'Administratieve personeelsdossiers zijn nog niet geactiveerd');
     try{
-      const {staff,key}=await getSubject(req,getSnapshot);
+      const {staff,key,roster}=await getSubject(req,getSnapshot);
       const ref=getFirestore().collection(STAFF_DOSSIER_COLLECTION).doc(key);
       const [record,notes,changes,member]=await Promise.all([
         ref.get(),ref.collection('entries').orderBy('createdAt','desc').limit(60).get(),
@@ -46,21 +48,23 @@ export function installStaffDossierRoutes(app,{requireUser,getSnapshot}){
         getFirestore().collection('bpd_discord_auth').doc(staff.personId).get()
       ]);
       const dto=notes.docs.map(doc=>publicStaffNote(doc.data(),doc.id)).filter(Boolean);
+      const managementWrites=process.env.BPD_ENABLE_REGISTRATIONS==='true'&&
+        process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true';
+      const caseActorAvailable=Boolean(actorFromPersonnel(req.bpd,roster))||
+        isVerifiedReportTechnicalAdmin(req.bpd);
+      const caseTypes=managementWrites&&caseActorAvailable?
+        MANAGEMENT_TYPES.filter(type=>mayWriteManagement(req.bpd,staff.dept,type)):[];
       return res.json({
         readOnly:!staffDossierWritesEnabled(process.env),
         canMaintain:staffDossierWritesEnabled(process.env)&&canMaintainStaffDossier(req.bpd,staff),
         subject:subjectDto(staff),
         discordRoles:staffRoleDisplay(member.data(),staff.dept,process.env.DISCORD_GUILD_ID),
         cadreActions:{
-          // All existing cadre case categories count. A role allowed to
-          // register a specialist restriction or another category must not
-          // lose the entire registration hub because 'notitie' is denied.
-          cases:process.env.BPD_ENABLE_REGISTRATIONS==='true'&&
-            process.env.BPD_ENABLE_MANAGEMENT_WRITES==='true'&&
-            ['notitie','algemene_notitie','activiteit','specialisatiebeperking',
-              'inactiviteitsping','promotievoorstel','naamswijziging',
-              'personeelsbeweging','voordracht_ereteken','opleiding']
-              .some(type=>mayWriteManagement(req.bpd,staff.dept,type)),
+          // Reuse the same type policy as /api/management/overview so the
+          // extra case categories survive a secondary permissions outage.
+          cases:caseTypes.length>0,
+          caseActorAvailable,
+          caseTypes,
           manualLeave:process.env.BPD_ENABLE_LEAVE_WRITES==='true'&&
             process.env.BPD_ENABLE_PERSONNEL_MANUAL_LEAVE==='true'&&
             req.bpd.discordId!==staff.personId&&

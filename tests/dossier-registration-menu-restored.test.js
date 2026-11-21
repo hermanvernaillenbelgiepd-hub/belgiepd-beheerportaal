@@ -14,7 +14,8 @@ const officer={uid:'discord:123456789012345678',discordId:'123456789012345678',
   departmentRoles:{politie:'officierenkader'},
   dossierAllowedDepartments:['politie'],dossierNativeDepartments:['politie']};
 
-function menu({dept='politie',types=null,formal=true,training=true,leave=true}={}){
+function menu({dept='politie',types=null,formal=true,training=true,leave=true,
+  secondaryAvailable=true,fallbackAvailable=true}={}){
   const begin=inline.indexOf('function canRegisterOfficialTraining(){');
   const end=inline.indexOf('function displaySelectedRegistration()',begin);
   assert.ok(begin>0&&end>begin);
@@ -23,7 +24,10 @@ function menu({dept='politie',types=null,formal=true,training=true,leave=true}={
   const rights=types??MANAGEMENT_TYPES.filter(t=>mayWriteManagement(officer,dept,t));
   const context={
     selected:{dept},
-    casePermissions:{writesEnabled:true,actor,typesByDepartment:{[dept]:rights}},
+    casePermissions:secondaryAvailable?
+      {writesEnabled:true,actor,typesByDepartment:{[dept]:rights}}:null,
+    registrationCaseFallback:fallbackAvailable?
+      {writesEnabled:true,actor,typesByDepartment:{[dept]:rights}}:null,
     formalPermissions:formal?{writesEnabled:true,actor,
       observationDepartments:[dept],sanctionDepartments:[dept],
       sanctionOptionsByDepartment:{[dept]:['Mondelinge waarschuwing']}}:null,
@@ -78,8 +82,23 @@ test('beveiligde kaderendpoint wordt onafhankelijk geladen en fouten blijven zic
   assert.match(fn,/await request\('\/api\/management\/overview'\)/);
   assert.doesNotMatch(fn,/if\(!canManage\)return/);
   assert.match(inline,/Overige dossiercategorieën:/);
-  assert.match(staff,/\.some\(type=>mayWriteManagement\(req\.bpd,staff\.dept,type\)\)/);
+  assert.match(staff,/MANAGEMENT_TYPES\.filter\(type=>mayWriteManagement\(req\.bpd,staff\.dept,type\)\)/);
   // Every server POST continues to enforce actual authorization.
   assert.match(routes,/!mayWriteManagement\(req\.bpd,dept,type\)/);
   assert.match(routes,/const actor=reportAuditActor\(req,snap\.data\)/);
+});
+
+test('uitval van het aanvullende rechtenoverzicht verbergt bevoegde notities niet',()=>{
+  const choices=menu({secondaryAvailable:false});
+  for(const key of ['case:notitie','case:algemene_notitie',
+    'case:inactiviteitsping','case:activiteit','case:personeelsbeweging'])
+    assert.ok(choices.includes(key),'Ontbreekt via beschermd dossier: '+key);
+  assert.ok(!menu({secondaryAvailable:false,fallbackAvailable:false})
+    .includes('case:notitie'),'geen ongeautoriseerde fictieve opties');
+});
+test('registraties blijven bereikbaar binnen Dossiercentrum',()=>{
+  const page=read('public/dossiercentrum.html');
+  assert.match(page,/void openDossier\(r\)/);
+  assert.match(page,/frame\.src=r\.dept==='brandweer'\?/);
+  assert.match(page,/embed:'1',dept:r\.dept,discordId:r\.discordId/);
 });

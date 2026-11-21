@@ -325,11 +325,12 @@ function render(){
     if(r.canOpen===true){
       const button=node('button','Open dossier','alt');
       button.type='button';button.onclick=()=>{
-        window.location.assign(r.dept==='burger'
-          ?'/burger-personeelsdossiers.html?'+new URLSearchParams({discordId:r.discordId}).toString()
-          :r.dept==='brandweer'
-          ?'/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId,from:'dossiercentrum'}).toString()
-          :'/personeelsbeheer.html?'+new URLSearchParams({fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'}).toString());
+        if(r.dept==='burger'){
+          window.location.assign('/burger-personeelsdossiers.html?'+
+            new URLSearchParams({discordId:r.discordId}).toString());
+          return;
+        }
+        void openDossier(r);
       };
       // Eén normale invoerweg: het bevoegde personeelsdossier.
       // Weekrapporten vormen een afzonderlijk dienstoverzicht.
