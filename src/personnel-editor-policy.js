@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {roleForDepartment} from './leave-policy.js';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from './service-dossier-access.js';
+import {isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
 import {policeKader} from './normalize.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {mayOpenFireSubject} from './fire-dossier-policy.js';
@@ -42,12 +43,13 @@ function verifiedCorpsReader(actor){
     (actor?.discordPoliceRank==='korpsleiding'||actor?.manualCorpsApproved===true);
 }
 export function canReadPersonnelSubject(actor,person){
-  if(!person||!canReadServiceDossier(actor,person.dept))return false;
+  if(!person||!canInspectServiceDossier(actor,person.dept))return false;
   // Technical access is never inferred from ownership claims, callsigns or
   // a browser flag. The server only sets this mode after checking the configured
   // Discord allowlist and a signed short-lived technical session.
   if(actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true&&
      actor?.uid==='discord:'+actor?.discordId)return true;
+  if(person.dept!=='politie'&&isVerifiedReportCorpsReader(actor))return true;
   if(person.dept==='brandweer'){
     return mayOpenFireSubject(actor,person,
       actor.fireSubjectRoleSets?.get(person.personId)||null);
