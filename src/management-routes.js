@@ -1,5 +1,5 @@
 import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
 import {canRetireDossierRecord,mayRetireCaseType,isRetired} from './dossier-retirement-policy.js';
@@ -60,7 +60,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   app.get('/api/management/overview',requireUser,async(req,res)=>{
     try{
       const snap=await getSnapshot();
-      const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
+      const subjects=snap.data.filter(p=>canInspectServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
       // Only report READ/EXPORT receives the cross-service Korpsleiding
       // exception. Personnel dossiers, write rights and removal remain scoped.
@@ -69,7 +69,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
           isVerifiedReportCorpsReader(req.bpd));
       const exportReportDepartments=reportDepartments.filter(d=>
         mayExportFortnightReport(req.bpd,d,snap.data));
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments,exportReportDepartments,writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:exportReportDepartments.length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
+      res.json({role:req.bpd.role,departments:['politie','ambulance','brandweer','depannage'].filter(d=>canInspectServiceDossier(req.bpd,d)),reportDepartments,exportReportDepartments,writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:exportReportDepartments.length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
         typesByDepartment:Object.fromEntries(req.bpd.dossierAllowedDepartments
           .filter(d=>canReadServiceDossier(req.bpd,d))
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
@@ -94,7 +94,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
 
   app.get('/api/management/cases',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept),id=asString(req.query.discordId);
-    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
+    if(!canInspectServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
     if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
