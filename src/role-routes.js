@@ -508,8 +508,7 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       const people=candidates.map(toChoice).sort(byCall);
       const instructors=candidates.filter(eligibleGeneralTrainingInstructor).map(toChoice).sort(byCall);
       res.set('Cache-Control','private, no-store');
-      res.json({department,people,instructors,limited:false,
-        eligibleSubjects:people.length,matchedRosterSubjects:counts.size});
+      res.json({department,people,instructors,limited:false});
     }catch(e){error(res,e)}
   });
   app.get('/api/training/:department/:discordId',resolveActor,guardTrainingSubject,async(req,res)=>{
