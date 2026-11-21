@@ -65,7 +65,10 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     try{
       const snap=await getSnapshot();
       const subjects=snap.data.filter(p=>canInspectServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      // Signed technical profile can audit using its verified Discord ID
+      // even if that technical account has no matching roster personnel row.
+      // All service/type write guards remain enforced by mayWriteManagement.
+      const actor=reportAuditActor(req,snap.data);
       // Only report READ/EXPORT receives the cross-service Korpsleiding
       // exception. Personnel dossiers, write rights and removal remain scoped.
       const reportDepartments=fortnightReportDepartments(req.bpd,snap.data)
@@ -296,8 +299,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         linkedColleague=verifiedColleagueLink(req.body?.linkedColleagueId,
           dept,id,snap.data,req.bpd,type);
       }catch(e){return res.status(400).json({error:e.message})}
-      const actor=actorFromPersonnel(req.bpd,snap.data);
-      if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
+      const actor=reportAuditActor(req,snap.data);
+      if(!actor)return res.status(403).json({error:'Koppel je eigen account eerst aan een personeelsfiche'});
       const representedId=asString(req.body?.onBehalfOfDiscordId);
       // Manual activity follow-up needs an explicit status and truthful
       // Discord-sent attestation. Historical imports retain compatibility.
