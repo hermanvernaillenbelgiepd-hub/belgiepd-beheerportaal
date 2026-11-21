@@ -99,7 +99,7 @@ const reportDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(valu
   value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
 export function createWeekReportDocx(out){
   if(!out?.report||!Array.isArray(out.sections)||out.truncated)throw new Error('Onvolledig of ongeldig weekrapport kan niet geëxporteerd worden');
-  const r=out.report,body=[];
+  const r=out.report,body=[],frozen=out.archiveInfo?.immutable===true;
   body.push(PARA('BELGIËPD BEHEERPORTAAL',{bold:true}));
   body.push(PARA(r.source==='automatic'?
     'Automatisch tweewekelijks rapport · '+r.dept+' · '+reportDate(r.periodStart):
@@ -108,7 +108,17 @@ export function createWeekReportDocx(out){
   body.push(PARA('Rapportperiode: '+reportDate(r.periodStart)+
     ' t/m '+reportDate(r.periodEnd)));
   body.push(PARA('Aangemaakt door: '+(r.createdBy?.name||'Onbekend')));
-  body.push(PARA('Status: CONCEPT – dynamische weergave, geen afgesloten archief',{bold:true}));
+  body.push(PARA(frozen?
+    'Status: VASTE ARCHIEFKOPIE – '+(out.archiveInfo.kind==='retrospectief_vastgezet'?
+      'retrospectief samengesteld':'automatisch na afsluiting vastgezet'):
+    'Status: CONCEPT – dynamische weergave, geen afgesloten archief',{bold:true}));
+  if(frozen){
+    body.push(PARA('Archief vastgezet: '+String(out.archiveInfo.capturedAt||'onbekend')));
+    body.push(PARA('SHA-256 van bewaarde rapportinhoud: '+
+      String(out.archiveInfo.sha256||'')));
+    if(out.archiveInfo.kind==='retrospectief_vastgezet')
+      body.push(PARA('Historische reconstructie: bewijst niet welke dossierinhoud exact op de oorspronkelijke afsluitdatum aanwezig was.',{bold:true}));
+  }
   body.push(PARA('Registraties: '+out.recordCount+' · Uitgesloten testregistraties: '+(out.excludedTestCount||0)));
   body.push(PARA('Opleidingen · aanwezig: '+(out.completionSummary?.present||0)+
     ' · geslaagd: '+(out.completionSummary?.passed||0)+
@@ -130,7 +140,9 @@ export function createWeekReportDocx(out){
     if(rows.length)body.push(TABLE(['Datum','Roepnr.','Personeelslid','Geregistreerd door','Omschrijving / details'],rows));
     else body.push(PARA('Geen registraties binnen deze periode.'));
   }
-  body.push(PARA('Dit document is een export van een dynamisch concept. Wijzigingen in de dossierdatabase kunnen latere exports beïnvloeden.'));
+  body.push(PARA(frozen?
+    'Dit document is opgebouwd uit een onveranderlijke archiefkopie. Latere aanpassingen in personeelsdossiers beïnvloeden deze kopie niet.':
+    'Dit document is een export van een dynamisch concept. Wijzigingen in de dossierdatabase kunnen latere exports beïnvloeden.'));
   const document=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body.join('')}<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="750" w:right="750" w:bottom="750" w:left="750" w:header="350" w:footer="350" w:gutter="0"/></w:sectPr></w:body></w:document>`;
   const entries={
     '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
