@@ -34,7 +34,8 @@ test('legacy editor may not silently delete a classified specialty',()=>{
 test('server transaction preserves current classification and audits the real next state',()=>{
  const section=routes.split("app.put('/api/organogram/police-specialties/:personId'")[1]
   ?.split('// Only technical management receives')[0]||'';
- assert.match(section,/const resolvedOverrides=retainPoliceFunctionOverrides\(req\.body,preserve\.functionOverrides,values\.specialties\)/);
+ assert.match(section,/resolvedOverrides=retainPoliceFunctionOverrides\(req\.body,preserve\.functionOverrides,values\.specialties\)/);
+ assert.match(section,/catch\(e\)\{throw fault\(409,e\.message\)\}/);
  assert.match(section,/functionOverrides:resolvedOverrides/);
  assert.match(section,/functionOverrides:next\.functionOverrides/);
  assert.match(section,/tx\.create\(ref\.collection\('audit'\)\.doc\(\)/);
