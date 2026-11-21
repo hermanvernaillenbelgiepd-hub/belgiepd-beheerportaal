@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
   automaticFortnightReports,fortnightFor,isCurrentAutomaticReport,
-  visibleFortnightReports,splitReportsByPeriod,mayReadFortnightReport
+  visibleFortnightReports,splitReportsByPeriod,mayReadFortnightReport,
+  mayReadFortnightPeriod,mayExportFortnightReport
 } from '../src/fortnight-report-policy.js';
 
 const today='2026-10-25';
@@ -38,6 +39,21 @@ test('All four service reports are generated, but view access stays department-s
   assert.equal(mayReadFortnightReport(policeOfficer,'depannage',[]),false);
 });
 
+test('Middenkader heeft enkel lopend en onmiddellijk vorig rapport, zonder export',()=>{
+ const actor={role:'middenkader',departments:['politie'],
+   departmentRoles:{politie:'middenkader'}};
+ const current=automaticFortnightReports('politie','2026-11-21',3);
+ assert.deepEqual(current.map(r=>mayReadFortnightPeriod(actor,r,'2026-11-21',[])),
+   [true,true,false]);
+ assert.equal(mayExportFortnightReport(actor,'politie',[]),false);
+ assert.equal(mayReadFortnightPeriod(actor,
+   {...current[1],source:'manual'},'2026-11-21',[]),false);
+ assert.equal(mayReadFortnightPeriod(actor,current[0],'2026-12-15',[]),false);
+ const officer={...actor,role:'officierenkader',
+   departmentRoles:{politie:'officierenkader'}};
+ assert.equal(mayReadFortnightPeriod(officer,current[2],'2026-11-21',[]),true);
+ assert.equal(mayExportFortnightReport(officer,'politie',[]),true);
+});
 test('Service selector is visible, and the current report cannot be erased again',()=>{
   const page=readFileSync(new URL('../public/weekrapporten.html',import.meta.url),'utf8');
   const api=readFileSync(new URL('../src/management-routes.js',import.meta.url),'utf8');
