@@ -170,3 +170,12 @@ test('REEKSHOOFD label stays inside the name/rank column, not an extra grid chil
  assert.deepEqual(head.children[0].children.map(n=>n.text),['REEKSHOOFD']);
  assert.match(js,/card\.querySelector\?\.\('\.identity'\)/);
 });
+
+test('VLINDER 770 appears under each official series, never under unassigned',()=>{
+ const butterfly={dept:'politie',name:'RX',call:'770',series:'VLINDER',reekshoofdReeks:'VLINDER'};
+ const grouped=policeWorkflowGroups(serviceHierarchy([...fixture,butterfly],'politie').leadership);
+ for(const n of ['1','2','3'])assert.equal(grouped[n].Middenkader.filter(p=>p.call==='770').length,1);
+ assert.equal(grouped.unassigned.Middenkader.some(p=>p.call==='770'),false);
+ const viaHead=policeWorkflowGroups(serviceHierarchy([{dept:'politie',name:'RX',call:'770',series:'',reekshoofdReeks:'VLINDER'}],'politie').leadership);
+ for(const n of ['1','2','3'])assert.equal(viaHead[n].Middenkader.length,1);
+});

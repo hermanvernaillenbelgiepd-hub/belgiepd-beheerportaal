@@ -1,3 +1,4 @@
+import {policeWorkflowSeriesTargets} from './police-vlinder.js';
 // BelgiumPD hierarchy preview: presentation only, never an access control.
 // No identity is ever inferred from a name. Each service registration is
 // retained, including repeated names or the same person in two services.
@@ -177,9 +178,11 @@ export function policeWorkflowGroups(leadership){
    if(person?.dept!=='politie')continue;
    // Verified roster assignment first. Reekshoofd information is a
    // presentation-only fallback for a head without a stored member REEKS.
-   const series=policeWorkflowSeriesNumber(person.series)||
-     policeWorkflowSeriesNumber(person.reekshoofdReeks);
-   groups[series===null?'unassigned':String(series)][entry.label].push(person);
+   // A formally designated VLINDER belongs to all three columns;
+   // presentation replication never duplicates the operational person.
+   const targets=policeWorkflowSeriesTargets(person,policeWorkflowSeriesNumber);
+   if(!targets.length)groups.unassigned[entry.label].push(person);
+   else for(const series of targets)groups[String(series)][entry.label].push(person);
   }
  }
  return groups;
