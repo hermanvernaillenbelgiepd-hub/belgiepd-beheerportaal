@@ -10,7 +10,7 @@ test('police officers can classify group leader separately',()=>{
  const valid=validatePoliceSpecialtyEdit(roleEdit);
  assert.equal(valid.functionOverrides.AE,'groepsleider');
  const placement=validatePlacement({boardRole:'none',leadershipTier:'none',displayOrder:0,
-  teachingRoles:[],displayLabels:[],...valid},'politie');
+  teachingRoles:[],displayLabels:[],specialties:valid.specialties,instructorSpecialties:valid.instructorSpecialties,teacherSpecialties:valid.teacherSpecialties,functionOverrides:valid.functionOverrides,reason:valid.reason},'politie');
  const merged=mergePlacement({dept:'politie',name:'Test',call:'400',rank:'Inspecteur',specialties:[]},placement,
   {teachingRoles:['instructeur'],instructorSpecialties:['AE'],specialties:['AE'],synced:true});
  assert.deepEqual(merged.groupLeaderSpecialties,['AE']);
@@ -21,7 +21,7 @@ test('police officers can classify group leader separately',()=>{
 test('independent group and instructor classification never grants permissions',()=>{
  const yes=validatePoliceSpecialtyEdit({...roleEdit,functionOverrides:{AE:'beide'}});
  const merged=mergePlacement({dept:'politie',name:'Test',call:'400',rank:'Inspecteur',specialties:[]},
-  validatePlacement({boardRole:'none',leadershipTier:'none',displayOrder:0,teachingRoles:[],displayLabels:[],...yes},'politie'),
+  validatePlacement({boardRole:'none',leadershipTier:'none',displayOrder:0,teachingRoles:[],displayLabels:[],specialties:yes.specialties,instructorSpecialties:yes.instructorSpecialties,teacherSpecialties:yes.teacherSpecialties,functionOverrides:yes.functionOverrides,reason:yes.reason},'politie'),
   {teachingRoles:[],instructorSpecialties:[],specialties:['AE'],synced:true});
  assert.deepEqual(merged.groupLeaderSpecialties,['AE']);
  assert.deepEqual(specialtyInstructorRoles(merged,'AE'),['instructeur']);
