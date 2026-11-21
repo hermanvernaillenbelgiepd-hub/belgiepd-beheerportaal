@@ -91,11 +91,11 @@ test('Beveiligde personeelsfiche opent zonder verdwenen detailLinks-element of d
     URLSearchParams,message:()=>{}
   };
   await new Script(html.slice(from,to)+
-    "\\nopenDossier({dept:'politie',discordId:'123456789012345678',name:'seppie',canOpen:true})")
+    "\nopenDossier({dept:'politie',discordId:'123456789012345678',name:'seppie',canOpen:true})")
     .runInNewContext(context);
   assert.equal(staff.children.length,1);
   assert.equal(staff.children[0].tagName,'iframe');
-  assert.match(staff.children[0].src,/personeelsbeheer\\.html\\?embed=1/);
+  assert.match(staff.children[0].src,/personeelsbeheer\.html\?embed=1/);
   assert.match(elems.history.textContent,/Diensthistoriek niet beschikbaar/);
   assert.equal(elems.detail.hidden,false);
 });
