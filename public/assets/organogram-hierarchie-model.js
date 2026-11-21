@@ -164,7 +164,7 @@ export function orderedPoliceMiddle(rows){
 // not numerical 600/700 callsign lanes. No inferred series, no access grants.
 export function policeWorkflowSeriesNumber(value){
  const text=String(value??'').trim();
- const hit=/^(?:(?:reeks|serie|series)\\s*0?([1-3])|r0?([1-3])|0?([1-3]))$/i.exec(text);
+ const hit=/^(?:(?:reeks|serie|series)\s*0?([1-3])|r0?([1-3])|0?([1-3]))$/i.exec(text);
  return hit?Number(hit[1]||hit[2]||hit[3]):null;
 }
 export function policeWorkflowGroups(leadership){
