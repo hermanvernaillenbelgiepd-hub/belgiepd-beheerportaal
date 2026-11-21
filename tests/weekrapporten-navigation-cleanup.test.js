@@ -14,9 +14,9 @@ test('oude rapportregistraties en manuele formulieren zijn ontoegankelijk vanuit
  assert.match(html,/<details id="reportRegistrations" class="report-archive" hidden inert aria-hidden="true"/);
  assert.match(html,/<div class="card hidden" id="legacyReportCreator" hidden inert aria-hidden="true"/);
  assert.match(html,/<section id="legacyReportEntry" hidden inert aria-hidden="true">/);
- assert.doesNotMatch(html,/if\\(location\\.hash==='#registraties'/);
- assert.doesNotMatch(html,/Registraties staan uit\\. Controleer BPD_ENABLE_MANAGEMENT_WRITES/);
- assert.match(html,/<a href="\\/dossiercentrum\\.html">Dossiercentrum<\\/a>/);
+ assert.ok(!html.includes("if(location.hash==='#registraties'"));
+ assert.ok(!html.includes('Registraties staan uit. Controleer BPD_ENABLE_MANAGEMENT_WRITES'));
+ assert.ok(html.includes('<a href="/dossiercentrum.html">Dossiercentrum</a>'));
 });
 test('weekrapporten & old registrations stay operational, with unchanged API',()=>{
  for(const required of [
