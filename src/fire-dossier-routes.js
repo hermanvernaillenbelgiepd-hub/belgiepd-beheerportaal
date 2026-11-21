@@ -79,22 +79,32 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
      const sanctionTypes=canWrite.includes('sanctie')?
        permittedSanctionTypes(fireSanctionLevel(req.bpd),10):[];
      if(level==='identity'){
-       // Middle cadre can see approved leave dates/status, not confidential
-       // reasons, administrative case entries or protected cadre dossiers.
-       const leaveSnap=await getFirestore().collection('bpd_leave_requests')
-         .where('personDiscordId','==',person.personId).limit(100).get();
+       // Middenkader: alleen lager Brandweerpersoneel en uitsluitend
+       // observaties, notities, algemene profielinformatie en eigen voorstellen.
+       const db=getFirestore(),casePath='brandweer_'+person.personId;
+       const [leaveSnap,caseSnap,profileSnap]=await Promise.all([
+         db.collection('bpd_leave_requests')
+           .where('personDiscordId','==',person.personId).limit(100).get(),
+         db.collection('bpd_cases').doc(casePath).collection('entries')
+           .orderBy('createdAt','desc').limit(120).get(),
+         db.collection('bpd_staff_dossiers').doc(casePath).get()
+       ]);
        const leave=leaveSnap.docs.filter(doc=>doc.get('status')==='approved')
          .map(doc=>({id:doc.id,startDate:clean(doc.get('startDate'),10),
            endDate:clean(doc.get('endDate'),10),status:'approved'}));
-       const proposals=canProposePromotion?await getFirestore()
-         .collection('bpd_cases').doc('brandweer_'+person.personId)
-         .collection('entries').orderBy('createdAt','desc').limit(120).get():null;
-       const ownProposals=proposals?.docs.filter(d=>d.get('type')==='promotievoorstel'&&
-         d.get('registeredBy')?.discordId===req.bpd.discordId&&
-         d.get('status')!=='verwijderd').map(d=>firePublicProposal(d.data(),d.id))||[];
+       const entries=caseSnap.docs.filter(d=>d.get('status')!=='verwijderd'&&
+         (d.get('type')==='observatie'||d.get('type')==='notitie'&&
+          ['basis','belangrijk'].includes(d.get('noteKind'))))
+         .map(d=>safeCase(d,d.id));
+       const ownProposals=canProposePromotion?caseSnap.docs.filter(d=>
+         d.get('type')==='promotievoorstel'&&d.get('status')!=='verwijderd'&&
+         d.get('registeredBy')?.discordId===req.bpd.discordId)
+         .map(d=>firePublicProposal(d.data(),d.id)):[];
        res.set('Cache-Control','private, no-store');
        return res.json({person:publicInfo(person),visibility:level,
-         leave,entries:[],trainings:[],promotionProposals:ownProposals,
+         leave,entries,profile:summary(profileSnap.get('profile')),
+         trainings:[],olderNotes:[],dossierHistory:[],
+         promotionProposals:ownProposals,
          canProposePromotion,canAdvisePromotion:false,canWrite,canLogManualLeave:false,
          sanctionTypes:[],canWithdrawSanctions:false,canEditSpecialties:false});
      }
