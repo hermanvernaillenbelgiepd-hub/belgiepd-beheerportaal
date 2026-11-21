@@ -13,7 +13,7 @@ const actor=role=>({uid:'discord:111111111111111111',
 
 test('Inactiviteitsping is a distinct audited case type across department scopes',()=>{
  assert.ok(MANAGEMENT_TYPES.includes('inactiviteitsping'));
- assert.equal(RECORD_LABELS.inactiviteitsping,'Inactiviteitsping');
+ assert.equal(RECORD_LABELS.inactiviteitsping,'Activiteitenping');
  const event=validateManagementEntry({type:'inactiviteitsping',
   eventDate:'2026-11-02',details:'Inactiviteit gecontroleerd; opvolging gevraagd.'});
  assert.equal(event.type,'inactiviteitsping');
@@ -30,7 +30,7 @@ test('The two-week report retains a dedicated inactivity ping section, with sour
   details:'Inactiviteitsping gecontroleerd',registeredBy:{name:'Kaderlid',call:'700'}};
  const sections=reportSections([entry],'2026-10-26','2026-11-08');
  const list=sections.find(x=>x.type==='inactiviteitsping');
- assert.equal(list.label,'Inactiviteitsping');
+ assert.equal(list.label,'Activiteitenping');
  assert.equal(list.entries.length,1);
  assert.equal(list.entries[0].registeredBy.call,'700');
 });
@@ -38,8 +38,8 @@ test('Dossier dropdown and important notes include the new category without auto
  const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
  const route=readFileSync(new URL('../src/management-routes.js',import.meta.url),'utf8');
  assert.match(page,/case:inactiviteitsping/);
- assert.match(page,/inactiviteitsping:'Inactiviteitsping'/);
- assert.match(page,/\['notitie','specialisatiebeperking','inactiviteitsping'\]/);
+ assert.match(page,/inactiviteitsping:'Activiteitenping'/);
+ assert.match(page,/sheetSetRows\('activityPings',activityPings/);
  assert.match(page,/niet automatisch een Discord-bericht verstuurd/);
  assert.match(route,/reportSections\(result,report\.periodStart,report\.periodEnd\)/);
  assert.match(route,/collection\('bpd_cases'\)/);

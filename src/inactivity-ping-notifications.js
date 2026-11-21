@@ -10,7 +10,7 @@ export function inactivityPingNotice({dept,discordId,entryId,details,actor,sourc
  if(!DEPTS.has(dept)||!ID.test(clean(discordId))||!validPingId(entryId)||
     !['manual','automatic'].includes(source)||
      !(kind===null||['50/50','INACTIEF'].includes(kind))||
-    !clean(details)||clean(details).length>4000)throw Error('Ongeldige inactiviteitsping');
+    !clean(details)||clean(details).length>4000)throw Error('Ongeldige activiteitenping');
  return {
   type:'inactiviteitsping',dept,targetDiscordId:discordId,
   caseId:dept+'_'+discordId,entryId,
@@ -21,7 +21,8 @@ export function inactivityPingNotice({dept,discordId,entryId,details,actor,sourc
  };
 }
 export function publicPingNotice(id,record){
- if(!validPingId(id)||record?.type!=='inactiviteitsping')return null;
+ if(!validPingId(id)||record?.type!=='inactiviteitsping'||
+    record?.status==='verwijderd'||record?.retired?.at!=null)return null;
  const iso=x=>x?.toDate?.()?.toISOString?.()||null;
  return {
   id,department:clean(record.dept),details:clean(record.details).slice(0,4000),

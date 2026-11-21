@@ -3,7 +3,7 @@ import {getAuth} from 'firebase-admin/auth';
 import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
 import {calendarDays,validDiscordId,validateLeaveRequest,validateManualLeaveRequest,rosterPoliceRole,
   mayRegisterCentralManualLeave,maySubmitManualLeaveForApproval,mayApproveLeave,
-  mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,
+  mayManageGrants,highCadreDepartments,leaveGrantDepartments,mayReviewLeaveNotifications,mayViewLongManualLeaveNotice,
   validateGrant,activeGrant,roleForDepartment,leaveSubmissionStatus,parseDay,validateLeaveNote} from './leave-policy.js';
 import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
@@ -11,7 +11,7 @@ import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
 import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
- historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
+ historicalMigrationSettings,historicalMigrationAllowed,canManageHistoricalObservationImport,validateHistoricalActorSelection}
  from './historical-observation-import-policy.js';
 import {SERIES_LEADERS,personSeries} from './training-request-policy.js';
 import {canRetireDossierRecord} from './dossier-retirement-policy.js';
@@ -226,14 +226,24 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         review=[...new Map(lists.flatMap(x=>x.docs)
           .filter(d=>d.get('status')==='pending').map(d=>[d.id,d])).values()];
       }
-      const allowed=await Promise.all(review.map(async d=>board||mayApproveLeave(
-        req.bpd,await resolveApplicantRoles(d.data()),grant,yyyyMmDd(),false)));
-      review=review.filter((d,i)=>allowed[i]);
+      // Read-only awareness for the same service's higher-ranked staff.
+      // Re-use the scoped pending fetch, no cross-service scan or new writes.
+      const resolved=await Promise.all(review.map(async d=>({
+        doc:d,record:await resolveApplicantRoles(d.data())
+      })));
+      const informational=resolved.filter(x=>
+        mayViewLongManualLeaveNotice(req.bpd,x.record)).map(x=>x.doc);
+      const allowed=resolved.map(x=>board||mayApproveLeave(
+        req.bpd,x.record,grant,yyyyMmDd(),false));
+      review=resolved.filter((_,i)=>allowed[i]).map(x=>x.doc);
       const byTime=(a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''));
+      res.set('Cache-Control','private, no-store');
       return res.json({mine:my.docs.map(d=>item(d,true)).sort(byTime),
         toReview:review.map(d=>item(d,true)).sort(byTime),
+        toInformation:informational.map(d=>item(d,true)).sort(byTime),
         toOverride:board?overrides.map(d=>item(d,true)).sort(byTime):[],
-        canOverride:board,limited:my.docs.length===100||review.length>=100||overrides.length>=250});
+        canOverride:board,limited:my.docs.length===100||review.length>=100||
+          informational.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
   // Dossierweergave: reden uitsluitend na bestaande dossier-/dienstautorisatie.
@@ -653,8 +663,21 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       if(representedId){
         const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
           .doc(HISTORICAL_OBSERVATION_DOC).get();
-        if(!historicalMigrationAllowed(req.bpd,dept,'verlof',historicalMigrationSettings(config.data())))
-          throw rejection('Historische verlofovername is uitgeschakeld of niet toegestaan',403);
+        const migration=historicalMigrationSettings(config.data());
+        const authorized=canManageHistoricalObservationImport(req.bpd);
+        if(!historicalMigrationAllowed(req.bpd,dept,'verlof',migration)){
+          // Privégegevens, oorspronkelijke auteur en Discord-ID horen niet in de
+          // foutlog. Alleen de oorzaak: omgevingsschakelaar of dossierbevoegdheid.
+          const cause=!migration.enabled?'feature-disabled':
+            !authorized?'actor-not-authorized':
+            dept!=='politie'?'wrong-service':'policy-denied';
+          console.warn('historical_leave_denied',cause);
+          throw rejection(!migration.enabled?
+            'Historische verlofovername staat op de SERVER uit. Schakel eerst “Oude dossiers tijdelijk overnemen” in en laad het dossier opnieuw.':
+            !authorized?
+              'Je HUIDIGE aanmelding is niet meer gemachtigd voor historische verlofovername. Vernieuw je Discordrollen of meld opnieuw aan als Officierenkader/Korpsleiding of geverifieerd technisch beheer.':
+              'Historische verlofovername is voor dit dienstverband niet toegestaan.',403);
+        }
         try{onBehalfReason=validateHistoricalActorSelection(representedId,
           req.body.onBehalfReason,req.bpd.discordId).reason}
         catch(e){throw rejection(e.message)}

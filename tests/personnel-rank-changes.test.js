@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
-  validatePoliceGradeChange,classifyPoliceGradeChange,policeCallGrade} from '../src/personnel-rank-policy.js';
+  validatePoliceGradeChange,classifyPoliceGradeChange,policeCallGrade,
+  verifiedPoliceRankAuthority,policeOfficialRankLabel} from '../src/personnel-rank-policy.js';
 import {mergePersonnelEdits} from '../src/personnel-editor-policy.js';
+import {verifiedPoliceRank} from '../src/portal-profile-mode.js';
+import {verifyGuildAuthorizationRoles} from '../src/discord-guild-authorization.js';
 import {staffActivityEvent} from '../src/personnel-activity.js';
 import {SPECIALTY_LABELS} from '../src/normalize.js';
 import {roleSummary} from '../src/role-catalog.js';
@@ -86,4 +89,107 @@ test('New rank workflow includes server checks and visible history integration',
  assert.match(page,/id="rankChangeForm"/);
  assert.match(page,/id="rankChangePanel"/);
  assert.match(page,/demotion:'Degradatie'/);
+});
+
+test('Thijs / verified Police Korpsleiding: expired permission is refreshed from guild bot for an effective promotion',async()=>{
+ const leader={...corps,discordPoliceRank:null};
+ assert.equal(canChangePoliceGrade(leader,target('316','Aspirant Inspecteur')),false,
+   'An expired Discord proof must not authorize an actual rank change');
+ const guildId='123456789012345678',clock=Date.UTC(2026,10,19,22,30);
+ const env={DISCORD_GUILD_ID:guildId,BPD_DISCORD_BOT_TOKEN:'A'.repeat(40)};
+ const roles=['1309532438053130326','1562710901080068229'];
+ const verified=await verifyGuildAuthorizationRoles(actorId,{
+  env,now:()=>clock,cacheResults:false,
+  fetchImpl:async()=>({status:200,ok:true,json:async()=>({
+   roles,joined_at:'2026-01-01T00:00:00Z',user:{id:actorId}
+  })})
+ });
+ assert.equal(verified.status,'ok');
+ const verifiedRole=verifiedPoliceRank({guildId,verifiedAt:clock,roleIds:verified.roleIds},
+   guildId,clock);
+ assert.equal(verifiedRole,'korpsleiding');
+ assert.equal(canChangePoliceGrade({...leader,discordPoliceRank:verifiedRole},
+   target('316','Aspirant Inspecteur')),true);
+ assert.equal(allowedPoliceGradeChoices({...leader,discordPoliceRank:verifiedRole})
+   .includes('Inspecteur'),true);
+});
+test('Discord bot refresh never grants rank edits without an actual Police Korpsleiding role',async()=>{
+ const guildId='123456789012345678',clock=Date.UTC(2026,10,19,22,30);
+ const env={DISCORD_GUILD_ID:guildId,BPD_DISCORD_BOT_TOKEN:'A'.repeat(40)};
+ const wrongRoles=await verifyGuildAuthorizationRoles(actorId,{
+  env,now:()=>clock,cacheResults:false,
+  fetchImpl:async()=>({status:200,ok:true,json:async()=>({
+   roles:['1309532438053130326','1309532438082355251'],
+   joined_at:'2026-01-01T00:00:00Z',user:{id:actorId}
+  })})
+ });
+ assert.equal(wrongRoles.status,'ok');
+ const verified=verifiedPoliceRank({guildId,verifiedAt:clock,
+  roleIds:wrongRoles.roleIds},guildId,clock);
+ assert.equal(verified,null);
+ assert.equal(canChangePoliceGrade({...corps,discordPoliceRank:verified},
+   target('316','Aspirant Inspecteur')),false);
+ const src=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(src,/const personnelRankAction=req\.path==='\/api\/personnel\/overview'/);
+ assert.match(src,/verifyGuildAuthorizationRoles\(discordId\)/);
+ assert.match(src,/actor\.discordPoliceRank=verifiedPoliceRank\(\{/);
+ assert.match(src,/verified\.uid==='discord:'\+discordId/);
+ assert.match(src,/const possiblePoliceCadre=/);
+ assert.match(src,/if\(personnelRankAction&&verified\.uid==='discord:'\+discordId/);
+ assert.match(src,/actor\.discordPoliceRank=verifiedPoliceRank\(\{/);
+});
+
+test('Board + highest Police Corps can make verified grade decisions despite a separate administrative role',()=>{
+ const leader={...corps,boardPersonnelAdmin:true,dossierSourceFresh:true,
+   role:'beheerder',departments:['politie','ambulance'],
+   dossierNativeDepartments:['politie'],dossierAllowedDepartments:['politie'],
+   departmentRoles:{politie:'korpsleiding',ambulance:'basiskader'}};
+ assert.equal(verifiedPoliceRankAuthority(leader),'korpsleiding');
+ assert.equal(canChangePoliceGrade(leader,target('420','Inspecteur')),true);
+ assert.ok(allowedPoliceGradeChoices(leader).includes('Aspirant Commissaris'));
+ assert.equal(canChangePoliceGrade({...leader,discordPoliceRank:null},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,boardPersonnelAdmin:false},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,dossierSourceFresh:false},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,departmentRoles:{politie:'middenkader'}},
+   target('420','Inspecteur')),false);
+ assert.equal(canChangePoliceGrade({...leader,dossierNativeDepartments:[]},
+   target('420','Inspecteur')),false);
+});
+test('Official Inspector name 420 matches 421 in read-only personnel-list display',()=>{
+ assert.equal(policeOfficialRankLabel('Inspecteur'),'Inspecteur van Politie (INP)');
+ assert.equal(policeOfficialRankLabel('Inspecteur van Politie (INP)'),
+   'Inspecteur van Politie (INP)');
+ assert.equal(policeOfficialRankLabel('Aspirant Inspecteur'),
+   'Aspirant Inspecteur van Politie (A-INP)');
+ const member=readFileSync(new URL('../src/member-dashboard-routes.js',import.meta.url),'utf8');
+ assert.match(member,/policeOfficialRankLabel\(primary\.rank\)/);
+ const editor=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.match(editor,/rankDisplay:p\.dept==='politie'\?policeOfficialRankLabel\(p\.rank\)/);
+});
+test('Only the original unified personnel-movement form appears for both cadre groups',()=>{
+ const html=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ assert.match(html,/id="staffMovementMode"/);
+ assert.match(html,/id="staffMovementNewCall"/);
+ assert.match(html,/<section id="rankChangePanel" hidden style="display:none!important/);
+ assert.match(html,/\$\('rankChangePanel'\)\.hidden=true/);
+});
+
+test('read-only number previews and real promotions use fresh independently verified guild roles',()=>{
+ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
+ assert.match(server,/const possiblePoliceCadre=/);
+ assert.match(server,/actor\.policeRankVerificationStatus=guild\.status/);
+ assert.match(server,/actor\.discordPoliceRank=verifiedPoliceRank/);
+ const route=readFileSync(new URL('../src/personnel-editor-routes.js',import.meta.url),'utf8');
+ assert.match(route,/policeRankVerificationStatus==='bot_unavailable'/);
+ assert.match(route,/tx\.get\(fixedReservation\)/);
+ assert.match(route,/numberReservation\.exists/);
+ const actor={...officer,discordPoliceRank:'officierenkader'};
+ const sander=target('485','Inspecteur van Politie (INP)');
+ assert.equal(canChangePoliceGrade(actor,sander),true);
+ assert.equal(allowedPoliceGradeChoices(actor).includes('Eerste Inspecteur'),true);
+ assert.equal(canChangePoliceGrade({...actor,discordPoliceRank:null},sander),false);
+ assert.equal(canChangePoliceGrade({...actor,departmentRoles:{politie:'basiskader'}},sander),false);
 });

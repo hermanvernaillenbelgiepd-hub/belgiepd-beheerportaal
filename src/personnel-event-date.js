@@ -1,3 +1,5 @@
+// A business event belongs to its actual local calendar day, not to the
+// UTC day or to the later moment when an administrator enters its log.
 const fmt=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
  year:'numeric',month:'2-digit',day:'2-digit'});
 export function brusselsEventDate(value=new Date()){

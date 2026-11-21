@@ -111,14 +111,17 @@ test('directe instellingenlink opent configuratie ook zonder schrijfrechten, nie
  assert.ok(editor.includes("save.disabled=!allowed||!draft"));
  assert.ok(editor.includes("const allowed=eligible();"));
 });
-test('personeelsmanagement blijft compacte tabel op desktop; andere roosters houden mobiel kaartgedrag',()=>{
+test('personeelsmanagement blijft compacte tabel bij alle schermbreedtes; andere roosters blijven adaptief',()=>{
  const nav=read('public/bpd-navigation.js'),css=read('public/bpd-navigation.css');
+ const page=read('public/personeelsbeheer.html');
  assert.ok(nav.includes("table.closest('#staffManagePanel')"));
- assert.ok(nav.includes("document.documentElement.clientWidth>=900"));
+ assert.ok(nav.includes("table.dataset.bpdTableLayout==='always'"));
+ assert.ok(!nav.includes('document.documentElement.clientWidth>=900'));
  assert.ok(nav.includes("table.classList.remove('bpd-adaptive-cards');"));
  assert.ok(nav.includes("table.classList.toggle('bpd-adaptive-cards',available<required+12);"));
  assert.ok(css.includes('table.bpd-adaptive-cards'));
- assert.ok(read('public/personeelsbeheer.html').includes('class="scroller staff-roster-holder"'));
+ assert.ok(page.includes('class="scroller staff-roster-holder"'));
+ assert.ok(page.includes('data-bpd-table-layout="always"'));
 });
 
 test('dienstspecifieke opslaanrechten gebruiken echte dossierverificatie, leesmodus blijft beschikbaar',()=>{

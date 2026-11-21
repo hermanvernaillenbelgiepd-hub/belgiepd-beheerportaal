@@ -1,5 +1,6 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries,sameDayCategories} from './dossier-linked-cases.js';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_LABELS} from './normalize.js';
@@ -109,7 +110,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const importConfig=await historicalSettings();
       const migrationConfig=historicalMigrationSettings((await db()
         .collection(HISTORICAL_OBSERVATION_SETTINGS).doc(HISTORICAL_OBSERVATION_DOC).get()).data());
-      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&(importConfig.enabled===true||migrationConfig.enabled===true&&canManageHistoricalObservationImport(req.bpd))?subset.filter(p=>eligibleRepresentative(p,p.dept) && p.personId!==actor?.discordId)
+      const representatives=(req.bpd.portalTechnicalMode===true||['middenkader','officierenkader','korpsleiding'].includes(req.bpd.role))&&(importConfig.enabled===true||migrationConfig.enabled===true&&canManageHistoricalObservationImport(req.bpd))?subset.filter(p=>eligibleRepresentative(p,p.dept))
          .map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank})):[];
        const sanctionDepartments=['politie','brandweer','ambulance','depannage'].filter(d=>
          (req.bpd.dossierNativeDepartments?.includes(d)||req.bpd.dossierFullDepartments?.includes(d))&&
@@ -146,9 +147,48 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
     try{
       const snap=await getSnapshot();
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
-      const rows=await db().collection('bpd_cases').doc(docId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(100).get();
-      res.json({entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({id:d.id,...publicEntry(d.data())})),limited:rows.docs.length===100});
+      const [rows,linked]=await Promise.all([
+        db().collection('bpd_cases').doc(docId(dept,id)).collection('entries')
+          .orderBy('createdAt','desc').limit(100).get(),
+        loadLinkedCaseEntries(db(),req.bpd,snap.data,dept,id,['observatie'])
+      ]);
+      res.set('Cache-Control','private, no-store');
+      res.json({entries:[
+        ...rows.docs.filter(d=>!isRetired(d.data())).map(d=>({id:d.id,...publicEntry(d.data())})),
+        ...linked.entries.map(e=>({...e,createdAt:isoTimestamp(e.createdAt)}))
+      ],limited:rows.size===100||linked.limited});
     }catch(err){return handleError(res,err)}
+  });
+
+  // Read-only, same-day check for the currently selected permitted dossier.
+  // Never reveal note text or authors in this notification endpoint.
+  app.get('/api/registrations/date-check',requireUser,async(req,res)=>{
+    const dept=trim(req.query?.dept),id=trim(req.query?.discordId);
+    const date=trim(req.query?.eventDate);
+    if(!DEPTS.includes(dept)||!isDiscordId(id)||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date)||
+      Number.isNaN(Date.parse(date+'T12:00:00Z'))||
+      new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)
+      return res.status(400).json({error:'Ongeldige dossierdatum'});
+    if(!canReadServiceDossier(req.bpd,dept))
+      return res.status(403).json({error:'Geen dossierrechten'});
+    try{
+      const snap=await getSnapshot();
+      if(snap.stale)return res.status(503).json({error:'Personeelsgegevens niet actueel'});
+      const subjects=snap.data.filter(p=>p.dept===dept&&p.personId===id);
+      if(subjects.length!==1||!canReadPersonnelSubject(req.bpd,subjects[0]))
+        return res.status(403).json({error:'Geen bevoegdheid om dit dossier te controleren'});
+      const [own,linked]=await Promise.all([
+        db().collection('bpd_cases').doc(docId(dept,id)).collection('entries')
+          .where('eventDate','==',date).limit(40).get(),
+        loadLinkedCaseEntries(db(),req.bpd,snap.data,dept,id,
+          ['observatie','notitie','algemene_notitie'])
+      ]);
+      const registered=own.docs.map(x=>x.data()).concat(linked.entries)
+        .filter(x=>x.eventDate===date);
+      res.set('Cache-Control','private, no-store');
+      res.json({...sameDayCategories(registered),limited:own.size===40||linked.limited});
+    }catch(e){return handleError(res,e)}
   });
   // Alleen bevoegde sanctionerende kaderleden zien de gedetailleerde
   // wijzigingshistoriek. Nooit Firebase UID's, e-mail of andere auditgeheimen.
@@ -228,6 +268,10 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
        const snap=await getSnapshot();
       const target=safeSubject(snap.data,dept,id);
       if(!target)return res.status(404).json({error:'Personeelslid niet gevonden of Discord ID dubbelzinnig'});
+      let linkedColleague=null;
+      try{
+        linkedColleague=verifiedColleagueLink(raw?.linkedColleagueId,dept,id,snap.data,req.bpd,type);
+      }catch(e){return res.status(400).json({error:e.message})}
       // A sanction cannot target a protected or same-ID personnel file.
       // The actual cadre role is independently verified by server middleware.
       if(type==='sanctie'&&(id===req.bpd.discordId||
@@ -244,21 +288,33 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
           return res.status(403).json({error:'Basiskader mag uitsluitend lagere politiegraden observeren. Sancties of registreren namens derden zijn niet toegestaan.'});
       }
       const represented=representedId?representativeFromPersonnel(snap.data,dept,representedId):null;
-       if(representedId && (!represented || representedId===actor.discordId))
-         return res.status(400).json({error:'Ongeldige oorspronkelijke politieobservator voor deze historische overname'});
+       // Een invoerder mag ook een eigen, eerder in de spreadsheet gemaakte
+       // observatie overzetten. Verifieer de oorspronkelijke registrator via
+       // de personeelsbron, maar weiger niet louter omdat het dezelfde
+       // Discord-ID is. De audit bewaart registeredBy en submittedByActor
+       // afzonderlijk, ook wanneer beide naar dezelfde persoon verwijzen.
+       if(representedId && !represented)
+         return res.status(400).json({error:'De oorspronkelijke registrator is niet geldig of niet eenduidig gevonden in de personeelslijst'});
        const collection=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries');
       const newDoc=collection.doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const at=FieldValue.serverTimestamp();
       const batch=db().batch();
-      batch.create(newDoc,{...values,...(type==='sanctie'&&represented?{status:'historisch'}:{}),
+      batch.create(newDoc,{...values,
+        ...(linkedColleague?{linkedColleagueId:linkedColleague.personId}:{}),
+        ...(type==='sanctie'&&represented?{status:'historisch'}:{}),
          subjectDiscordId:id,dept,subjectNameAtCreation:target.name,subjectCallAtCreation:target.call,
+         // Only record an issuance-time rank for genuinely new sanctions.
+         // A historical import must not misrepresent today's rank as an old one.
+         ...(type==='sanctie'&&!represented?{subjectRankAtCreation:target.rank}:{}),
         registeredBy:represented||actor,submittedByActor:actor,
         onBehalfOf:represented||null,onBehalfReason,
         historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,
         submittedBy:{uid:req.bpd.uid,email:req.bpd.email},createdAt:at,modifiedAt:null});
       // Beperkte melding zonder vertrouwelijke dossierinhoud. Wordt in dezelfde batch opgeslagen.
       batch.create(notice,{caseId:docId(dept,id),entryId:newDoc.id,type,dept,createdAt:at});
+      createColleagueLink(db(),batch,{dept,primaryId:id,entryId:newDoc.id,
+        type,eventDate:values.eventDate,colleague:linkedColleague,at});
       await batch.commit();
       // Basiskader krijgt alleen bevestiging, geen record of dossierinformatie terug.
       res.status(201).json({saved:true,reference:newDoc.id});

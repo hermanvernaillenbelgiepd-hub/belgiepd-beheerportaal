@@ -1,0 +1,126 @@
+/* BelgiumPD central appearance tokens, loaded AFTER existing layout CSS.
+ * Never restyle operational rank, series, service status, grade art or badges.
+ * All values originate from strict server-side enumerations. */
+:root{
+ --bpd-v-font:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+ --bpd-v-font-scale:1;
+ --bpd-v-pad:1;
+ --bpd-v-accent:#2759b6;
+ --bpd-v-accent-contrast:#ffffff;
+ --bpd-v-accent-border:#2759b6;
+ --bpd-v-accent-soft:#eaf1ff;
+}
+html[data-bpd-design-font="system"]{--bpd-v-font:system-ui,-apple-system,"Segoe UI",sans-serif}
+html[data-bpd-design-font="arial"]{--bpd-v-font:Arial,Helvetica,sans-serif}
+html[data-bpd-design-font="serif"]{--bpd-v-font:Georgia,"Times New Roman",serif}
+html[data-bpd-design-scale="90"]{--bpd-v-font-scale:.9}
+html[data-bpd-design-scale="95"]{--bpd-v-font-scale:.95}
+html[data-bpd-design-scale="100"]{--bpd-v-font-scale:1}
+html[data-bpd-design-scale="105"]{--bpd-v-font-scale:1.05}
+html[data-bpd-design-scale="110"]{--bpd-v-font-scale:1.1}
+html[data-bpd-design-scale="115"]{--bpd-v-font-scale:1.15}
+html[data-bpd-design-scale="120"]{--bpd-v-font-scale:1.2}
+html[data-bpd-design-density="compact"]{--bpd-v-pad:.86}
+html[data-bpd-design-density="comfortable"]{--bpd-v-pad:1.16}
+html[data-bpd-design-accent="blue"]{--bpd-v-accent:#2759b6;--bpd-v-accent-contrast:#fff;--bpd-v-accent-soft:#eaf1ff}
+html[data-bpd-design-accent="teal"]{--bpd-v-accent:#006c71;--bpd-v-accent-contrast:#fff;--bpd-v-accent-soft:#e5f6f4}
+html[data-bpd-design-accent="violet"]{--bpd-v-accent:#673cab;--bpd-v-accent-contrast:#fff;--bpd-v-accent-soft:#f2eafa}
+html[data-bpd-design-accent="amber"]{--bpd-v-accent:#8c4e00;--bpd-v-accent-contrast:#fff;--bpd-v-accent-soft:#fff0d0}
+html[data-bpd-theme="dark"][data-bpd-design-accent="blue"]{--bpd-v-accent:#9dc0ff;--bpd-v-accent-contrast:#0a2143;--bpd-v-accent-soft:#1e3555}
+html[data-bpd-theme="dark"][data-bpd-design-accent="teal"]{--bpd-v-accent:#8be8db;--bpd-v-accent-contrast:#09302d;--bpd-v-accent-soft:#193f42}
+html[data-bpd-theme="dark"][data-bpd-design-accent="violet"]{--bpd-v-accent:#d2b2ff;--bpd-v-accent-contrast:#251438;--bpd-v-accent-soft:#382c55}
+html[data-bpd-theme="dark"][data-bpd-design-accent="amber"]{--bpd-v-accent:#ffcf80;--bpd-v-accent-contrast:#462702;--bpd-v-accent-soft:#48391e}
+/* Only typography and generic chrome. The personnel matrix keeps its custom
+ * compact sizes so there is no unintended column overflow. */
+html[data-bpd-design-font] body,
+html[data-bpd-design-font] input,
+html[data-bpd-design-font] select,
+html[data-bpd-design-font] textarea,
+html[data-bpd-design-font] button {
+ font-family:var(--bpd-v-font)!important;
+}
+html[data-bpd-design-scale]{
+ font-size:calc(16px * var(--bpd-v-font-scale));
+}
+html[data-bpd-design-scale] main > p,
+html[data-bpd-design-scale] main > .card > p,
+html[data-bpd-design-scale] main > section > p,
+html[data-bpd-design-scale] main > section > label,
+html[data-bpd-design-scale] main input:not([type="checkbox"]):not([type="radio"]),
+html[data-bpd-design-scale] main textarea,
+html[data-bpd-design-scale] main select{
+ font-size:calc(13px * var(--bpd-v-font-scale));
+}
+html[data-bpd-design-density] main .card{
+ padding:calc(16px * var(--bpd-v-pad));
+}
+html[data-bpd-design-density] main input:not([type="checkbox"]):not([type="radio"]),
+html[data-bpd-design-density] main select,
+html[data-bpd-design-density] main textarea{
+ padding-block:calc(9px * var(--bpd-v-pad));
+}
+html[data-bpd-design-accent] a:not(.pill):not(.badge):not(.status):not(.bpd-side-link) {
+ text-decoration-color:var(--bpd-v-accent);
+}
+html[data-bpd-design-accent] main a:not([class]):not([role="button"]){
+ color:var(--bpd-v-accent);
+}
+html[data-bpd-design-accent] main button[type="submit"]:not(.alt):not(.secondary){
+ background:var(--bpd-v-accent);
+ color:var(--bpd-v-accent-contrast);
+ border-color:var(--bpd-v-accent);
+}
+html[data-bpd-design-accent] #bpdSidebar .bpd-side-links a[aria-current="page"]{
+ background:var(--bpd-v-accent-soft);
+ color:var(--bpd-v-accent);
+}
+html[data-bpd-design-accent] main :focus-visible{
+ outline-color:var(--bpd-v-accent);
+}
+/* Appearance editing should never apply to the real emergency/TO board:
+ * that surface has its own operational status palette. */
+body:has(#toBoardRoot) main button[type="submit"]{background:revert-layer}
+
+/* Extended fixed presentation values; never change rank/status/TO palette. */
+:root{
+ --bpd-v-card-radius:10px;--bpd-v-button-radius:9px;--bpd-v-field-radius:8px;
+ --bpd-v-shadow:0 2px 9px rgba(1,12,32,.08);--bpd-v-title-multiplier:1;
+ --bpd-v-line-height:1.55;--bpd-v-section-gap:16px;
+ --bpd-v-nav-padding:9px;--bpd-v-focus-width:2px;
+}
+html[data-bpd-design-card-radius="square"]{--bpd-v-card-radius:2px}
+html[data-bpd-design-card-radius="rounded"]{--bpd-v-card-radius:18px}
+html[data-bpd-design-button-radius="square"]{--bpd-v-button-radius:3px}
+html[data-bpd-design-button-radius="pill"]{--bpd-v-button-radius:999px}
+html[data-bpd-design-field-radius="square"]{--bpd-v-field-radius:2px}
+html[data-bpd-design-field-radius="rounded"]{--bpd-v-field-radius:16px}
+html[data-bpd-design-shadow-depth="none"]{--bpd-v-shadow:none}
+html[data-bpd-design-shadow-depth="medium"]{--bpd-v-shadow:0 9px 25px rgba(1,12,32,.18)}
+html[data-bpd-design-title-size="compact"]{--bpd-v-title-multiplier:.9}
+html[data-bpd-design-title-size="large"]{--bpd-v-title-multiplier:1.15}
+html[data-bpd-design-line-height="tight"]{--bpd-v-line-height:1.3}
+html[data-bpd-design-line-height="relaxed"]{--bpd-v-line-height:1.8}
+html[data-bpd-design-section-gap="compact"]{--bpd-v-section-gap:10px}
+html[data-bpd-design-section-gap="wide"]{--bpd-v-section-gap:24px}
+html[data-bpd-design-nav-density="compact"]{--bpd-v-nav-padding:6px}
+html[data-bpd-design-nav-density="comfortable"]{--bpd-v-nav-padding:13px}
+html[data-bpd-design-focus-style="strong"]{--bpd-v-focus-width:4px}
+html[data-bpd-design-card-radius] main .card{
+ border-radius:var(--bpd-v-card-radius);box-shadow:var(--bpd-v-shadow);
+}
+html[data-bpd-design-button-radius] main button:not(.bpd-theme-toggle),
+html[data-bpd-design-button-radius] main .button{border-radius:var(--bpd-v-button-radius)}
+html[data-bpd-design-field-radius] main input:not([type="checkbox"]):not([type="radio"]),
+html[data-bpd-design-field-radius] main select,
+html[data-bpd-design-field-radius] main textarea{border-radius:var(--bpd-v-field-radius)}
+html[data-bpd-design-title-size] main .card h2{font-size:calc(17px * var(--bpd-v-title-multiplier))}
+html[data-bpd-design-line-height] main p,
+html[data-bpd-design-line-height] main li{line-height:var(--bpd-v-line-height)}
+html[data-bpd-design-section-gap] main > .card{margin-block:var(--bpd-v-section-gap)}
+html[data-bpd-design-nav-density] #bpdSidebar .bpd-side-links a{padding-block:var(--bpd-v-nav-padding)}
+html[data-bpd-design-link-style="underline"] main a:not(.tile):not(.button):not(.pill){text-decoration:underline}
+html[data-bpd-design-link-style="bold"] main a:not(.tile):not(.button):not(.pill){font-weight:700}
+html[data-bpd-design-focus-style] main :focus-visible{
+ outline-style:solid;outline-width:var(--bpd-v-focus-width);outline-offset:2px;
+}
+body:has(#toBoardRoot) main .card{box-shadow:revert;border-radius:revert}

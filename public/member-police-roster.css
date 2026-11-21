@@ -231,7 +231,6 @@
 .mr-table td.mr-rank-cell,.mr-table td.mr-status-cell{padding-inline:2px}
 .mr-table .mr-status,.mr-table .mr-series-badge{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
 
-
 /* BelgiumPD compact mobile list — 2026-11-15 */
 /* Use one actual table row per person. Specializations are in an optional
    detail row, not an enormous personnel card or a sideways-scrolling table. */

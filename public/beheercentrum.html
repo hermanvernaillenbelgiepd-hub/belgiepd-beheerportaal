@@ -63,6 +63,12 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .custom-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .custom-item{border:1px solid var(--stroke);border-radius:8px;padding:7px 9px;font-size:12px}
 .custom-item button{font-size:11px;margin-left:8px;padding:4px 6px}
+#visualDesignPreview{border:1px solid var(--bpd-v-accent,var(--stroke));background:var(--bpd-v-accent-soft,var(--field));color:var(--text);border-radius:10px;padding:14px;margin:10px 0;max-width:500px}
+#visualDesignPreview strong{display:block;color:var(--bpd-v-accent,var(--accent))}
+#visualDesignPreview p{color:inherit}
+#visualDesignHistory{padding-left:22px;line-height:1.8}
+#visualDesignStatus.bad{color:#ffb4bd}
+html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
 @media(max-width:1150px){.edit-line{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){.edit-line{grid-template-columns:1fr 1fr}}
 [hidden]{display:none!important}
@@ -89,7 +95,11 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" id="awardLibraryTile" href="/beeldbibliotheek.html#onderscheidingen" hidden><h3>📁 Onderscheidingenbibliotheek</h3><p>Upload medailles en eretekens of wijzig hun benaming zonder bestaande toekenningen te verliezen.</p><small>Open Beeldbibliotheek</small></a>
   <a class="tile" id="aeTile" href="#ae-beheer" hidden><h3>🛡️ AE-functieniveau</h3><p>AE-I, AE-T, Teamleader of Instructeur corrigeren zonder Discord-rechten te wijzigen.</p><small>Open AE-beheer</small></a>
   <a class="tile" href="/gebruikersbeheer.html"><h3>🎖️ Specialisaties en uniformen</h3><p>Rollen, badges, patches en gekoppelde afbeeldingen in de bestaande beheerbibliotheek.</p><small>Open beheer en rollen</small></a>
-  <a class="tile" href="/activiteitscentrum.html"><h3>◷ Personeelsactiviteit</h3><p>Activiteitsopvolging en statussen controleren.</p><small>Open activiteitscentrum</small></a>
+  <a class="tile" href="/vormgeving.html" id="visualDesignTile" hidden>
+   <h3>🎨 Vormgeving</h3>
+   <p>Beheer centrale kleuren, lettertypes, tekstgrootte, ruimte en licht/donkermodus.</p>
+   <small>Open uitgebreide pagina- en kadereditor</small></a>
+   <a class="tile" href="/activiteitscentrum.html"><h3>◷ Personeelsactiviteit</h3><p>Activiteitsopvolging en statussen controleren.</p><small>Open activiteitscentrum</small></a>
   <a class="tile" href="/registraties.html"><h3>▤ Observaties Basiskader</h3><p>Ontvangstoverzicht, veilig archiveren en herstellen.</p><small>Open observaties</small></a>
   <a class="tile" id="cleanupTile" href="/testgegevens-opschonen.html" hidden><h3>🧹 Testgegevens &amp; Opschonen</h3><p>Per persoon expliciete testregistraties controleren, veilig intrekken en herstellen. Met auditlog.</p><small>Alleen Technisch Beheer</small></a>
   <a class="tile" id="simulatorTile" href="/technische-rollen-simulatie.html" hidden><h3>🧪 Testrollen simuleren</h3><p>Fictieve leidinggevende accounts en bevoegdheden per discipline testen, zonder wijzigingen aan echte gegevens.</p><small>TEST en uitsluitend Technisch Beheer</small></a>
@@ -97,6 +107,51 @@ button:disabled{cursor:not-allowed;opacity:.55}
   <a class="tile" href="/organogram-hierarchie.html"><h3>🌳 Organogram</h3><p>Personeelsindeling en beschikbare weergave-instellingen.</p><small>Open organogram</small></a>
   <a class="tile" href="/discord-status.html"><h3>🔗 Discord-koppeling</h3><p>Controleer jouw profiel, verificatie en verbinding.</p><small>Open mijn profiel</small></a>
  </div>
+</section>
+<section id="visualDesign" class="card" hidden aria-labelledby="visualDesignTitle">
+ <div class="row"><div><p><a href="/vormgeving.html">Open de uitgebreide vormgevingseditor per pagina en per kader →</a></p><h2 id="visualDesignTitle">🎨 Vormgeving · centrale standaard</h2>
+ <p>Kleuren, leesbaarheid en licht/donkermodus aanpassen zonder CSS-code of GitHub-deploy.
+ Dienstkleuren, statussen, rangtekens en patches blijven behouden.</p></div>
+ <button type="button" class="secondary" id="visualReload">↻ Opnieuw laden</button></div>
+ <form id="visualDesignForm">
+  <div class="form-grid">
+   <label for="visual-themeDefault">Standaard licht/donkermodus
+    <small>Persoonlijke licht/donkerkeuzes blijven voorgaan.</small>
+    <select id="visual-themeDefault"><option value="light">Licht</option>
+     <option value="dark">Donker</option></select></label>
+   <label for="visual-accent">Accentkleur
+    <small>Links, navigatie en knoppen; niet de dienst-/rangkleuren.</small>
+    <select id="visual-accent"><option value="blue">Blauw</option>
+     <option value="teal">Petrolgroen</option><option value="violet">Paars</option>
+     <option value="amber">Amber</option></select></label>
+   <label for="visual-fontFamily">Lettertype
+    <select id="visual-fontFamily"><option value="inter">Inter / standaard</option>
+     <option value="system">Systeemlettertype</option><option value="arial">Arial</option>
+     <option value="serif">Georgia</option></select></label>
+   <label for="visual-fontScale">Tekstgrootte <output id="visualScaleOut">100%</output>
+    <small>90–120%. Compacte personeelskolommen behouden hun eigen afmetingen.</small>
+    <input id="visual-fontScale" type="range" min="90" max="120" step="5" value="100"></label>
+   <label for="visual-density">Ruimte tussen onderdelen
+    <select id="visual-density"><option value="compact">Compact</option>
+     <option value="normal">Normaal</option>
+     <option value="comfortable">Ruim</option></select></label>
+  </div>
+  <div id="visualDesignPreview" role="img" aria-label="Voorbeeld van de portaalvormgeving">
+    <strong>Voorbeeld: Beheerportaal</strong>
+    <p>Personeelsdossiers en opleidingen behouden hun bestaande inhoud en rechten.</p>
+  </div>
+  <label for="visualReason">Motivering voor de wijziging (verplicht)
+   <textarea id="visualReason" rows="2" minlength="10" maxlength="240"
+    placeholder="Bijvoorbeeld: grotere letters en een duidelijker contrast"></textarea></label>
+  <div class="buttons">
+   <button type="submit" id="visualSave">Instellingen publiceren</button>
+   <button type="button" class="secondary" id="visualReset">Voorbeeld annuleren</button>
+   <button type="button" class="secondary" id="visualDefaults">Standaardwaarden herstellen</button>
+   <span id="visualRevision" class="muted"></span>
+  </div>
+  <p class="muted" id="visualDesignStatus" role="status" aria-live="polite"></p>
+ </form>
+ <details><summary>Laatste wijzigingen</summary><ol id="visualDesignHistory"></ol></details>
 </section>
 <section id="awardManage" class="card" hidden aria-label="Onderscheidingen toekennen">
  <h2>🏅 Onderscheidingen per politiemedewerker beheren</h2>
@@ -246,7 +301,9 @@ button:disabled{cursor:not-allowed;opacity:.55}
 const $=id=>document.getElementById(id);
 let auth=null,context=null,loading=false,aePeople=[],aeHasAccess=false;
 const {setupTechnicalServiceEditors}=await import('/technical-service-editors.js');
-let serviceEditor=null;
+const {setupVisualDesignEditor}=await import('/visual-design-editor.js');
+const {setupVisualDesignGrantsEditor}=await import('/visual-design-grants-editor.js');
+let serviceEditor=null,visualDesignEditor=null,visualGrantsEditor=null;
 function notice(message,error=false){
  const element=$('feedback');element.textContent=message;
  element.className='notice'+(error?' bad':'');
@@ -382,7 +439,8 @@ function drawHistory(items){
 async function load(){
  if(!auth?.currentUser){
   context=null;aeHasAccess=false;aePeople=[];
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
+  if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
@@ -393,6 +451,18 @@ async function load(){
   $('serviceCenter').hidden=false;
   if(!serviceEditor)serviceEditor=setupTechnicalServiceEditors({api,notice,$});
   void serviceEditor.load();
+  if(!visualDesignEditor)visualDesignEditor=setupVisualDesignEditor({api,$});
+  void visualDesignEditor.load().catch(error=>{
+    $('visualDesign').hidden=true;$('visualDesignTile').hidden=true;
+    console.warn('Vormgeving laden:',error?.message||'Onbekend');
+  });
+  if(next.canEdit){
+   if(!visualGrantsEditor)visualGrantsEditor=setupVisualDesignGrantsEditor({api,$});
+   void visualGrantsEditor.load().catch(error=>{
+    $('visualGrantPanel').hidden=true;
+    console.warn('Vormgevingsrechten laden:',error?.message||'Onbekend');
+   });
+  }else if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
   $('next').hidden=false;$('historyPanel').hidden=!next.canEdit;
   $('accessLabel').textContent=next.canEdit?'Technisch Beheer':'Operationeel kader';
    $('cleanupTile').hidden=!next.canEdit;
@@ -412,7 +482,17 @@ async function load(){
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
   context=null;
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile'])$(id).hidden=true;
+  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
+  // A delegated design editor must not open any general management section.
+  if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
+  try{
+   if(!visualDesignEditor)visualDesignEditor=setupVisualDesignEditor({api,$});
+   await visualDesignEditor.load();
+   if(!$('visualDesign').hidden){
+    notice('Je hebt uitsluitend toegang tot Vormgeving; de andere beheerschermen blijven afgesloten.');
+    return;
+   }
+  }catch{}
   notice('Beheercentrum niet beschikbaar: '+error.message,true);
  }
 }

@@ -1,0 +1,207 @@
+/* One authoritative police flow: Korpsleiding -> Officierenkader ->
+ * equal official Reeks 1 / 2 / 3 columns. Other services unchanged. */
+.service[data-dept="politie"].police-workflow-service {
+ --pw-border:#46658a;--pw-fill:#122844;--pw-panel:#193451;
+ --pw-accent:#8caee1;--pw-text:#eaf4ff;--pw-muted:#b7cce5;
+}
+.police-workflow {display:grid;gap:0;min-width:0;color:var(--pw-text)}
+.police-workflow-top {max-width:100%;min-width:0;margin:3px 0 0}
+.police-workflow-top > .level-title {background:#20456b;border-color:var(--pw-border);
+ color:var(--pw-text);padding:11px 15px;font-size:13px}
+.police-workflow-top .level-body {padding:9px 10px 10px}
+.police-workflow-top .persons {justify-content:center;gap:9px}
+.police-workflow-top .person {min-width:min(100%,190px);max-width:310px}
+.police-workflow-connector {height:25px;width:2px;margin:0 auto;
+ background:var(--pw-accent);opacity:.83}
+.police-workflow-series {min-width:0}
+.police-workflow-series-heading {font-size:13px;font-weight:900;letter-spacing:.075em;
+ padding:11px 13px;text-align:center;color:var(--pw-text);background:var(--pw-fill);
+ border:1px solid var(--pw-border);border-radius:9px;margin:0 0 29px}
+.police-workflow-series-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:clamp(8px,1vw,16px);align-items:start;position:relative;min-width:0}
+.police-workflow-series-grid::before {content:"";position:absolute;top:-14px;
+ left:16.666%;right:16.666%;height:14px;border-top:2px solid var(--pw-accent);
+ border-left:2px solid var(--pw-accent);border-right:2px solid var(--pw-accent);
+ pointer-events:none}
+.police-workflow-reeks {min-width:0;margin:0;border:1px solid var(--pw-border);
+ background:var(--pw-fill);border-radius:11px}
+.police-workflow-reeks > summary {list-style:none;display:flex;align-items:center;
+ justify-content:space-between;gap:8px;cursor:pointer;padding:13px 12px;
+ background:#23486f;color:#f2f7ff;border-radius:10px 10px 0 0}
+.police-workflow-reeks > summary::-webkit-details-marker {display:none}
+.police-workflow-reeks > summary::after {content:"▸";font-size:12px}
+.police-workflow-reeks[open] > summary::after {content:"▾"}
+.police-workflow-reeks > summary strong {font-size:13px;letter-spacing:.035em}
+.police-workflow-count {font-size:11px;color:#d1e4ff;font-weight:550;margin-left:auto}
+.police-workflow-reeks-body {padding:11px;display:grid;gap:9px;min-width:0}
+.police-workflow-cadre {margin:0;min-width:0;border:1px solid var(--pw-border);
+ border-radius:8px;background:var(--pw-panel)}
+.police-workflow-cadre > .level-title {border:0;border-radius:8px;background:#24415f;
+ color:var(--pw-text);padding:9px;font-size:11px;min-height:36px}
+.police-workflow-cadre .level-body {padding:9px;min-width:0}
+.police-workflow-people {display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+ gap:7px;justify-items:stretch;min-width:0;margin:0}
+.police-workflow-people > .person {width:100%;max-width:100%;min-width:0;
+ flex:0 1 auto;box-sizing:border-box}
+.police-workflow-people .identity {min-width:0;flex:1}
+.police-workflow-middle-group + .police-workflow-middle-group {margin-top:11px;
+ padding-top:10px;border-top:1px solid var(--pw-border)}
+.police-workflow-middle-label {font-size:10px;letter-spacing:.04em;
+ color:var(--pw-muted);font-weight:850;margin:0 0 7px;text-align:left}
+.police-workflow-head-tag {font-size:9px;letter-spacing:.03em;font-weight:850;
+ padding:3px 5px;background:#284d76;border:1px solid #7199c7;
+ color:#e8f6ff;border-radius:5px;white-space:nowrap}
+.police-workflow-unassigned {margin-top:11px;border:1px dashed #7390b1;
+ border-radius:9px;padding:10px}
+.police-workflow-unassigned > summary {font-size:12px;cursor:pointer;color:var(--pw-muted)}
+.police-workflow-unassigned > .police-workflow-reeks-body {margin-top:8px}
+.police-workflow .police-intervention-group {margin-top:16px;min-width:0}
+.police-workflow-order-tools {margin:10px 0 0;border:1px dashed var(--pw-border);
+ border-radius:9px;padding:10px;min-width:0}
+.police-workflow-order-tools > summary {cursor:pointer;font-size:11px;font-weight:800;
+ color:var(--pw-text)}
+@media (max-width:1100px) {
+ .police-workflow-series-grid {grid-template-columns:minmax(0,1fr);gap:10px}
+ .police-workflow-series-grid::before {display:none}
+ .police-workflow-series-heading {margin-bottom:10px}
+}
+html[data-bpd-theme="light"] .service[data-dept="politie"].police-workflow-service {
+ --pw-border:#a4bedb;--pw-fill:#f0f5fb;--pw-panel:#e5eef9;
+ --pw-accent:#5e8ac7;--pw-text:#17385d;--pw-muted:#365c80;
+}
+html[data-bpd-theme="light"] .police-workflow-top > .level-title,
+html[data-bpd-theme="light"] .police-workflow-reeks > summary,
+html[data-bpd-theme="light"] .police-workflow-cadre > .level-title {
+ background:#d5e4f5;color:#143354;border-color:#a4bedb
+}
+html[data-bpd-theme="light"] .police-workflow-count {color:#365d82}
+html[data-bpd-theme="light"] .police-workflow-head-tag {
+ background:#d8e9fc;color:#19456f;border-color:#8aadd1
+}
+
+/* Person cards must use the whole width of their REEKS column. The generic
+ * personnel card is fixed to 218px; with CALL + uniform + instructor marker
+ * it left virtually no space for the person's name, splitting each letter.
+ * Override ONLY this police workflow (not specialty/other-service cards). */
+#services .police-workflow .police-workflow-people.personnel-card-grid {
+ display:grid!important;
+ grid-template-columns:minmax(0,1fr)!important;
+ width:100%;
+ max-width:none;
+ min-width:0;
+ justify-items:stretch;
+ justify-content:stretch;
+ gap:8px;
+ margin:6px 0 3px;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person {
+ display:grid;
+ grid-template-columns:28px 58px minmax(0,1fr);
+ align-items:center;
+ column-gap:10px;
+ width:100%;
+ max-width:none;
+ min-width:0;
+ min-height:100px;
+ height:auto;
+ padding:9px 11px;
+ flex:none;
+ overflow:hidden;
+ box-sizing:border-box;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person > .num {
+ grid-column:1;
+ min-width:0;
+ width:100%;
+ flex:none;
+ white-space:nowrap;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person > .portrait,
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person > .portrait.bpd-police-formal {
+ grid-column:2;
+ min-width:0;
+ width:56px!important;
+ height:65px!important;
+ flex:none!important;
+ justify-self:center;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person > .identity {
+ grid-column:3;
+ display:flex;
+ flex-direction:column;
+ align-items:flex-start;
+ justify-content:center;
+ min-width:0;
+ width:100%;
+ overflow:hidden;
+ gap:4px;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person > .identity b {
+ display:block;
+ font-size:12px;
+ font-weight:850;
+ line-height:1.3;
+ white-space:normal;
+ word-break:normal;
+ overflow-wrap:break-word;
+ max-width:100%;
+ overflow:hidden;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person > .identity small {
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ font-size:10px;
+ line-height:1.35;
+ word-break:normal;
+ overflow-wrap:break-word;
+ white-space:normal;
+ overflow:hidden;
+ max-width:100%;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person .person-role-flags {
+ display:flex;
+ flex-wrap:wrap;
+ gap:4px;
+ margin-top:3px;
+ min-width:0;
+ max-width:100%;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person .person-role-flags .flag {
+ display:inline-flex;
+ align-items:center;
+ width:auto;
+ max-width:100%;
+ white-space:nowrap;
+ word-break:normal;
+ overflow-wrap:normal;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ line-height:1.25;
+}
+#services .police-workflow .police-workflow-people.personnel-card-grid > .person .police-workflow-head-tag {
+ display:inline-flex;
+ align-items:center;
+ align-self:flex-start;
+ white-space:nowrap;
+ word-break:normal;
+ overflow-wrap:normal;
+ max-width:100%;
+ margin-top:3px;
+ font-size:9px;
+ line-height:1.35;
+}
+/* Extremely narrow browser splits use a slightly smaller uniform but keep
+ * complete names and the instructor status on horizontal lines. */
+@container (max-width:280px) {
+ #services .police-workflow .police-workflow-people.personnel-card-grid > .person {
+  grid-template-columns:26px 48px minmax(0,1fr);
+  column-gap:6px;
+  padding:7px 6px;
+ }
+ #services .police-workflow .police-workflow-people.personnel-card-grid > .person > .portrait,
+ #services .police-workflow .police-workflow-people.personnel-card-grid > .person > .portrait.bpd-police-formal {
+  width:47px!important;
+  height:54px!important;
+ }
+}

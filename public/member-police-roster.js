@@ -127,7 +127,6 @@ function renderHeader(thead){
  }
  thead.replaceChildren(tr);
 }
-
 /* Keep the mobile directory as a REAL compact list, not stacked person cards.
    Desktop continues to render the complete read-only specialization matrix.
    Rows are projected from the same rendered data, so filters/sorting stay identical. */

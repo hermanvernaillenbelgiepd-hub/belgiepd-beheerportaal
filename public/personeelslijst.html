@@ -636,9 +636,11 @@ async function load(){
  finally{$('refresh').disabled=false}
 }
 $('search').oninput=searchDirectory;$('refresh').onclick=load;
- // Prefill only the existing, protected personnel directory filter.
- const testQuery=new URLSearchParams(location.search).get('zoek');
- if(testQuery&&testQuery.length<=110)$('search').value=testQuery.trim();
+ // The shared topbar only forwards a query to this existing protected
+ // directory. The authenticated source data/permissions remain unchanged.
+ const startSearch=new URLSearchParams(location.search).get('zoek');
+ if(startSearch&&startSearch.length<=110)$('search').value=startSearch.trim();
+
 window.addEventListener('message',event=>{
  if(!directoryEmbedded||window.parent===window||
     event.origin!==location.origin||event.source!==window.parent)return;

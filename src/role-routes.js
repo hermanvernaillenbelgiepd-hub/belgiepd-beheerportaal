@@ -21,6 +21,9 @@ import {COMPLETION_OVERVIEW_DEPARTMENTS,COMPLETION_OVERVIEW_BATCH,
   from './training-completion-overview.js';
 import {isCorpsLeadershipPersonnel} from './personnel-editor-policy.js';
 import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
+import {eligibleGeneralTrainingInstructor} from './training-general-instructor-policy.js';
+import {TRAINING_SESSION_COLLECTION,TRAINING_SESSION_DEPARTMENTS,
+ validLessonSessionId,validateHeldLessonInput} from './training-session-policy.js';
 import {verifiedFireRoles,fireSubjectClass,FIRE_ROLES} from './fire-dossier-policy.js';
 
 const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
@@ -151,6 +154,10 @@ function inputRecord(x){
   const courseName=asText(x?.courseName,150),details=asText(x?.details,1600),eventDate=asText(x?.eventDate,20),result=asText(x?.result,32);
   const instructorName=asText(x?.instructorName,120);
   const qualificationStage=asText(x?.qualificationStage,30);
+  const lessonSessionId=x?.lessonSessionId==null||x.lessonSessionId===''?
+    null:x.lessonSessionId;
+  if(lessonSessionId!==null&&!validLessonSessionId(lessonSessionId))
+    throw Error('Ongeldige verwijzing naar het lesmoment');
   if(x?.instructorName!==undefined&&(
     typeof x.instructorName!=='string'||x.instructorName.length>120||
     (instructorName.length>0&&instructorName.length<2)||
@@ -165,10 +172,74 @@ function inputRecord(x){
     throw new Error('In opleiding is alleen mogelijk bij een erkende specialisatieopleiding met resultaat Aanwezig');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)||new Date(eventDate+'T12:00:00Z').toISOString().slice(0,10)!==eventDate||eventDate>brusselsEventDate())throw new Error('Ongeldige opleidingsdatum');
   return {department,subjectDiscordId:discordId,courseName,details,eventDate,result,instructorName,
-    qualificationStage};
+    qualificationStage,lessonSessionId};
 }
 const error=(res,e)=>{console.error('Rollen/opleidingen:',e?.code||e?.message||'onbekend');return res.status(503).json({error:'Firestore tijdelijk niet beschikbaar'});};
 export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
+  const lessonStore=department=>db().collection(TRAINING_SESSION_COLLECTION)
+    .doc(department).collection('sessions');
+  const failLesson=(message,status=400)=>Object.assign(Error(message),{status});
+  async function resolveLessonForRecord(data){
+    if(!data.lessonSessionId)return data;
+    const doc=await lessonStore(data.department).doc(data.lessonSessionId).get();
+    const lesson=doc.exists?doc.data():null;
+    if(!lesson||lesson.department!==data.department||
+      lesson.status!=='gegeven'||lesson.verifiedInstructor!==true||
+      !isDiscordId(lesson.instructorDiscordId)||
+      lesson.courseName!==data.courseName||lesson.eventDate!==data.eventDate)
+      throw failLesson('Het lesmoment bestaat niet binnen de geselecteerde dienst, opleiding en datum');
+    if(data.instructorName!==lesson.instructorName)
+      throw failLesson('De opleider komt niet overeen met het geselecteerde lesmoment');
+    return {...data,instructorDiscordId:lesson.instructorDiscordId};
+  }
+  app.get('/api/training/lessons',resolveActor,async(req,res)=>{
+    const department=asText(req.query?.department,40);
+    if(!TRAINING_SESSION_DEPARTMENTS.includes(department))
+      return res.status(400).json({error:'Ongeldige dienst'});
+    if(!trainingAccess(req,department,'log')&&!trainingAccess(req,department,'review'))
+      return res.status(403).json({error:'Geen opleidingsrechten voor deze dienst'});
+    try{
+      const snap=await lessonStore(department).orderBy('eventDate','desc')
+        .limit(301).get();
+      const lessons=snap.docs.slice(0,300).filter(d=>
+        d.get('status')==='gegeven'&&d.get('verifiedInstructor')===true)
+        .map(d=>({id:d.id,department,
+          courseName:d.get('courseName'),eventDate:d.get('eventDate'),
+          instructorName:d.get('instructorName')}));
+      res.set('Cache-Control','private, no-store');
+      return res.json({lessons,limited:snap.size>300});
+    }catch(e){return error(res,e)}
+  });
+  app.post('/api/training/lessons',resolveActor,async(req,res)=>{
+    if(process.env.BPD_ENABLE_TRAINING_WRITES!=='true')
+      return res.status(503).json({error:'Opleidingsregistratie staat nog uit'});
+    let input;
+    try{input=validateHeldLessonInput(req.body,brusselsEventDate())}
+    catch(e){return res.status(400).json({error:e.message})}
+    if(!trainingAccess(req,input.department,'log'))
+      return res.status(403).json({error:'Geen bevoegdheid om lesmomenten te registreren'});
+    const actor=req.roleActor.bpd;
+    // Only the signed Discord teacher can attest they actually taught a lesson.
+    if(!isDiscordId(actor.discordId)||actor.uid!=='discord:'+actor.discordId||
+       actor.provider!=='discord')
+      return res.status(403).json({error:'Een lesmoment kan alleen door de aangemelde opleider zelf worden bevestigd'});
+    try{
+      const own=await findSubject(input.department,actor.discordId);
+      if(!own||own.lifecycleState==='archived'||
+        /^(?:ontslag|verwijderd|blacklisted)$/i.test(own.status||''))
+        return res.status(403).json({error:'Geen actieve personeelskoppeling bij de opleidingsdienst'});
+      const instructorName=((own.call&&own.call!=='—'?own.call+' · ':'')+
+        own.name).trim().slice(0,120);
+      if(instructorName.length<2)return res.status(400).json({error:'Geen controleerbare opleider'});
+      const doc=lessonStore(input.department).doc();
+      const session={...input,instructorDiscordId:actor.discordId,instructorName,
+        recordedByDiscordId:actor.discordId,verifiedInstructor:true,status:'gegeven'};
+      await doc.create({...session,createdAt:FieldValue.serverTimestamp()});
+      return res.status(201).json({saved:true,lesson:{
+        id:doc.id,department:input.department,courseName:input.courseName,
+        eventDate:input.eventDate,instructorName}});
+    }catch(e){return error(res,e)}
+  });
   // Check the ACTUAL personnel roster before disclosing colleague names or
   // writing a training result. A role never creates an imaginary personnel record.
   const findSubject=async(dept,discordId)=>{
@@ -416,12 +487,17 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       for(const p of snap.data)if(p.dept===department&&isDiscordId(p.personId))
         counts.set(p.personId,(counts.get(p.personId)||0)+1);
       const verified=await verifiedSubjects(snap.data.filter(p=>p.dept===department));
-      const people=snap.data.filter(p=>p.dept===department&&isDiscordId(p.personId)&&
-        counts.get(p.personId)===1&&mayAccessSubject(req.roleActor.bpd,p,verified))
-        .map(p=>({discordId:p.personId,call:p.call,name:p.name,department:p.dept}))
-        .sort((a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true}));
+      const candidates=snap.data.filter(p=>p.dept===department&&isDiscordId(p.personId)&&
+        counts.get(p.personId)===1&&mayAccessSubject(req.roleActor.bpd,p,verified));
+      const toChoice=p=>({discordId:p.personId,call:p.call,name:p.name,department:p.dept});
+      const byCall=(a,b)=>String(a.call||'').localeCompare(String(b.call||''),'nl',{numeric:true});
+      // The TRAINEE list remains unchanged, while the general Police instructor
+      // list includes only Middle Cadre, Officer Cadre and Corps Leadership.
+      // The same protected-dossier access checks apply to both lists.
+      const people=candidates.map(toChoice).sort(byCall);
+      const instructors=candidates.filter(eligibleGeneralTrainingInstructor).map(toChoice).sort(byCall);
       res.set('Cache-Control','private, no-store');
-      res.json({department,people,limited:false});
+      res.json({department,people,instructors,limited:false});
     }catch(e){error(res,e)}
   });
   app.get('/api/training/:department/:discordId',resolveActor,guardTrainingSubject,async(req,res)=>{
@@ -462,11 +538,12 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       if(!subject)return res.status(404).json({error:'Geen eenduidig personeelslid binnen deze hulpdienst'});
       if(!mayAccessSubject(actor,subject,await verifiedSubjects([subject])))
         return res.status(403).json({error:'Dit dossier is afgeschermd'});
+      data=await resolveLessonForRecord(data);
       const record=db().collection('bpd_training').doc(`${data.department}_${data.subjectDiscordId}`).collection('records').doc();
       await record.create({...data,registeredByDiscordId:actor.discordId,registeredByProvider:actor.provider,
         status:'geregistreerd',cmNotified:false,rosterStatus:'nog_niet_beoordeeld',createdAt:FieldValue.serverTimestamp()});
       res.status(201).json({saved:true,id:record.id,discordRoleUpdated:false,googleSheetsUpdated:false});
-    }catch(e){error(res,e)}
+    }catch(e){if(e.status===400)return res.status(400).json({error:e.message});error(res,e)}
   });
   // Editing always preserves subject, department, review authority and the audit trail.
   app.patch('/api/training/:department/:discordId/:recordId',resolveActor,guardTrainingSubject,async(req,res)=>{
@@ -482,15 +559,18 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
     if(!isDiscordId(actor.discordId))return res.status(403).json({error:'Geen gekoppelde Discord ID'});
     const ref=db().collection('bpd_training').doc(`${department}_${discordId}`).collection('records').doc(recordId);
     try{
+      data=await resolveLessonForRecord(data);
       await db().runTransaction(async tx=>{
         const snap=await tx.get(ref);
         if(!snap.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
         const old=snap.data();
         if(!mayMaintainTraining(old,{actorDiscordId:actor.discordId,mayLog,mayReview}))throw Object.assign(Error('Geen wijzigingsrecht op deze registratie'),{status:403});
-        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName','qualificationStage'].map(k=>[k,old[k]??null]));
+        const before=Object.fromEntries(['courseName','details','eventDate','result','rosterStatus','instructorName','qualificationStage','lessonSessionId','instructorDiscordId'].map(k=>[k,old[k]??null]));
         const next={courseName:data.courseName,details:data.details,eventDate:data.eventDate,
           result:data.result,instructorName:data.instructorName,
-          qualificationStage:data.qualificationStage};
+          qualificationStage:data.qualificationStage,
+          lessonSessionId:data.lessonSessionId,
+          instructorDiscordId:data.instructorDiscordId||null};
         if(requiresReReview(old,next)){
           next.rosterStatus='ter_controle';
           const specialty=await syncTrainingSpecialty(tx,{department,discordId,recordId,
@@ -503,7 +583,7 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       });
       onSpecialtyChanged?.();
       res.json({saved:true,googleSheetsUpdated:false,discordRolesUpdated:false});
-    }catch(e){if(e.status===403||e.status===404)return res.status(e.status).json({error:e.message});error(res,e)}
+    }catch(e){if([400,403,404].includes(e.status))return res.status(e.status).json({error:e.message});error(res,e)}
   });
 
   // "Verwijderen" is archival, not physical deletion: audits remain intact.

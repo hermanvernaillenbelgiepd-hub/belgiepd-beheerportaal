@@ -135,7 +135,6 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
  #staffDashboard .grid{grid-template-columns:1fr}
  #staffDashboard .module{min-height:112px}
 }
-
 /* Compact startscherm: op gangbare desktopafmetingen alle beheerlinks zichtbaar.
    Kleinere schermen behouden normale verticale scroll en leesbare kaarten. */
 @media (min-width:1280px) and (min-height:760px){
@@ -254,7 +253,9 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   <div class="side-note"><strong>Beveiligde modules</strong>Meld je aan met je goedgekeurde account. Elke hulpdienst heeft afzonderlijke dossier- en beheersrechten.</div>
 </aside>
 <div class="surface">
-<header class="topbar"><span class="path">BelgiëPD / Startpagina</span><div class="topbar-actions"><a class="my-profile-link" href="/discord-status.html" aria-label="Open mijn profiel">👤 Mijn profiel</a><button class="topbar-logout" id="dashboardLogout" type="button" disabled>Uitloggen</button></div></header>
+<header class="topbar"><span class="path">BelgiëPD / Startpagina</span><div class="topbar-actions"><a class="my-profile-link" id="dashboardProfileAction" href="/discord-status.html"
+ aria-label="Aanmelden met Discord">👤 Aanmelden</a><button class="topbar-logout"
+ id="dashboardLogout" type="button" disabled hidden>Uitloggen</button></div></header>
 <main id="inhoud">
   <div id="staffDashboard" hidden>
   <section class="hero" aria-labelledby="home-title">
@@ -369,8 +370,8 @@ body:has(#memberDashboard:not([hidden])) main{max-width:none;padding:22px 26px 6
   </section>
   <section id="guestDashboard" aria-labelledby="guestDashboardTitle">
     <p class="eyebrow">BelgiëPD</p><h1 id="guestDashboardTitle">Welkom op het beheerportaal</h1>
-    <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account via Mijn profiel om je toegelaten startpagina te openen.</p>
-    <div class="grid" style="margin-top:25px"><a class="module" href="/discord-status.html"><span class="ico">👤</span><h3>Mijn profiel en aanmelden</h3><p>Koppel en verifieer je Discord-account.</p><span class="open">Open Mijn profiel →</span></a>
+    <p class="lead" id="guestMessage">Meld je aan met je eigen Discord-account om je toegelaten startpagina te openen.</p>
+    <div class="grid" style="margin-top:25px"><a class="module" href="/discord-status.html"><span class="ico">👤</span><h3>Aanmelden met Discord</h3><p>Koppel en verifieer je Discord-account.</p><span class="open">Aanmelden →</span></a>
       <a class="module" href="/organogram-hierarchie.html"><span class="ico">🌳</span><h3>Organogram · alle diensten</h3><p>Bekijk de fictieve voorbeeldstructuur. Echte personeelsgegevens vereisen aanmelding.</p><span class="open">Bekijk organogram →</span></a>
       <a class="module" href="/sollicitatiecentrum.html"><span class="ico">📋</span><h3>Sollicitatiecentrum</h3><p>Bekijk de toekomstige instroomprocedure per hulpdienst. Solliciteren is nog niet geopend.</p><span class="open">Bekijk procedure →</span></a></div>
   </section>
@@ -382,6 +383,11 @@ const $=id=>document.getElementById(id);
 const staffNav=$('staffNav'),memberNav=$('memberNav'),zoneNav=$('zoneNav'),ambulanceNav=$('ambulanceNav'),staffHome=$('staffDashboard'),zoneHome=$('zoneDashboard'),ambulanceHome=$('ambulanceDashboard');
 const memberHome=$('memberDashboard'),guestHome=$('guestDashboard');
 const adminSection=$('adminRights'),adminNavLink=$('adminNavLink'),logoutButton=$('dashboardLogout');
+const profileAction=$('dashboardProfileAction');
+function displayProfileAction(confirmed){
+ profileAction.textContent=confirmed?'👤 Mijn profiel':'👤 Aanmelden';
+ profileAction.setAttribute('aria-label',confirmed?'Open mijn profiel':'Aanmelden met Discord');
+}
 const observationNavIds=['staffNavObservations','zoneNavObservations',
  'ambulanceNavObservations','memberNavObservations'];
 function showObservationNavigation(ctx){
@@ -446,6 +452,9 @@ function showApprovedBasicDashboard(ctx){
 }
 let auth,requestNumber=0;
 function show(mode,message=''){
+ // Never present Mijn profiel as proof of a completed login while showing guest.
+ displayProfileAction(mode!=='guest');
+ logoutButton.hidden=!auth?.currentUser;
  staffNav.hidden=mode!=='staff';memberNav.hidden=mode!=='member';zoneNav.hidden=mode!=='zone';ambulanceNav.hidden=mode!=='ambulance';
  staffHome.hidden=mode!=='staff';memberHome.hidden=mode!=='member';zoneHome.hidden=mode!=='zone';ambulanceHome.hidden=mode!=='ambulance';
  guestHome.hidden=mode!=='guest';adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;$('adminCenterCard').hidden=true;
@@ -472,7 +481,7 @@ async function authorizedFetch(path,token){
 async function displayAuthenticated(user){
  const turn=++requestNumber;
  adminSection.hidden=true;adminNavLink.hidden=true;$('adminCenterNavLink').hidden=true;$('adminCenterCard').hidden=true;
- if(!user){show('guest','Meld je aan met Discord via Mijn profiel.');return;}
+ if(!user){show('guest','Meld je aan met Discord om je persoonlijke startpagina te openen.');return;}
  if(!user.uid?.startsWith('discord:')){
   // Google emergency accounts also need server-confirmed dashboard scope.
   // Never show management cards before that verification has completed.
@@ -593,6 +602,7 @@ try{
  };
  onAuthStateChanged(auth,user=>{
   logoutButton.disabled=!user;
+  logoutButton.hidden=!user;
   displayAuthenticated(user);
  });
 }catch{

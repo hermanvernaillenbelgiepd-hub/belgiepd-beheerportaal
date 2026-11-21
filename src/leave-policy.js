@@ -165,6 +165,29 @@ export function mayApproveLeave(actor,request,grant,today=new Date().toISOString
   return false;
 }
 
+// 31+ day MANUAL submissions remain pending. Besides the decision queue
+// (Officer Cadre/Corps), show a strictly READ-ONLY awareness notification
+// to same-service, higher-ranked Middle Cadre and above. No approval rights.
+export function mayViewLongManualLeaveNotice(actor,record){
+ if(!actor||!validDiscordId(actor.discordId)||!record||
+    record.status!=='pending'||record.manualPendingReview!==true||
+    record.manual!==true||actor.discordId===record.personDiscordId)return false;
+ let days;
+ try{days=leaveDecisionDays(record)}catch{return false}
+ if(!Number.isSafeInteger(days)||days<=30)return false;
+ for(const dept of Array.isArray(record.subjectDepartments)?record.subjectDepartments:[]){
+   if(!actor.departments?.includes(dept))continue;
+   const reviewer=roleForDepartment(actor,dept);
+   // Do not infer another service's hierarchy from the primary Police rank.
+   const subject=record.subjectDepartmentRoles?.[dept]||
+     (dept==='politie'?record.subjectRole:null);
+   if(LEAVE_ROLES.includes(reviewer)&&
+      (LEAVE_RANK[reviewer]||0)>(LEAVE_RANK[subject]||0)&&
+      (LEAVE_RANK[subject]||0)>0)return true;
+ }
+ return false;
+}
+
 export function highCadreDepartments(actor){
   const depts=Array.isArray(actor?.departments)?actor.departments:[];
   const map=actor?.departmentRoles||{};

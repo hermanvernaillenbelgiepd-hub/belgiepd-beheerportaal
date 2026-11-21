@@ -22,7 +22,11 @@ test('outdienst registration validates cause and revision; restoration has no in
  assert.deepEqual(validateLifecycleAction({
  reason:'Vrijwillig vertrokken uit de Discord-server',cause:'voluntary_discord_leave',expectedRevision:0
  },'archive'),{reason:'Vrijwillig vertrokken uit de Discord-server',
- cause:'voluntary_discord_leave',expectedRevision:0});
+ cause:'voluntary_discord_leave',scope:'service',expectedRevision:0});
+ assert.equal(validateLifecycleAction({reason:'Geheel uit dienst wegens ontslag',
+ cause:'management_dismissal',scope:'global',expectedRevision:0},'archive').scope,'global');
+ assert.throws(()=>validateLifecycleAction({reason:'Geldige reden voor ontslag',
+ cause:'management_dismissal',scope:'all',expectedRevision:0},'archive'));
  assert.throws(()=>validateLifecycleAction({reason:'te kort',cause:'management_dismissal',expectedRevision:0},'archive'));
  assert.throws(()=>validateLifecycleAction({reason:'Verkeerde statuswijziging',cause:'role_guess',expectedRevision:0},'archive'));
  assert.throws(()=>validateLifecycleAction({reason:'Herintreding toegestaan',expectedRevision:-1},'restore'));

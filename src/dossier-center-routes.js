@@ -3,6 +3,7 @@ import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from './dossier-
 import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,personnelDataEnabled} from './personnel-create.js';
 import {PERSONNEL_EDITS_COLLECTION} from './personnel-editor-policy.js';
+import {policeOfficialRankLabel} from './personnel-rank-policy.js';
 
 const enabled=()=>process.env.BPD_ENABLE_DOSSIER_CENTER==='true';
 const respond=(res,status,message)=>res.status(status).json({error:message});
@@ -15,7 +16,8 @@ async function timeline(ref,kind){
   return snap.docs.map(d=>dossierTimelineEntry(d.data(),kind));
 }
 function publicPerson(p){
-  return {dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank,
+  return {dept:p.dept,discordId:p.personId,name:p.name,call:p.call,
+    rank:p.dept==='politie'?policeOfficialRankLabel(p.rank):p.rank,
     status:p.status,source:p.source||'google-sheets'};
 }
 export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){

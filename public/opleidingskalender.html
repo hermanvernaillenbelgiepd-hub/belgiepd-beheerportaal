@@ -28,6 +28,45 @@ p{margin:5px 0 12px;color:#bcd2e4}
 .form-grid label{display:flex;flex-direction:column;gap:5px;font-size:12px}
 #feedback{font-size:12px;color:#dce9f4}
 #feedback.error{color:#ffbdc1}
+/* The global light theme switches the parent panel to white, while the
+   calendar event cards historically stayed navy. Give the events their
+   own high-contrast light palette without changing dark mode. */
+@media screen{
+  html:not([data-bpd-theme="dark"]) body #events .event{
+    background:#f6f9fe!important;
+    border:1px solid #cedbed!important;
+    color:#172a48!important;
+    box-shadow:0 2px 9px rgba(24,54,91,.07);
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event strong{
+    color:#123059!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event .meta{
+    color:#526987!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event .tag{
+    color:#fff!important;
+    border:1px solid transparent;
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event .tag.politie{
+    background:#225b95!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event .tag.brandweer{
+    background:#91383c!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event .tag.ambulance{
+    background:#216c4b!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #events .event .tag.depannage{
+    background:#775216!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #feedback{
+    color:#4a617e!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #feedback.error{
+    color:#a52a40!important;
+  }
+}
 [hidden]{display:none!important}
 </style>
 </head><body>

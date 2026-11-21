@@ -47,11 +47,16 @@ test('Monthly 10/20 thresholds are precise and review-only',()=>{
  assert.deepEqual(b.map(x=>[x.criterion,x.kind]),[['monthly','50/50']]);
  assert.deepEqual(assessActivityPings(evidence({closedMonthPlaySeconds:20*3600}),membership,at),[]);
 });
-test('14 and 30 days produce 50/50 and INACTIEF warnings, never dismissal',()=>{
+test('15 and 30 days produce 50/50 and INACTIEF warnings, never dismissal',()=>{
  const fourteen=new Date(at.getTime()-14*86400000).toISOString();
+ const fifteen=new Date(at.getTime()-15*86400000).toISOString();
  const thirty=new Date(at.getTime()-30*86400000).toISOString();
- const first=assessActivityPings(evidence({
+ const before=assessActivityPings(evidence({
   closedMonthPlaySeconds:20*3600,lastConnectedAt:fourteen
+ }),membership,at);
+ assert.deepEqual(before,[],'14 dagen blijft Actief zonder urentekort');
+ const first=assessActivityPings(evidence({
+  closedMonthPlaySeconds:20*3600,lastConnectedAt:fifteen
  }),membership,at);
  assert.deepEqual(first.map(x=>[x.criterion,x.kind]),[['absence','50/50']]);
  const second=assessActivityPings(evidence({

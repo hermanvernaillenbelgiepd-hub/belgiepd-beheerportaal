@@ -30,17 +30,24 @@ test('alle dienstfiches verdwijnen samen uit actieve overzichten, historiek blij
  assert.ok(inArchive.every(p=>p.lifecycleState==='archived'));
 });
 
-test('de twee ontslagroutes verplichten een totaalplan en controle op alle dienstrechten',()=>{
+test('enkel geverifieerd politioneel kader voert een globale archivering uit; dienstleiding alleen eigen dienst',()=>{
  const routes=read('src/personnel-lifecycle-routes.js');
  assert.match(routes,/identityArchiveSubjects\(archiveRoster\.data,discordId\)/);
  assert.match(routes,/identityArchiveSubjects\(fullRoster\.data,discordId\)/);
  assert.equal((routes.match(/prepareIdentityArchive\(tx,db\(\),/g)||[]).length,2);
  assert.equal((routes.match(/writeIdentityArchive\(tx,db\(\),/g)||[]).length,2);
- assert.match(routes,/archiveSubjects\.some\(p=>!allowed\(req\.bpd,p\)\)/);
- assert.match(routes,/readableServices\.some\(p=>!allowed\(req\.bpd,p\)\)/);
+ assert.match(routes,/const globalArchive=action==='archive'&&/);
+ assert.match(routes,/dept==='politie'\|\|input\.scope==='global'/);
+ assert.match(routes,/if\(!canGloballyArchivePersonnel\(req\.bpd,person\)\)/);
+ assert.match(routes,/if\(!canApproveServiceReentry\(req\.bpd,person\)\)/);
+ assert.match(routes,/const archivePlan=globalArchive\?await prepareIdentityArchive/);
+ assert.match(routes,/archiveScope:globalArchive\?'global':'service'/);
+ assert.doesNotMatch(routes,/readableServices\.some\(p=>!allowed\(req\.bpd,p\)\)/);
  const ui=read('public/personeelsbeheer.html');
  assert.match(ui,/ALLE gekoppelde dienstverbanden worden gearchiveerd/);
- assert.doesNotMatch(ui,/Andere dienstverbanden en dossiers blijven intact/);
+ assert.match(ui,/Andere hulpdiensten en centraal verlof blijven ongewijzigd/);
+ assert.match(ui,/scope:'global'/);
+ assert.match(ui,/scope:global\?'global':'service'/);
 });
 
 test('archiveringsplan leest alle dienststaten en centrale verlofperiodes vóór mutaties',async()=>{

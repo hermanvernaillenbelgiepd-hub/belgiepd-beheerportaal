@@ -1,8 +1,8 @@
 // Dossier retirement is a correction with permanent traceability, never a
 // Firestore delete. The role must be server-confirmed for the target department.
 import {canEditPersonnel,canReadPersonnelSubject} from './personnel-editor-policy.js';
-export const RETIRABLE_KINDS=Object.freeze(['notitie','specialisatiebeperking',
- 'observatie','sanctie','basisnotitie','oude_basisnotitie']);
+export const RETIRABLE_KINDS=Object.freeze(['notitie','algemene_notitie','inactiviteitsping',
+ 'specialisatiebeperking','observatie','sanctie','basisnotitie','oude_basisnotitie']);
 export const RETIRABLE_SOURCES=Object.freeze(['cases','staff']);
 export function canRetireDossierRecord(actor,subject){
  return Boolean(subject&&actor?.discordId!==subject.personId&&
@@ -11,9 +11,22 @@ export function canRetireDossierRecord(actor,subject){
      actor.profileTechnicalAvailable===true&&actor.uid==='discord:'+actor.discordId));
 }
 export function mayRetireCaseType(entry){
- return entry?.source!=='central-leave-audit'&&
-   ['notitie','specialisatiebeperking','observatie','sanctie',
-    'basisnotitie'].includes(entry?.type);
+ // System-generated activity alerts and central leave audit entries must
+ // never be erased from the active dossier by routine duplicate cleanup.
+ if(!entry||entry.source==='central-leave-audit'||
+    entry.source==='automatic_fivem_activity')return false;
+ // Already-approved decisions and system records must not disappear while
+ // their effective rank, leave, sanction, qualification or approval lives on.
+ // Only manually entered, non-effectuating historical corrections can be
+ // withdrawn without a separate reversal of that authoritative decision.
+ if(['personeelsbeweging','naamswijziging','opleiding','activiteit',
+     'promotievoorstel'].includes(entry.type))
+   return !entry.source&&!entry.proposalStatus&&!entry.nominationStatus&&
+     !entry.trainingRequestId&&!entry.leaveRequestId&&!entry.approvedMovementEntryId&&
+     !entry.promotionProposalId&&!entry.amendmentOf&&!entry.retirementOf;
+ return ['notitie','algemene_notitie','inactiviteitsping',
+  'specialisatiebeperking','observatie','sanctie','basisnotitie'].includes(entry.type);
+
 }
 export function retirementReason(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||

@@ -28,7 +28,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .event{border-bottom:1px solid #304a67;padding:11px 0}.event strong{display:block}.event p{margin:5px 0}
 .kv{display:grid;grid-template-columns:145px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #30445c;overflow-wrap:anywhere}
 .motivation{white-space:pre-wrap;overflow-wrap:anywhere}
-.filter-grid{display:grid;grid-template-columns:minmax(220px,1.8fr) repeat(3,minmax(150px,1fr));gap:12px}
+.filter-grid{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(150px,1fr));gap:12px}
 .quickstats{display:flex;flex-wrap:wrap;gap:10px;margin:15px 0}
 .stat{background:#1b385d;border:1px solid #365776;border-radius:10px;padding:10px 14px;min-width:125px}
 .stat b{display:block;font-size:20px;color:#fff}.stat span{font-size:12px;color:#aec6e8}
@@ -86,7 +86,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .scroller table tbody tr.dossier-cadre-group td{background:#203c5e;color:#d5e8ff;font-size:11px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;padding:7px 9px;border-top:1px solid #53749c;border-bottom:1px solid #53749c}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
-<header><strong>🛡️ BelgiëPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><button id="login" type="button">Aanmelden</button></nav></header>
+<header><strong>🛡️ BelgiëPD · Dossiercentrum</strong><nav><a href="/">Dashboard</a><a href="/personeelsbeheer.html">Personeel</a><a href="/sanctieoverzicht.html">Sanctieoverzicht</a><button id="login" type="button">Aanmelden</button></nav></header>
 <main><h1>Centraal dossieroverzicht</h1>
 <p>Elk personeelsdossier is volledig dienstgebonden. Politie, ambulance, brandweer, depannage en Burger beheren hun eigen personeelsgegevens, notities en historiek. Alleen jouw bevoegde diensten zijn zichtbaar.</p>
 <div id="message" role="status" aria-live="polite" class="notice">Toegangsrechten controleren…</div>
@@ -103,8 +103,8 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 <section class="card">
 <div class="filter-grid">
 <div><label for="query">Zoek dossier</label><input id="query" placeholder="Naam, roepnummer, rang of Discord-ID" autocomplete="off"></div>
-<div><label for="series">Reeks (Politie)</label><select id="series" aria-label="Filter politiedossiers op reeks" disabled><option value="all">Alle reeksen</option><option value="1">Reeks 1</option><option value="2">Reeks 2</option><option value="3">Reeks 3</option></select></div>
 <div><label for="department">Hulpdienst</label><select id="department"><option value="all">Alle toegelaten diensten</option></select></div>
+<div class="series-field"><label for="series">Politiereeks</label><select id="series" disabled><option value="all">Alle reeksen</option><option value="1">Reeks 1</option><option value="2">Reeks 2</option><option value="3">Reeks 3</option></select></div>
 <div><label for="sortOrder">Sorteren op</label><select id="sortOrder">
 <option value="callsign-bpd" selected>BelgiëPD-reeksen (900 → … → 008)</option>
 <option value="callsign-police" hidden disabled>Politie: Korpsleiding → Agentenkader</option>
@@ -204,16 +204,10 @@ function synchronizeDossierSort(dept){
       ambulance?'callsign-ambulance':depannage?'callsign-depannage':'callsign-bpd';
   }
 }
-function synchronizeSeriesFilter(dept){
-  const available=[...$('department').options].some(option=>option.value==='politie')&&
-    (dept==='all'||dept==='politie');
-  $('series').disabled=!available;
-  if(!available)$('series').value='all';
-}
 function selectDepartment(dept){
   const item=$('department');
   if(![...item.options].some(option=>option.value===dept))return;
-  item.value=dept;synchronizeDossierSort(dept);synchronizeSeriesFilter(dept);closeDossier();changedFilters();
+  item.value=dept;synchronizeDossierSort(dept);closeDossier();changedFilters();
 }
 function switchDossierTab(next){
   if(!['fiche','historiek'].includes(next))return;
@@ -222,7 +216,16 @@ function switchDossierTab(next){
   for(const button of document.querySelectorAll('button[data-dossier-tab]'))
     button.setAttribute('aria-pressed',String(button.dataset.dossierTab===next));
 }
+function syncSeriesFilter(){
+  const policeAllowed=[...$('department').options].some(option=>option.value==='politie');
+  const current=$('department').value;
+  const available=policeAllowed&&(current==='all'||current==='politie');
+  $('series').disabled=!available;
+  $('series').parentElement.hidden=!available;
+  if(!available)$('series').value='all';
+}
 function render(){
+  syncSeriesFilter();
   const filters={query:$('query').value,department:$('department').value,series:$('series').value};
   renderServiceButtons([...$('department').options].map(option=>option.value).filter(x=>x!=='all'));
   const found=filterDossiers(rows,filters);
@@ -335,7 +338,7 @@ async function openDossier(r){
   }catch(e){if(shown===active){$('staff').textContent='';$('history').textContent='';message(e.message,true)}}
 }
 async function load(){
-  if(!auth?.currentUser){rows=[];page=1;closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';synchronizeSeriesFilter('all');renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
+  if(!auth?.currentUser){rows=[];page=1;closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();return message('Meld je aan met een bevoegd account om dossiers te bekijken.')}
   try{
     // Dienstgebonden burgerdossiers staan achter een afzonderlijk,
     // server-side geverifieerd Burgerraad-recht; geen client-side rolafleiding.
@@ -362,17 +365,23 @@ async function load(){
     }
     $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
     synchronizeDossierSort($('department').value);
-    synchronizeSeriesFilter($('department').value);
     closeDossier();render();
     message(rows.length+' personeelsleden in het overzicht. Dossierrechten worden per persoon gecontroleerd.'+
       (service?.sourceStale?' De personeelsbron gebruikt tijdelijk gecachete gegevens.':''));
-  }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';synchronizeSeriesFilter('all');renderStats();render();message(e.message,true)}
+  }catch(e){rows=[];closeDossier();$('department').replaceChildren(node('option','Alle toegelaten diensten'));$('department').firstChild.value='all';renderStats();render();message(e.message,true)}
 }
 function changedFilters(){page=1;render()}
 $('query').oninput=changedFilters;
-$('series').onchange=changedFilters;
 $('sortOrder').onchange=changedFilters;
-$('department').onchange=()=>{synchronizeDossierSort($('department').value);synchronizeSeriesFilter($('department').value);closeDossier();changedFilters()};
+$('department').onchange=()=>{synchronizeDossierSort($('department').value);closeDossier();changedFilters()};
+$('series').onchange=()=>{
+  if($('series').value!=='all'&&$('department').value==='all'){
+    $('department').value='politie';
+    synchronizeDossierSort('politie');
+    closeDossier();
+  }
+  changedFilters();
+};
 $('serviceButtons').addEventListener('click',event=>{
   const button=event.target.closest('button[data-service]');
   if(!button||button.disabled)return;
@@ -382,7 +391,7 @@ for(const button of document.querySelectorAll('button[data-dossier-tab]'))
   button.onclick=()=>switchDossierTab(button.dataset.dossierTab);
 $('historyKind').onchange=renderHistory;
 $('clear').onclick=()=>{
-  $('query').value='';$('series').value='all';$('sortOrder').value='callsign-bpd';selectDepartment('all');
+  $('query').value='';$('sortOrder').value='callsign-bpd';$('series').value='all';selectDepartment('all');
 };
 $('refresh').onclick=()=>load().catch(e=>message(e.message,true));
 $('close').onclick=closeDossier;

@@ -13,20 +13,40 @@ export const CORRECTABLE_CASE_TYPES = Object.freeze([
   'personeelsbeweging','specialisatiebeperking'
 ]);
 export function mayCorrectManualCase(actor,subject,entry){
-  if(!subject||subject.dept!=='politie'||!entry||
+  if(!subject||!['politie','ambulance','brandweer','depannage'].includes(subject.dept)||!entry||
      !CORRECTABLE_CASE_TYPES.includes(entry.type)||
      entry.dept!==subject.dept||entry.subjectDiscordId!==subject.personId||
      !entry.registeredBy?.discordId||entry.source||entry.amendmentOf||
      entry.ownCorpsNote===true||entry.pingNotificationId||
-     entry.nominationStatus||isRetired(entry))return false;
-  return ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'))&&
-    canRetireDossierRecord(actor,subject);
+     entry.nominationStatus||entry.proposalStatus||isRetired(entry))return false;
+  return mayAnnotateDossierCase(actor,subject,entry);
 }
 export const HIGH_ROLES = Object.freeze(['officierenkader','korpsleiding']);
+/**
+ * Every administrative annotation is an auditable clarification of an existing
+ * dossier event. It is NOT the authoritative workflow for withdrawing a leave,
+ * reversing a rank change, cancelling a sanction or changing an award.
+ */
+export function mayAnnotateDossierCase(actor,subject,entry){
+ if(!subject||!entry||entry.dept!==subject.dept||
+    entry.subjectDiscordId!==subject.personId||
+    entry.status==='verwijderd'||isRetired(entry)||
+    entry.amendmentOf||entry.retirementOf||
+    ['case-amendment','dossier-retirement','case-administrative-correction']
+     .includes(entry.source))return false;
+ if(!canRetireDossierRecord(actor,subject))return false;
+ const role=actor?.portalTechnicalMode===true?actor.operationalRole:actor?.role;
+ const scoped=actor?.portalTechnicalMode===true?
+   actor.operationalDepartmentRoles?.[subject.dept]:
+   roleForDepartment(actor,subject.dept);
+ return verifiedBoardCorpsDossierAdmin(actor)||
+   HIGH_ROLES.includes(role)&&HIGH_ROLES.includes(scoped);
+}
+
 export const RECORD_LABELS = Object.freeze({
-  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Personeelsnotitie', algemene_notitie:'Algemene notitie',
+  observatie:'Observatie', sanctie:'Sanctie', functiewijziging:'Functiewijziging', verlof:'Verlof', notitie:'Belangrijke notitie', algemene_notitie:'Algemene notitie',
   opleiding:'Opleidingen en resultaten', activiteit:'Dienstactiviteit',
-  specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Inactiviteitsping',
+  specialisatiebeperking:'Specialisatiebeperking',inactiviteitsping:'Activiteitenping',
   naamswijziging:'Naamswijziging',
   promotievoorstel:'Promotievoorstel',voordracht_ereteken:'Voordracht tot ereteken/medaille', personeelsbeweging:'Personeelsbeweging',
   specialisatiewijziging:'Specialisatiewijziging', onderscheiding:'Onderscheidingen'
@@ -88,13 +108,26 @@ export function validateManagementEntry(value){
     if(endDate<eventDate)throw new Error('Einddatum ligt vóór de begindatum');
     result.endDate=endDate;
   }
+  // Historical imports made before this structured activity register may lack
+  // these fields. New manual entries are required to provide both by route.
   if(type==='inactiviteitsping'&&
      (value.activityStatus!==undefined||value.discordPingSent!==undefined))
     Object.assign(result,activityPingRegistration(value));
   if(type==='opleiding')result.courseName=requiredText(value.courseName,150,'Naam van de opleiding');
   if(type==='naamswijziging')result.newName=requiredText(value.newName,100,'Nieuwe naam');
   if(type==='promotievoorstel')result.proposedRank=requiredText(value.proposedRank,140,'Voorgestelde graad');
-  if(type==='personeelsbeweging')result.movement=requiredText(value.movement,150,'Personeelsbeweging');
+  if(type==='personeelsbeweging'){
+    result.movement=requiredText(value.movement,150,'Personeelsbeweging');
+    // Historical personnel movements carry the originally effective grade
+    // and callsign as structured data. Never alter live personnel by import.
+    for(const [field,max,label] of [
+      ['previousRank',100,'oude graad'],['newRank',100,'nieuwe graad'],
+      ['previousCall',24,'oud roepnummer'],['newCall',24,'nieuw roepnummer']
+    ]){
+      const fieldValue=optionalText(value[field],max,label);
+      if(fieldValue)result[field]=fieldValue;
+    }
+  }
   const referenceUrl=optionalText(value.referenceUrl,800,'bewijslink');
   if(referenceUrl){let u;try{u=new URL(referenceUrl)}catch{throw new Error('Ongeldige bewijslink')};if(u.protocol!=='https:')throw new Error('Ongeldige bewijslink');result.referenceUrl=u.href;}
   return result;

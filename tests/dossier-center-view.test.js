@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {filterDossiers,sortDossiers,fireCallGroup,policeCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
+import {filterDossiers,dossierSeriesNumber,sortDossiers,fireCallGroup,policeCallGroup,dossierStats,paginateDossiers,filterTimeline,PAGE_SIZE}
   from '../public/dossiercentrum-view.js';
 const rows=[
   {dept:'politie',discordId:'111111111111111111',name:'Émile Vermeulen',rank:'Inspecteur',
@@ -17,24 +17,6 @@ test('Only staff within the authorised input is searchable',()=>{
   assert.equal(filterDossiers(rows,{query:'Inspecteur',department:'ambulance'}).length,0);
   assert.deepEqual(filterDossiers([],{query:'Emile'}),[]);
   assert.equal(filterDossiers([{dept:'politie',personnel:false,name:'Burger'}]).length,0);
-});
-test('Politiedossiers kunnen op bestaande reeks worden gefilterd binnen de toegelaten dienst',()=>{
-  const data=[
-    {dept:'politie',name:'Lid A',series:'Reeks 1',personnel:true},
-    {dept:'politie',name:'Lid B',series:'R02',personnel:true},
-    {dept:'politie',name:'Lid C',series:'3',personnel:true},
-    {dept:'politie',name:'Nog niet ingedeeld',series:'',personnel:true},
-    {dept:'ambulance',name:'Ambulance',series:'Reeks 1',personnel:true},
-    {dept:'politie',name:'Geen dossier',series:'Reeks 1',personnel:false}
-  ];
-  const names=filters=>filterDossiers(data,filters).map(p=>p.name);
-  assert.deepEqual(names({department:'politie',series:'1'}),['Lid A']);
-  assert.deepEqual(names({department:'politie',series:'2'}),['Lid B']);
-  assert.deepEqual(names({department:'all',series:'3'}),['Lid C']);
-  assert.deepEqual(names({department:'ambulance',series:'1'}),[]);
-  assert.deepEqual(names({department:'politie',series:'all',query:'Nog'}),['Nog niet ingedeeld']);
-  assert.deepEqual(names({department:'politie',series:'4'}),[]);
-  assert.equal(names({department:'politie',series:'all'}).length,4);
 });
 test('Stats never count non-personnel records',()=>{
   assert.deepEqual(dossierStats([...rows,{personnel:false}]),{
@@ -176,4 +158,22 @@ test('Distinct sort modes preserve fire and police separation',()=>{
  assert.deepEqual(sortDossiers(filterDossiers(mixed,{department:'brandweer'}),'callsign-fire')
    .map(r=>r.call),['ZONE','BWM-01']);
  assert.equal(sortDossiers(mixed,'callsign-bpd')[0].call,'900');
+});
+
+test('Police series filter selects only authorized police dossiers in the selected real series',()=>{
+  const staff=[
+    {dept:'politie',name:'A',call:'700',series:'Reeks 1',personnel:true},
+    {dept:'politie',name:'B',call:'710',series:'REeks 2',personnel:true},
+    {dept:'politie',name:'C',call:'720',series:'3',personnel:true},
+    {dept:'politie',name:'D',call:'730',series:'Vlinder',personnel:true},
+    {dept:'ambulance',name:'E',call:'AMB-1',series:'Reeks 1',personnel:true},
+    {dept:'politie',name:'F',call:'400',series:'Reeks 1',personnel:false}
+  ];
+  assert.deepEqual(filterDossiers(staff,{series:'1'}).map(p=>p.name),['A']);
+  assert.deepEqual(filterDossiers(staff,{department:'politie',series:'2'}).map(p=>p.name),['B']);
+  assert.deepEqual(filterDossiers(staff,{series:'3'}).map(p=>p.name),['C']);
+  assert.deepEqual(filterDossiers(staff,{series:'4'}),[]);
+  assert.equal(filterDossiers(staff,{series:'all'}).length,5);
+  assert.equal(dossierSeriesNumber('Reeks 02'),'2');
+  assert.equal(dossierSeriesNumber('Vlinder'),null);
 });

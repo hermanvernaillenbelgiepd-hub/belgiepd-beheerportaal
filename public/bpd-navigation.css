@@ -662,7 +662,6 @@ table.bpd-adaptive-cards > tbody > tr:has(>td[colspan]) > td::before { display:n
   }
 }
 
-
 /* Home dashboard: no page-level horizontal overflow or duplicated scrolling menus.
    Only the start page is affected; dossier tables and other modules are unchanged. */
 body:has(> .portal){max-width:100%;overflow-x:clip}
@@ -735,7 +734,6 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
   .portal.bpd-home-nav-drawer > #homeRoleSidebar{transition:none}
 }
 
-
 /* BelgiumPD touch-first personnel layouts — 2026-11-15 */
 /* Mobile changes apply only to the adaptive read-only/personnel cards.
    Preserve the original table and all specialisation data on desktop. */
@@ -807,7 +805,6 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
   .mr-table.bpd-adaptive-cards > tbody > tr.mr-person{column-gap:2px;padding:4px}
   .mr-table.bpd-adaptive-cards > tbody > tr.mr-person > td{padding:6px!important}
 }
-
 
 /* BelgiumPD mobile management roster as list — 2026-11-15 */
 /* Keep real controls on their source row; expand for specialties and actions. */
@@ -945,6 +942,94 @@ body:has(> .portal){max-width:100%;overflow-x:clip}
  .staff-roster-table.roster-police-compact.bpd-adaptive-cards > tbody > tr.bpd-mobile-list-row:not(.police-kader-divider):not(:has(>td[colspan])){
    grid-template-columns:11% 11% minmax(0,1fr) 12% 22%!important;
  }
+}
+
+
+/* Profile page: keep nested panels legible in both global themes. */
+@media screen {
+  /* The shared theme styles the outer .card; these inner profile elements
+     previously kept their hard-coded navy backgrounds in light mode. */
+  html:not([data-bpd-theme="dark"]) body #profile :is(
+    .identity-grid > div, .leave-box, .profile-fold,
+    .profile-columns section, .role-details, .leave-archive, .leave-history
+  ) {
+    background:#f6f9fd!important;
+    color:#172a48!important;
+    border-color:#cad9eb!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #profile :is(
+    .profile-fold > summary, .role-details > summary,
+    .leave-archive > summary, .identity-grid dd, .profile-row strong,
+    .leave-record strong, .leave-box h3, code
+  ) { color:#18365a!important; }
+  html:not([data-bpd-theme="dark"]) body #profile :is(
+    .identity-grid dt, .leave-state, .profile-row small, .leave-record small,
+    .leave-history-list, .leave-history summary
+  ) { color:#4e6684!important; }
+  html:not([data-bpd-theme="dark"]) body #profile .profile-fold > summary::before,
+  html:not([data-bpd-theme="dark"]) body #profile .leave-archive > summary::before { color:#4e6684!important; }
+  html:not([data-bpd-theme="dark"]) body #profile :is(
+    .fold-count, .leave-archive-count, .role-id-button, .role
+  ) {
+    background:#e5effa!important;
+    color:#214775!important;
+    border-color:#b7cce5!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #profile :is(
+    .profile-row, .leave-record, .leave-history-item, .profile-section,
+    #leaveArchivedRequests
+  ) { border-color:#d1deec!important; }
+  html:not([data-bpd-theme="dark"]) body #connectionCard.verified-compact {
+    background:#fff!important;border-color:#d9e3f1!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #connectionCard .status:not(.error) {
+    background:#e9f8ef!important;color:#126b43!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #connectionCard.verified-compact .status:not(.error) {
+    background:transparent!important;color:#126b43!important;
+  }
+  html:not([data-bpd-theme="dark"]) body #connectionCard .status.error {
+    background:#fff1f2!important;color:#9b2538!important;
+  }
+  /* Global link colours must not turn white-on-blue action buttons blue. */
+  html:not([data-bpd-theme="dark"]) body :is(#profile,#connectionCard) a.button {
+    background:#3156d8!important;color:#fff!important;
+    border-color:#3156d8!important;
+  }
+  html:not([data-bpd-theme="dark"]) body :is(#profile,#connectionCard) a.button:hover {
+    background:#2447bd!important;border-color:#2447bd!important;
+  }
+
+  /* Dark mode remains navy, with explicit readable text in nested panels. */
+  html[data-bpd-theme="dark"] body #profile :is(
+    .identity-grid > div, .leave-box, .profile-fold,
+    .profile-columns section, .role-details, .leave-archive, .leave-history
+  ) {
+    background:#172d49!important;color:#e7f1ff!important;
+    border-color:#3a567a!important;
+  }
+  html[data-bpd-theme="dark"] body #profile :is(
+    .profile-fold > summary, .role-details > summary,
+    .leave-archive > summary, .identity-grid dd, .profile-row strong,
+    .leave-record strong, .leave-box h3, code
+  ) {color:#edf5ff!important;}
+  html[data-bpd-theme="dark"] body #profile :is(
+    .fold-count, .leave-archive-count, .role-id-button, .role
+  ) {background:#284563!important;color:#dceaff!important;
+    border-color:#4a6a91!important;}
+  html[data-bpd-theme="dark"] body #connectionCard.verified-compact {
+    background:#12243e!important;border-color:#344e70!important;
+  }
+  html[data-bpd-theme="dark"] body #connectionCard .status:not(.error) {
+    color:#bce9ce!important;
+  }
+  html[data-bpd-theme="dark"] body :is(#profile,#connectionCard) a.button {
+    background:#3768e7!important;color:#fff!important;
+    border-color:#6489ee!important;
+  }
+  html[data-bpd-theme="dark"] body :is(#profile,#connectionCard) a.button:hover {
+    background:#2758d0!important;
+  }
 }
 
 /* Verified per-user unread action marker, visible on both navigation layouts. */

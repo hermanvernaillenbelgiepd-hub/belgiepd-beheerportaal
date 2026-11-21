@@ -1,10 +1,14 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {discordBotToken} from './discord-bot-refresh.js';
+import {brusselsEventDate} from './personnel-event-date.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
 import {overlayVerifiedCitizenRankDisplay} from './burger-organogram-projection.js';
 import {getAuth} from 'firebase-admin/auth';
 import {linkEnabled,validateLinkReference,verifiedLinkRequester,mayApproveLink,mayRejectLink,bearerToken} from './personnel-link.js';
 import {LIFECYCLE_SERVICES} from './personnel-lifecycle-policy.js';
-import {canManageLifecycleDepartment,canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
+import {PERSONNEL_IDENTITY_NAMES,canonicalRosterName,normalizedIdentityName} from './personnel-identity-policy.js';
+import {canManageLifecycleDepartment,canManagePersonnelLifecycle,
+ canGloballyArchivePersonnel} from './personnel-lifecycle-access.js';
 import {PERSONNEL_EDITS_COLLECTION,EDITABLE_STATUSES,validPersonnelKey,
   canViewPersonnel,canReadPersonnelSubject,canEditPersonnel,canEditGeneralPersonnelInfo,canChangePersonnelStatus,canRenameLowerPolice,validateLowerPoliceRename,validatePersonnelChange,mergePersonnelEdits,
   currentPersonnelAuditActor,personnelCallClaimId} from './personnel-editor-policy.js';
@@ -28,7 +32,7 @@ import {PERSONNEL_SPECIALIZATIONS_COLLECTION,INITIAL_POLICE_SPECIALTIES} from '.
 import {occupiedPoliceCalls,policeCallNumber} from './callsign-utils.js';
 import {readPoliceCallOccupation} from './police-call-availability.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
-  validatePoliceGradeChange,classifyPoliceGradeChange} from './personnel-rank-policy.js';
+  validatePoliceGradeChange,classifyPoliceGradeChange,policeOfficialRankLabel} from './personnel-rank-policy.js';
 
 const error=(res,status,message)=>res.status(status).json({error:message});
 const asTime=x=>x?.toDate?.().toISOString?.()||null;
@@ -79,7 +83,9 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           nextPoliceRank(p.rank)&&req.bpd.discordId!==p.personId&&
           canAuthoriseExceptionalPoliceRank(req.bpd,'politie'));
         return {discordId:p.personId,dept:p.dept,name:p.name,call:p.call,rank:p.rank,
+          rankDisplay:p.dept==='politie'?policeOfficialRankLabel(p.rank):p.rank,
           canOpenDossier,canManageLifecycle:canManagePersonnelLifecycle(req.bpd,p),
+          canArchiveGlobally:canGloballyArchivePersonnel(req.bpd,p),
           canPromote,nextPromotionRank:canPromote?nextPoliceRank(p.rank):null,
           canChangeRank:canChangePoliceGrade(req.bpd,p),
           series:displaySeries(p.seriesRaw??p.series,p.rank,p.dept,p.call),
@@ -170,8 +176,19 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       return error(res,403,'Deze instaprang vereist een hogere, geverifieerde kaderbevoegdheid');
     try{
       // Reject intake rather than trusting a stale cached personnel roster.
-      const snap=await getSnapshot({forceRefresh:true});
+      const snap=await getSnapshot({forceRefresh:true,includeArchived:true});
       if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
+      if(proposed.discordId){
+        const same=snap.data.filter(x=>x.personId===proposed.discordId);
+        if(same.some(x=>x.dept===proposed.dept&&['archived','pending'].includes(x.lifecycleState)))
+          return error(res,409,'Gearchiveerd dossier gevonden: gebruik eerst de herintredingsprocedure.');
+        const canonical=canonicalRosterName(same,proposed.discordId);
+        if(canonical&&proposed.dept!=='politie')proposed={...proposed,name:canonical};
+        if(snap.data.some(x=>x.dept===proposed.dept&&x.personId!==proposed.discordId&&
+          ['archived','pending'].includes(x.lifecycleState)&&
+          normalizedIdentityName(x.name)===normalizedIdentityName(proposed.name)))
+          return error(res,409,'Deze naam bestaat in een gearchiveerd dossier: laat de oude DC-ID controleren.');
+      }
       const enrollment=checkServiceEnrollment(snap.data,proposed.dept,proposed.discordId);
       if(!enrollment.allowed)return error(res,409,enrollment.reason);
       try{uniqueNewPerson(snap.data,proposed)}
@@ -422,8 +439,16 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const member=(await store.collection('bpd_discord_auth').doc(discordId).get()).data();
       if(!mayApproveLink(req.bpd,record,member,process.env.DISCORD_GUILD_ID))
         return error(res,403,'Deze koppeling mag niet worden goedgekeurd of Discord moet opnieuw verifiëren');
-      const snap=await getSnapshot({forceRefresh:true});
+      const snap=await getSnapshot({forceRefresh:true,includeArchived:true});
       if(snap.stale)return error(res,503,'De actuele personeelsbron kan niet worden gecontroleerd. Probeer later opnieuw.');
+      if(snap.data.some(x=>x.dept===record.dept&&x.personId===discordId&&
+          ['archived','pending'].includes(x.lifecycleState)))
+        return error(res,409,'Dit account heeft een gearchiveerde fiche: herintreding eerst beoordelen.');
+      const officialName=canonicalRosterName(snap.data,discordId)||record.name;
+      if(snap.data.some(x=>x.dept===record.dept&&x.personId!==discordId&&
+        ['archived','pending'].includes(x.lifecycleState)&&
+        normalizedIdentityName(x.name)===normalizedIdentityName(officialName)))
+        return error(res,409,'Mogelijk oud dossier met deze naam: DC-ID-overdracht eerst controleren.');
       const enrollment=checkServiceEnrollment(snap.data,record.dept,discordId);
       if(!enrollment.allowed)return error(res,409,enrollment.reason);
       if(snap.data.some(p=>p.dept===record.dept&&p.personId===discordId))
@@ -456,7 +481,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         }
         const nextStatus=activateOnFixedCallLink(d);
         tx.create(created,{dept:d.dept,discordId,internalId:pending.id,
-          name:d.name,call:d.call,rank:d.rank,status:nextStatus,
+          name:officialName,call:d.call,rank:d.rank,status:nextStatus,
           entryRank:d.entryRank||d.rank,
           exceptionalEntryRank:d.exceptionalEntryRank===true,
           exceptionalEntryReason:d.exceptionalEntryReason||null,
@@ -568,6 +593,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
     try{
       const store=getFirestore();
       const ref=store.collection(CREATED_PERSONNEL_COLLECTION).doc(dept+'_'+discordId);
+      const eventDate=brusselsEventDate();
+      const caseRef=store.collection('bpd_cases').doc(dept+'_'+discordId)
+        .collection('entries').doc();
+      const noticeRef=store.collection('bpd_notices').doc(dept)
+        .collection('events').doc();
       await store.runTransaction(async tx=>{
         const current=await tx.get(ref);
         if(!current.exists)
@@ -592,12 +622,34 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
           at:FieldValue.serverTimestamp()
         });
+        const at=FieldValue.serverTimestamp();
         tx.create(store.collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
           type:'promotion',dept,discordId,
           name:String(data.name||'Personeelslid').slice(0,120),
           before:data.rank,after:proposal.newRank,
-          at:FieldValue.serverTimestamp()
+          reason:proposal.reason,eventDate,dossierCaseLogged:true,
+          actorDiscordId:req.bpd.discordId||null,at
         });
+        // Legacy promotion route uses the same dated dossier + report event
+        // as the newer rank-and-callsign change, without a duplicate report row.
+        tx.create(caseRef,{
+          type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+          source:'personnel-legacy-promotion',dept,subjectDiscordId:discordId,
+          subjectNameAtCreation:String(data.name||'Personeelslid').slice(0,120),
+          subjectCallAtCreation:String(data.call||'').slice(0,24),
+          subjectRankAtCreation:data.rank,
+          movement:'Promotie',eventDate,
+          previousRank:data.rank,newRank:proposal.newRank,
+          previousCall:data.call||'',newCall:data.call||'',
+          details:'Promotie: '+data.rank+' → '+proposal.newRank+
+            '. Motivering: '+proposal.reason,
+          registeredBy:{discordId:req.bpd.discordId,
+            name:req.bpd.name||'Bevoegd kader',call:req.bpd.call||''},
+          submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+          createdAt:at,modifiedAt:null
+        });
+        tx.create(noticeRef,{caseId:dept+'_'+discordId,entryId:caseRef.id,
+          type:'personeelsbeweging',dept,createdAt:at});
       });
       return res.json({promoted:true,dept,discordId,newRank:proposal.newRank,
         rolesGranted:false,sourceSheetsChanged:false});
@@ -623,8 +675,19 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const matches=snap.data.filter(p=>p.dept===dept&&p.personId===discordId);
       if(matches.length!==1)throw userError(409,'Personeelsfiche is niet eenduidig');
       const subject=matches[0];
-      if(!canChangePoliceGrade(req.bpd,subject))
-        throw userError(403,'Geen rangbevoegdheid voor dit personeelslid');
+      if(!canChangePoliceGrade(req.bpd,subject)){
+        // The bot's absence is a configuration error, NOT evidence that
+        // the member lacks a Police cadre. The signed Discord OAuth login
+        // is an independent, fresh guild-role proof and remains a valid way
+        // to authorize a personnel action while bot settings are repaired.
+        const unavailable=req.bpd.policeRankVerificationStatus==='bot_unavailable';
+        const botMissing=unavailable&&!discordBotToken(process.env);
+        throw userError(unavailable?503:403,botMissing?
+          'MAIN: Discord-bot-token ontbreekt of is ongeldig in Render. Er is niets opgeslagen. Stel BPD_DISCORD_BOT_TOKEN veilig in bij de Render-omgevingsvariabelen of verifieer je eigen Discord-account opnieuw via Aanmelden met Discord.':
+          unavailable?
+          'De Discord-bot kon jouw rol momenteel niet controleren. Er is niets opgeslagen. Verifieer je eigen Discord-account opnieuw via Aanmelden met Discord of controleer de Discord-botverbinding.':
+          'Geen actueel geverifieerde Politie-kaderbevoegdheid. Controleer je eigen Officierenkader- of Korpsleidingrol en meld je zo nodig opnieuw aan met Discord.');
+      }
       if(!allowedPoliceGradeChoices(req.bpd).includes(proposal.newRank))
         throw userError(403,'Deze nieuwe rang valt buiten jouw kaderbevoegdheid');
       if(proposal.expectedRank!==subject.rank)
@@ -636,24 +699,27 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const claims=store.collection('bpd_personnel_call_claims');
       const newClaim=claims.doc(personnelCallClaimId(dept,proposal.newCall));
       const oldClaim=claims.doc(personnelCallClaimId(dept,subject.call));
+      const fixedReservation=store.collection('bpd_callsign_reservations')
+        .doc(proposal.newCall);
       const type=classifyPoliceGradeChange(subject.call,proposal.newCall);
       const movementLabel=type==='promotion'?'Promotie':type==='demotion'?'Degradatie':'Rangwissel';
       const caseRef=store.collection('bpd_cases').doc(dept+'_'+discordId).collection('entries').doc();
       const noticeRef=store.collection('bpd_notices').doc(dept).collection('events').doc();
-      const eventDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-        year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+      const eventDate=brusselsEventDate();
       await store.runTransaction(async tx=>{
-        const [current,reserved,previousClaim]=await Promise.all([
+        const [current,reserved,previousClaim,numberReservation]=await Promise.all([
           tx.get(ref),tx.get(newClaim),
-          newClaim.id===oldClaim.id?tx.get(newClaim):tx.get(oldClaim)
+          newClaim.id===oldClaim.id?tx.get(newClaim):tx.get(oldClaim),
+          tx.get(fixedReservation)
         ]);
         const saved=current.data()||{},revision=saved.revision||0;
         if(revision!==proposal.expectedRevision)
           throw userError(409,'Deze fiche werd intussen gewijzigd. Vernieuw de pagina.');
         if(saved.approvedRankEdit===true&&saved.rank!==subject.rank)
           throw userError(409,'Rang is intussen gewijzigd. Vernieuw de fiche.');
-        if(reserved.exists&&reserved.get('discordId')!==discordId)
-          throw userError(409,'Het nieuwe roepnummer is reeds gereserveerd');
+        if(reserved.exists&&reserved.get('discordId')!==discordId||
+           numberReservation.exists&&numberReservation.get('discordId')!==discordId)
+          throw userError(409,'Het nieuwe roepnummer is reeds bezet of gereserveerd');
         const oldRank=subject.rank,oldCall=subject.call;
         const next={name:saved.name??subject.name,call:proposal.newCall,
           status:saved.status??subject.status};
@@ -683,6 +749,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         tx.create(caseRef,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
           source:'personnel-rank-change',dept,subjectDiscordId:discordId,
           subjectNameAtCreation:next.name,subjectCallAtCreation:oldCall,
+          subjectRankAtCreation:oldRank,
           eventDate,movement:movementLabel,previousRank:oldRank,newRank:proposal.newRank,
           previousCall:oldCall,newCall:proposal.newCall,
           details:movementLabel+': '+oldRank+' ('+oldCall+') → '+
@@ -721,16 +788,24 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       if(!canRenameLowerPolice(req.bpd,subject))
         throw userError(403,'Middenkader mag alleen namen van lager politiekader aanpassen');
       const ref=collection().doc(dept+'_'+discordId);
+      const identityRef=getFirestore().collection(PERSONNEL_IDENTITY_NAMES).doc(discordId);
       await getFirestore().runTransaction(async tx=>{
-        const current=await tx.get(ref);
+        const [current,identity]=await Promise.all([tx.get(ref),tx.get(identityRef)]);
         const saved=current.data();
         const revision=saved?.revision||0;
         if(revision!==data.expectedRevision)
           throw userError(409,'De fiche is gewijzigd. Vernieuw voor je opnieuw opslaat');
         const oldName=saved?.name??subject.name;
         if(oldName===data.name)throw userError(409,'De naam is niet gewijzigd');
+        if(identity.exists&&identity.get('name')!==subject.name)
+          throw userError(409,'Centrale naam intussen gewijzigd. Vernieuw de personeelsfiche.');
         const previous={name:oldName,call:saved?.call??subject.call,status:saved?.status??subject.status};
         const next={...previous,name:data.name};
+        tx.set(identityRef,{discordId,name:data.name,updatedAt:FieldValue.serverTimestamp(),
+          updatedByDiscordId:req.bpd.discordId,sourceDept:dept});
+        tx.create(identityRef.collection('audit').doc(),{previousName:oldName,
+          newName:data.name,reason:data.reason,actorDiscordId:req.bpd.discordId,
+          at:FieldValue.serverTimestamp()});
         tx.set(ref,{...next,
           ...(saved?.approvedRankEdit===true?{rank:saved.rank,approvedRankEdit:true}:{}),
           dept,discordId,revision:revision+1,
@@ -756,19 +831,24 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
     try{proposed=validatePersonnelChange(req.body);}catch(e){return error(res,400,e.message)}
     try{
       const snap=await getSnapshot();
+      if(snap.stale)throw userError(503,'Personeelsbron is niet actueel');
       const matches=snap.data.filter(p=>p.dept===req.params.dept&&p.personId===req.params.discordId);
       if(matches.length!==1)throw userError(409,'Geen eenduidige bestaande personeelsfiche gevonden');
       const subject=matches[0];
       if(!canReadPersonnelSubject(req.bpd,subject))throw userError(403,'Dossier van Korpsleiding is afgeschermd');
       if(!canEditGeneralPersonnelInfo(req.bpd,subject))
         throw userError(403,'Alleen bevoegd Officierenkader, Korpsleiding of geverifieerd Bestuur mag algemene personeelsinformatie wijzigen');
+      if(proposed.name!==subject.name&&subject.dept!=='politie'&&
+         snap.data.some(x=>x.dept==='politie'&&x.personId===subject.personId))
+        throw userError(409,'Wijzig de centrale naam eerst in de politiefiche.');
       if(snap.data.some(p=>p.dept===subject.dept&&p.personId!==subject.personId&&
         p.call===proposed.call))throw userError(409,'Dit roepnummer wordt al gebruikt binnen deze hulpdienst');
       if(subject.name===proposed.name&&subject.call===proposed.call&&subject.status===proposed.status)
         throw userError(409,'Er zijn geen wijzigingen ten opzichte van de huidige personeelsfiche');
       const ref=collection().doc(subject.dept+'_'+subject.personId);
+      const identityRef=getFirestore().collection(PERSONNEL_IDENTITY_NAMES).doc(subject.personId);
       await getFirestore().runTransaction(async tx=>{
-        const existing=await tx.get(ref);
+        const [existing,identity]=await Promise.all([tx.get(ref),tx.get(identityRef)]);
         const current=existing.exists?existing.data():null;
         const revision=current?.revision||0;
         if(revision!==proposed.expectedRevision)throw userError(409,'Deze fiche is intussen gewijzigd. Vernieuw de pagina.');
@@ -791,6 +871,16 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
         const audit=ref.collection('audit').doc();
         const previous={name:current?.name??subject.name,call:oldCall,status:current?.status??subject.status};
         const next={name:proposed.name,call:proposed.call,status:proposed.status};
+        if(proposed.name!==previous.name){
+          if(identity.exists&&identity.get('name')!==subject.name)
+            throw userError(409,'Centrale naam intussen gewijzigd. Vernieuw de fiche.');
+          tx.set(identityRef,{discordId:subject.personId,name:proposed.name,
+            sourceDept:subject.dept,updatedByDiscordId:req.bpd.discordId,
+            updatedAt:FieldValue.serverTimestamp()});
+          tx.create(identityRef.collection('audit').doc(),{previousName:previous.name,
+            newName:proposed.name,reason:proposed.reason,
+            actorDiscordId:req.bpd.discordId,at:FieldValue.serverTimestamp()});
+        }
         tx.set(ref,{...next,
           ...(current?.approvedRankEdit===true?{rank:current.rank,approvedRankEdit:true}:{}),
           dept:subject.dept,discordId:subject.personId,revision:revision+1,
@@ -803,9 +893,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           at:FieldValue.serverTimestamp()});
         if(checkRef&&check.exists&&check.get('status')==='CHECKING'&&
            check.get('discordId')===subject.personId&&check.get('dept')===subject.dept){
-          const now=FieldValue.serverTimestamp(),date=
-            new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-              year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+          const now=FieldValue.serverTimestamp(),date=brusselsEventDate();
           const registrar={discordId:req.bpd.discordId,
             name:req.bpd.name||'Bevoegd kader',call:req.bpd.call||''};
           tx.update(checkRef,{status:proposed.status,reason:proposed.reason,
@@ -832,12 +920,12 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
             .doc(subject.dept+'_'+subject.personId).collection('entries').doc();
           const notification=getFirestore().collection('bpd_notices')
             .doc(subject.dept).collection('events').doc();
-          const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-            year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+          const date=brusselsEventDate();
           tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
             source:'personnel-suspension',dept:subject.dept,
             subjectDiscordId:subject.personId,subjectNameAtCreation:subject.name,
-            subjectCallAtCreation:subject.call,eventDate:date,movement:'Schorsing',
+            subjectCallAtCreation:subject.call,subjectRankAtCreation:subject.rank,
+            eventDate:date,movement:'Schorsing',
             previousRank:subject.rank,newRank:subject.rank,
             previousCall:oldCall,newCall:proposed.call,
             details:'Schorsing. Motivering: '+proposed.reason,

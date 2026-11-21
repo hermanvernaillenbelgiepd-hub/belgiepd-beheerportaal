@@ -56,9 +56,9 @@ Europe/Brussels. Datum- en speeltijdbewijs wordt in Firestore opgeslagen.
 - De **afgesloten vorige kalendermaand**: <10 uur => INACTIEF-ping,
   10 tot <20 uur => 50/50-ping. Geen controle in de eerste onvolledige
   lidmaatschapsmaand.
-- **14 dagen** geen geverifieerde FiveM-verbinding => 50/50-ping.
+- **15 dagen** geen geverifieerde FiveM-verbinding => 50/50-ping.
 - **30 dagen** => INACTIEF-ping.
-- **60 dagen** => **geen automatische ontslag- of archiveringsactie**.
+- **60 dagen** => voorstel *verwijdering beoordelen* voor bevoegde leiding; **geen automatische ontslag- of archiveringsactie**.
 - Goedgekeurd verlof onderbreekt de afwezigheidsteller; een maand met
   goedgekeurd verlof krijgt geen maandelijkse urensignalering.
 - Onbekende of ouder dan 36 uur geverifieerde gegevens: **geen ping**.
@@ -94,3 +94,19 @@ De aangepaste backend genereert geen FiveM-speeluren zelf. Een bot of
 server-API moet de gegevens werkelijk meten en versturen. Zonder die
 bron zijn de regels veilig inactief. Deze module is geen automatische
 personeelsstatuswijziging en is ook geen ontslagmodule.
+
+## Handmatige registratie in het personeelsdossier
+
+Een bevoegd kaderlid kan een activiteitenping registreren met de opvolgstatus
+**Actief / 50/50 / Inactief / 60+ dagen: verwijdering beoordelen**, een
+motivering, en een expliciete bevestiging of er **daadwerkelijk buiten het
+portaal een Discord-bericht is verstuurd** (met de datum). Die bevestiging
+is uitsluitend een verklarende auditregistratie: het portaal verzendt
+nooit zelf dat Discord-bericht. De gekozen status wordt opgenomen in
+dossier en weekrapport, maar wijzigt de actuele personeelsstatus niet
+zonder een afzonderlijk bevoegde personeelsactie.
+
+De maandgrenzen zijn strikt: **<20 uur = 50/50**, **<10 uur = Inactief**, tenzij
+vanwege een andere, zwaardere drempel een strengere opvolging geldt.
+Een lopend of overlappend goedgekeurd verlof voorkomt automatische uurwaarschuwingen;
+goedgekeurd verlof onderbreekt de teller voor dagen zonder verbinding.

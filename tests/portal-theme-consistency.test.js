@@ -32,3 +32,14 @@ test('one design system covers light, dark, personnel and embedded organogram',(
  assert.match(css,/@media screen\{/);
  assert.doesNotMatch(css,/@media print\{/);
 });
+
+
+test('Mijn profiel inner cards, foldouts, buttons and status follow the selected theme',()=>{
+  for(const selector of [
+    'html:not([data-bpd-theme="dark"]) body #profile :is(',
+    'html[data-bpd-theme="dark"] body #profile :is(',
+    '#connectionCard.verified-compact',
+    '#connectionCard .status:not(.error)',
+    'body :is(#profile,#connectionCard) a.button'
+  ]) assert.ok(css.includes(selector),selector);
+});

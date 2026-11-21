@@ -35,6 +35,15 @@ export function mayAdministerDcTransfer(actor){
 }
 // The same authorized officer can prepare and complete a transfer.
 // Subject accounts may never transfer themselves, regardless of their cadre.
+// Herinstroommeldingen zijn uitsluitend voor het geverifieerde politie-Officierenkader
+// en de Korpsleiding. Technische DC-overdracht blijft een afzonderlijke bevoegdheid.
+export function mayReviewPersonnelReentry(actor){
+ return mayAdministerDcTransfer(actor)&&
+   actor.discordRosterEditorVerified===true&&
+   actor.departments?.includes('politie')&&
+   ['officierenkader','korpsleiding'].includes(actor.role)&&
+   ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'politie'));
+}
 export function mayCompleteDcTransfer(actor,oldId,newId){
  return mayAdministerDcTransfer(actor)&&ID.test(oldId)&&ID.test(newId)&&
    oldId!==newId&&![oldId,newId].includes(actor.discordId);

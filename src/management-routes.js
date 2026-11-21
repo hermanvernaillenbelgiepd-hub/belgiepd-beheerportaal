@@ -2,7 +2,7 @@ import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
 import {canReadServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
-import {canRetireDossierRecord} from './dossier-retirement-policy.js';
+import {canRetireDossierRecord,mayRetireCaseType,isRetired} from './dossier-retirement-policy.js';
 import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
  historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
@@ -13,13 +13,17 @@ import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION
 import {isArchivedTraining} from './training-maintenance.js';
 import {projectLeaveReportEvent} from './leave-report-projection.js';
 import {brusselsEventDate} from './personnel-event-date.js';
+import {ACTIVITY_FOLLOWUP_STATUS} from './activity-followup-status-policy.js';
+import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries} from './dossier-linked-cases.js';
 import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
+import {POLICE_PROMOTION_PROPOSALS,nextPromotionRank} from './police-promotion-routes.js';
+import {POLICE_RANK_CHOICES,policeSubjectGradeOption} from './personnel-rank-policy.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
 import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
-import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase} from './management-utils.js';
+import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase,mayAnnotateDossierCase} from './management-utils.js';
 const asString=x=>String(x??'').trim();
 const toIso=t=>t?.toDate?.().toISOString()||null;
 const caseId=(dept,id)=>`${dept}_${id}`;
@@ -28,7 +32,10 @@ const noPrivate=e=>{
   const importedBy=e.historicalImport===true&&submittedByActor?{
     name:String(submittedByActor.name||'').slice(0,120),
     call:String(submittedByActor.call||'').slice(0,24)}:null;
+  const corrected=typeof e.administrativeCorrection?.details==='string'?
+    e.administrativeCorrection.details:null;
   return {...other,...(importedBy?{importedBy}:{}),
+    ...(corrected!==null?{details:corrected}:{}),
     createdAt:toIso(createdAt),modifiedAt:toIso(modifiedAt)};
 };
 const errorResponse=(res,error)=>{
@@ -86,13 +93,112 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
-      const rows=await db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').orderBy('createdAt','desc').limit(150).get();
+      const [rows,linked]=await Promise.all([
+        db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries')
+          .orderBy('createdAt','desc').limit(150).get(),
+        loadLinkedCaseEntries(db(),req.bpd,snap.data,dept,id,['notitie','algemene_notitie'])
+      ]);
+      res.set('Cache-Control','private, no-store');
       res.json({subject:{dept,discordId:id,name:subject.name,call:subject.call},
-        entries:rows.docs.filter(d=>d.get('status')!=='verwijderd').map(d=>({
-          id:d.id,...noPrivate(d.data()),
-          canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data())
-        })),limited:rows.docs.length===150});
+        entries:[
+          ...rows.docs.filter(d=>!isRetired(d.data())).map(d=>({
+            id:d.id,...noPrivate(d.data()),
+            canAmend:enabled()&&mayCorrectManualCase(req.bpd,subject,d.data()),
+            canAnnotate:enabled()&&mayAnnotateDossierCase(req.bpd,subject,d.data()),
+            canRetire:enabled()&&mayAnnotateDossierCase(req.bpd,subject,d.data())&&
+              mayRetireCaseType(d.data())
+          })),
+          ...linked.entries.map(e=>({...noPrivate(e),canAmend:false}))
+        ],limited:rows.size===150||linked.limited});
     }catch(e){errorResponse(res,e)}
+  });
+  // Administrative correction of ANY authorized dossier entry, including
+  // historical and effective movements. This only replaces the *displayed*
+  // explanation; it cannot change the underlying effective decision,
+  // original rank/callsign/status, dates, author or original record.
+  app.post('/api/management/cases/:dept/:discordId/:entryId/administrative-correction',
+   requireUser,async(req,res)=>{
+    if(!enabled())return res.status(503).json({error:'Dossierregistraties staan momenteel uit'});
+    const {dept,discordId:id,entryId}=req.params;
+    if(!['politie','ambulance','brandweer','depannage'].includes(dept)||
+      !validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+      return res.status(400).json({error:'Ongeldige dossierverwijzing'});
+    const body=req.body;
+    if(!body||typeof body!=='object'||Array.isArray(body)||
+      Object.keys(body).some(k=>!['details','reason','expectedModifiedAt'].includes(k)))
+      return res.status(400).json({error:'Ongeldige correctie-aanvraag'});
+    const details=typeof body.details==='string'?body.details.trim():'';
+    const reason=typeof body.reason==='string'?body.reason.trim():'';
+    if(details.length<2||details.length>4000||/[<>\x00-\x08\x0b\x0c\x0e-\x1f]/.test(details))
+      return res.status(400).json({error:'Gecorrigeerde omschrijving moet 2 tot 4000 tekens bevatten'});
+    if(reason.length<10||reason.length>500||/[<>\x00-\x08\x0b\x0c\x0e-\x1f]/.test(reason))
+      return res.status(400).json({error:'Vermeld een correctiereden van 10 tot 500 tekens'});
+    if(!Object.hasOwn(body,'expectedModifiedAt')||
+      body.expectedModifiedAt!==null&&(
+        typeof body.expectedModifiedAt!=='string'||
+        !Number.isFinite(Date.parse(body.expectedModifiedAt))))
+      return res.status(400).json({error:'Vernieuw eerst het dossier'});
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
+      const subject=uniqueSubject(snapshot.data,dept,id);
+      if(!subject)return res.status(404).json({error:'Personeelslid niet gevonden'});
+      const actor=actorFromPersonnel(req.bpd,snapshot.data);
+      if(!actor||!canReadServiceDossier(req.bpd,dept))
+        return res.status(403).json({error:'Niet bevoegd voor deze dossiercorrectie'});
+      const store=db(),entries=store.collection('bpd_cases')
+        .doc(caseId(dept,id)).collection('entries');
+      const ref=entries.doc(entryId),audit=ref.collection('audit').doc();
+      const log=entries.doc(),notice=store.collection('bpd_notices').doc(dept)
+        .collection('events').doc();
+      const at=FieldValue.serverTimestamp();
+      await store.runTransaction(async tx=>{
+        const current=await tx.get(ref);
+        if(!current.exists)throw Object.assign(Error('Registratie niet gevonden'),{status:404});
+        const old=current.data();
+        if(!mayAnnotateDossierCase(req.bpd,subject,old))
+          throw Object.assign(Error('Deze registratie mag niet door dit kader worden gecorrigeerd'),{status:403});
+        if((toIso(old.modifiedAt)||null)!==body.expectedModifiedAt)
+          throw Object.assign(Error('Registratie werd intussen gewijzigd. Vernieuw het dossier.'),{status:409});
+        const before=typeof old.administrativeCorrection?.details==='string'?
+          old.administrativeCorrection.details:String(old.details||'');
+        if(before===details)
+          throw Object.assign(Error('De gecorrigeerde tekst is ongewijzigd'),{status:400});
+        tx.update(ref,{
+          administrativeCorrection:{details,reason,actorName:actor.name,
+            actorCall:actor.call||'',actorDiscordId:req.bpd.discordId,at},
+          modifiedAt:at
+        });
+        tx.create(audit,{
+          action:'case_administrative_correction',originalType:old.type,
+          originalSource:old.source||null,before:{details:before},
+          after:{details},reason,actorUid:req.bpd.uid,
+          actorDiscordId:req.bpd.discordId,actorName:actor.name,at
+        });
+        // Append an independently dated event to the live weekreport.
+        // The original recorded movement is never silently rewritten.
+        tx.create(log,{
+          type:'activiteit',reportCategory:'activiteit',dept,
+          subjectDiscordId:id,subjectNameAtCreation:subject.name,
+          subjectCallAtCreation:subject.call,eventDate:brusselsEventDate(),
+          source:'case-administrative-correction',
+          amendmentOf:{entryId,kind:old.type},registeredBy:actor,
+          details:'ADMINISTRATIEVE DOSSIERCORRECTIE · '+entryId+
+            ' · Oorspronkelijk type: '+old.type+' · Reden: '+reason+
+            ' · Gecorrigeerd door '+actor.name,
+          createdAt:at,modifiedAt:null
+        });
+        tx.create(notice,{caseId:caseId(dept,id),entryId:log.id,
+          type:'activiteit',action:'case_administrative_correction',
+          originalEntryId:entryId,dept,createdAt:at});
+      });
+      return res.json({saved:true,auditRecorded:true,reportLogged:true,
+        effectiveDecisionChanged:false});
+    }catch(e){
+      if([400,403,404,409].includes(e?.status))
+        return res.status(e.status).json({error:e.message});
+      return errorResponse(res,e);
+    }
   });
   // Narrow self-note exception: verified 900/910 Korpsleiding can append
   // an own note without gaining access to any other protected dossier.
@@ -153,13 +259,44 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     if(verifiedBoardCorpsDossierAdmin(req.bpd)&&id===req.bpd.discordId)
       return res.status(403).json({error:'Dossierregistraties over jezelf zijn niet toegestaan'});
     try{
-      const data=validateManagementEntry(req.body),snap=await getSnapshot();
+      const snap=await getSnapshot();
+      if(snap.stale)return res.status(503).json({error:'Personeelsbron is niet actueel'});
       const subject=uniqueSubject(snap.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
       if(!canReadPersonnelSubject(req.bpd,subject))return res.status(403).json({error:'Dit personeelsdossier is beschermd'});
+      // A newly filed Police proposal defaults to the next official grade.
+      // It does not mutate a rank or reserve any callsign until approved.
+      const proposalType=type==='promotievoorstel'&&dept==='politie';
+      const currentPoliceGrade=proposalType?policeSubjectGradeOption(subject):null;
+      const suggestedRank=proposalType?nextPromotionRank(currentPoliceGrade?.rank):null;
+      if(proposalType&&!suggestedRank)
+        return res.status(409).json({error:'Voor deze huidige graad is geen automatische volgende graad beschikbaar'});
+      const proposedInput=proposalType?{...req.body,proposedRank:
+        String(req.body?.proposedRank||suggestedRank).trim()}:req.body;
+      if(proposalType&&!POLICE_RANK_CHOICES.some(x=>x.rank===proposedInput.proposedRank))
+        return res.status(400).json({error:'Selecteer een geldige politiepromotierang'});
+      if(proposalType&&
+        POLICE_RANK_CHOICES.find(x=>x.rank===proposedInput.proposedRank).grade<=
+        currentPoliceGrade?.grade)
+        return res.status(400).json({error:'Een voorstel moet een hogere graad betreffen'});
+      const data=validateManagementEntry(proposedInput);
+      let linkedColleague=null;
+      try{
+        linkedColleague=verifiedColleagueLink(req.body?.linkedColleagueId,
+          dept,id,snap.data,req.bpd,type);
+      }catch(e){return res.status(400).json({error:e.message})}
       const actor=actorFromPersonnel(req.bpd,snap.data);
       if(!actor)return res.status(403).json({error:'Koppel je Google-account eerst aan je eigen Discord ID'});
       const representedId=asString(req.body?.onBehalfOfDiscordId);
+      // Manual activity follow-up needs an explicit status and truthful
+      // Discord-sent attestation. Historical imports retain compatibility.
+      if(type==='inactiviteitsping'&&!representedId&&
+        (!ACTIVITY_FOLLOWUP_STATUS.includes(data.activityStatus)||
+         typeof data.discordPingSent!=='boolean'))
+        return res.status(400).json({error:'Kies de opvolgstatus en bevestig of een Discord-bericht werkelijk is verstuurd'});
+      if(type==='inactiviteitsping'&&data.discordPingSent===true&&
+         data.discordPingDate>brusselsEventDate())
+        return res.status(400).json({error:'De datum van een verstuurde Discord-ping kan niet in de toekomst liggen'});
       let represented=null,onBehalfReason='';
       if(representedId){
         const config=await db().collection(HISTORICAL_OBSERVATION_SETTINGS)
@@ -175,21 +312,46 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         represented=representativeFromPersonnel(snap.data,dept,representedId);
         if(!represented)return res.status(400).json({error:'Oorspronkelijke registrator niet gevonden in de personeelslijst'});
       }
+      // Record-only updates must never imply that a message was delivered.
+      // A separate private portal notice is created only for an attested
+      // manual Discord contact; this code NEVER sends an actual Discord DM.
+      const createMemberNotice=type==='inactiviteitsping'&&!represented&&
+        data.discordPingSent===true;
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
-      batch.create(newDoc,{...data,dept,subjectDiscordId:id,subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,registeredBy:represented||actor,submittedByActor:actor,
+      batch.create(newDoc,{...data,
+        ...(proposalType?{proposalStatus:'pending',currentRank:subject.rank}:{}),
+        dept,subjectDiscordId:id,
+        ...(linkedColleague?{linkedColleagueId:linkedColleague.personId}:{}),
+        subjectNameAtCreation:subject.name,subjectCallAtCreation:subject.call,
+        registeredBy:represented||actor,submittedByActor:actor,
         onBehalfOf:represented||null,onBehalfReason,
         historicalImport:Boolean(represented),importSource:represented?'spreadsheet':null,
         submittedBy:{uid:req.bpd.uid,email:req.bpd.email},
         ...(type==='inactiviteitsping'?(represented?{
           historicalPing:true,pingNotificationStatus:'historisch'
-        }:{pingNotificationId:newDoc.id,pingNotificationStatus:'sent'}):{}),
+        }:createMemberNotice?{
+          pingNotificationId:newDoc.id,pingNotificationStatus:'sent',
+          discordContactSource:'manual_attestation'
+        }:{pingNotificationStatus:'niet_verstuurd',
+          discordContactSource:'manual_attestation'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
+      if(proposalType){
+        const ref=db().collection(POLICE_PROMOTION_PROPOSALS).doc(newDoc.id);
+        batch.create(ref,{discordId:id,dept:'politie',caseEntryId:newDoc.id,
+          subjectName:subject.name,subjectCall:subject.call,currentRank:subject.rank,
+          proposedRank:data.proposedRank,eventDate:data.eventDate,
+          details:data.details,proposedByDiscordId:actor.discordId,
+          proposedByName:actor.name,status:'pending',
+          createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+      }
+      createColleagueLink(db(),batch,{dept,primaryId:id,entryId:newDoc.id,
+        type,eventDate:data.eventDate,colleague:linkedColleague,at:FieldValue.serverTimestamp()});
       // Exactly one atomic record is shared between the member inbox,
       // source dossier and dynamic fortnight report. No Discord DM is sent.
-      if(type==='inactiviteitsping'&&!represented){
+      if(createMemberNotice){
         const ping=db().collection(INACTIVITY_PING_NOTICES).doc(id).collection('events').doc(newDoc.id);
         batch.create(ping,{...inactivityPingNotice({dept,discordId:id,entryId:newDoc.id,
           details:data.details,actor}),createdAt:FieldValue.serverTimestamp(),readAt:null});
@@ -203,7 +365,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   app.patch('/api/management/cases/:dept/:discordId/:entryId',requireUser,async(req,res)=>{
     if(!enabled())return res.status(503).json({error:'Dossierregistraties staan momenteel uit'});
     const {dept,discordId:id,entryId}=req.params;
-    if(dept!=='politie'||!validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+    if(!['politie','ambulance','brandweer','depannage'].includes(dept)||
+      !validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
       return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     const reason=typeof req.body?.amendmentReason==='string'?req.body.amendmentReason.trim():'';
     if(reason.length<10||reason.length>1000)
@@ -241,6 +404,13 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         try{
           const parsed=validateManagementEntry({...req.body,type:old.type});
           values={...parsed,referenceUrl:parsed.referenceUrl||''};
+          // For historical movements only, an explicitly cleared former
+          // number/rank must not leave a stale original field behind.
+          if(old.type==='personeelsbeweging')for(const field of
+            ['previousRank','newRank','previousCall','newCall']){
+             if(Object.hasOwn(req.body,field)&&req.body[field]==='')
+              values[field]='';
+          }
         }
         catch(e){throw Object.assign(e,{status:400})}
         const before=Object.fromEntries(Object.keys(values).map(key=>[key,old[key]??null]));
@@ -270,7 +440,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   });
   app.get('/api/management/cases/:dept/:discordId/:entryId/audit',requireUser,async(req,res)=>{
     const {dept,discordId:id,entryId}=req.params;
-    if(dept!=='politie'||!validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
+    if(!['politie','ambulance','brandweer','depannage'].includes(dept)||
+      !validDiscord(id)||!/^[A-Za-z0-9_-]{12,120}$/.test(entryId))
       return res.status(400).json({error:'Ongeldige dossierverwijzing'});
     try{
       const snapshot=await getSnapshot(),subject=uniqueSubject(snapshot.data,dept,id);
@@ -278,21 +449,31 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const ref=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc(entryId);
       const doc=await ref.get();
       if(!doc.exists)return res.status(404).json({error:'Registratie niet gevonden'});
-      if(!mayCorrectManualCase(req.bpd,subject,doc.data()))
+      if(!mayCorrectManualCase(req.bpd,subject,doc.data())&&
+         !mayAnnotateDossierCase(req.bpd,subject,doc.data()))
         return res.status(403).json({error:'Geen recht om deze correctiehistoriek te bekijken'});
       const history=await ref.collection('audit').orderBy('at','desc').limit(40).get();
       res.set('Cache-Control','private, no-store');
-      return res.json({changes:history.docs.filter(d=>d.get('action')==='manual_case_amended').map(d=>{
+      return res.json({changes:history.docs.filter(d=>
+        ['manual_case_amended','case_administrative_correction'].includes(d.get('action')))
+        .map(d=>{
         const val=d.data();
         return {at:toIso(val.at),reason:String(val.reason||'').slice(0,1000),
-          actor:{name:String(val.by?.name||'Onbekend'),call:String(val.by?.call||'')},
+          action:val.action,
+          actor:{name:String(val.by?.name||val.actorName||'Onbekend'),
+            call:String(val.by?.call||'')},
+          after:{details:String(val.after?.details||'').slice(0,4000)},
           before:{eventDate:val.before?.eventDate||null,
             details:String(val.before?.details||'').slice(0,4000),
             courseName:val.before?.courseName||null,
             referenceUrl:val.before?.referenceUrl||null,
             proposedRank:val.before?.proposedRank||null,
             newName:val.before?.newName||null,
-            movement:val.before?.movement||null}};
+            movement:val.before?.movement||null,
+            previousRank:val.before?.previousRank??null,
+            newRank:val.before?.newRank??null,
+            previousCall:val.before?.previousCall??null,
+            newCall:val.before?.newCall??null}};
       }),limited:history.docs.length===40});
     }catch(e){return errorResponse(res,e)}
   });
@@ -400,7 +581,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const result=await db().runTransaction(async tx=>{
         const current=await tx.get(ping);
         if(!current.exists||current.get('targetDiscordId')!==id||
-          current.get('type')!=='inactiviteitsping')
+          current.get('type')!=='inactiviteitsping'||
+          current.get('status')==='verwijderd')
           return 'not_found';
         if(current.get('status')==='read')return 'already_read';
         const dept=current.get('dept'),caseKey=current.get('caseId');
@@ -409,7 +591,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         const entry=db().collection('bpd_cases').doc(caseKey).collection('entries').doc(entryId);
         const original=await tx.get(entry);
         if(!original.exists||original.get('type')!=='inactiviteitsping'||
-           original.get('subjectDiscordId')!==id||original.get('dept')!==dept)
+           original.get('subjectDiscordId')!==id||original.get('dept')!==dept||
+           isRetired(original.data()))
           return 'invalid_reference';
         const at=FieldValue.serverTimestamp();
         tx.update(ping,{status:'read',readAt:at});
@@ -603,7 +786,10 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     const doc=automatic?null:await db().collection('bpd_weekreports').doc(id).get();
     if(!automatic&&!doc.exists)return {status:404,error:'Rapport bestaat niet'};
     const report=automatic||doc.data();
-    const snap=await getSnapshot();
+    // Include departed members in the *report scope only*. Their original
+    // dossier events must remain visible in the fortnight of occurrence.
+    // This does NOT reactivate them in the regular personnel roster.
+    const snap=await getSnapshot({includeArchived:true});
     if(snap.stale)return {status:503,error:'Personeelsbron niet actueel'};
     if(!canReadServiceDossier(req.bpd,report.dept)||
       !mayReadFortnightReport(req.bpd,report.dept,snap.data))

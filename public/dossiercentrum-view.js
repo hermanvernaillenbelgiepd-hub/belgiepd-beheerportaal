@@ -1,4 +1,3 @@
-import {rosterSeriesNumber} from './police-roster-series.js';
 // Pure browser filters over already-authorized staff rows, no client-side grant logic.
 export const DOSSIER_TYPES=Object.freeze(['all','personnel']);
 export const APPLICATION_STATES=Object.freeze(['all']);
@@ -6,15 +5,20 @@ export const TIMELINE_TYPES=Object.freeze(['all','personeel','loopbaan']);
 export const PAGE_SIZE=25;
 const normalized=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toLocaleLowerCase('nl-BE').trim().replace(/\s+/g,' ');
+// Use the staff source's real police series, never the callsign or Discord role.
+export function dossierSeriesNumber(value){
+  const raw=String(value??'').trim();
+  const match=raw.match(/^(?:reeks|serie|series|r)\s*0?([1-3])$/i)||
+    raw.match(/^0?([1-3])$/);
+  return match?match[1]:null;
+}
 export function filterDossiers(rows,filters={}){
   const data=Array.isArray(rows)?rows:[];
   const query=normalized(filters.query);
-  const series=String(filters.series??'all');
-  if(series!=='all'&&!['1','2','3'].includes(series))return [];
   return data.filter(r=>r&&r.personnel===true&&
     (filters.department==='all'||!filters.department||r.dept===filters.department)&&
-    (series==='all'||r.dept==='politie'&&
-      String(/^r0?([1-3])$/i.exec(String(r.series||'').trim())?.[1]||rosterSeriesNumber(r.series)||'')===series)&&
+    (!filters.series||filters.series==='all'||
+      r.dept==='politie'&&dossierSeriesNumber(r.series)===String(filters.series))&&
     (!query||[r.name,r.call,r.rank,r.status,r.discordId]
       .some(v=>normalized(v).includes(query))));
 }

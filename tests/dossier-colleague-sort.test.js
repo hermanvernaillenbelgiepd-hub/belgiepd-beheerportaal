@@ -52,9 +52,23 @@ test('dossierkeuzelijst volgt voor elke dienst de officiële personeelsvolgorde'
 
 test('alleen toegankelijke personeelsdossiers staan in de selector en de link behoudt selectie',()=>{
  const html=source('public/personeelsbeheer.html');
- assert.match(html,/sortDossierColleagues\(people,BPDPersonnelVisuals\.comparePersonnel\)/);
+ assert.match(html,/sortDossierColleagues\(people,BPDPersonnelVisuals\.comparePersonnel,dept\)/);
  assert.ok(html.includes("if(selected)select.value=selected.dept+':'+selected.discordId;"));
- assert.ok(html.includes("const person=people.find(p=>p.dept+':'+p.discordId===$('ficheColleague').value);"));
+ assert.ok(html.includes("const person=people.find(p=>p.dept===dept&&"));
  assert.match(html,/window\.location\.assign\(ficheUrl\(person\)\)/);
  assert.match(source('public/dossier-colleague-sort.js'),/canOpenDossier===true/);
+});
+
+test('nevendienstselector toont alleen leden van eigen dienst, nooit andere dossiers',()=>{
+ const rows=[
+  entry('politie','900','Politie'),
+  entry('ambulance','ARTS-03','Arts'),
+  entry('brandweer','OOF12','Brandweer'),
+  entry('ambulance','AMB-12','Ambulancier'),
+  entry('ambulance','AMB-99','Afgeschermd',false)
+ ];
+ const selected=sortDossierColleagues(rows,compare,'ambulance');
+ assert.deepEqual(selected.map(p=>p.call),['ARTS-03','AMB-12']);
+ assert.equal(selected.some(p=>p.dept!=='ambulance'),false);
+ assert.deepEqual(sortDossierColleagues(rows,compare,'onbekend'),[]);
 });

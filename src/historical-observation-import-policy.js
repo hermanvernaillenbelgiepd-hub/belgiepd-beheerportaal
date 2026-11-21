@@ -58,8 +58,10 @@ export function historicalMigrationAllowed(actor,dept,type,config){
   config?.enabled===true&&canManageHistoricalObservationImport(actor);
 }
 export function validateHistoricalActorSelection(actorId,reason,loggedInDiscordId){
- if(typeof actorId!=='string'||!ID.test(actorId)||actorId===loggedInDiscordId)
-  throw Error('Kies een andere, oorspronkelijke registrator');
+ // The importing user may also have authored their own historical observation.
+ // The authenticated importer is always retained separately in submittedByActor.
+ if(typeof actorId!=='string'||!ID.test(actorId))
+  throw Error('Kies een geldige oorspronkelijke registrator');
  if(typeof reason!=='string'||reason.trim().length<10||reason.trim().length>500)
   throw Error('Vermeld de bron en reden van historische overname (10–500 tekens)');
  return {actorId,reason:reason.trim()};

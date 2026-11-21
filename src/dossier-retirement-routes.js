@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {actorFromPersonnel} from './registrations.js';
+import {INACTIVITY_PING_NOTICES} from './inactivity-ping-notifications.js';
 import {uniqueStaffSubject,STAFF_DOSSIER_COLLECTION,STAFF_NOTE_TYPES}
  from './staff-dossier-policy.js';
 import {canRetireDossierRecord,mayRetireCaseType,retirementReason,isRetired}
@@ -70,6 +71,19 @@ export function installDossierRetirementRoutes(app,{requireUser,getSnapshot}){
        }
        if(isRetired(old))
          throw Object.assign(new Error('Registratie is al ingetrokken'),{status:409});
+       // If a manually sent activity ping is retired, remove its live inbox
+       // representation in the same transaction. Never delete the audit.
+       const pingRef=source==='cases'&&old.type==='inactiviteitsping'&&
+         old.pingNotificationId===entryId&&old.source!=='automatic_fivem_activity'?
+         db.collection(INACTIVITY_PING_NOTICES).doc(id)
+           .collection('events').doc(entryId):null;
+       const pingSnapshot=pingRef?await tx.get(pingRef):null;
+       if(pingSnapshot?.exists&&
+         (pingSnapshot.get('type')!=='inactiviteitsping'||
+          pingSnapshot.get('targetDiscordId')!==id||
+          pingSnapshot.get('dept')!==dept||
+          pingSnapshot.get('entryId')!==entryId))
+         throw Object.assign(new Error('Gekoppelde activiteitenping moet eerst gecontroleerd worden'),{status:409});
        const kind=source==='staff'?'basisnotitie':old.type;
        const at=FieldValue.serverTimestamp();
        const change={action:'dossier_record_retired',source,kind,dept,
@@ -77,7 +91,11 @@ export function installDossierRetirementRoutes(app,{requireUser,getSnapshot}){
          actorDiscordId:req.bpd.discordId,actorName:actor.name,at};
        tx.update(ref,{status:'verwijderd',
          retired:{at,reason,actorDiscordId:req.bpd.discordId,actorUid:req.bpd.uid},
+         ...(pingRef?{pingNotificationStatus:'verwijderd'}:{}),
          modifiedAt:at});
+       if(pingSnapshot?.exists)
+         tx.update(pingRef,{status:'verwijderd',
+           retired:{at,reason,actorDiscordId:req.bpd.discordId}});
        tx.create(audit,change);
        // Dossieractive records disappear; the reporting event is an
        // independent immutable case entry dated the day of withdrawal.

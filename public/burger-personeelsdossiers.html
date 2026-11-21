@@ -28,7 +28,7 @@ label{display:block;color:#c4d4e7;font-size:12px;margin:8px 0 5px}
 .citizen-overline{font-size:10px;font-weight:750;letter-spacing:.11em;
   color:#8eb4e8;margin:0 0 6px}
 .citizen-sheet-head h1{margin:0 0 16px}
-.profile{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+.profile{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
   gap:0;border-block:1px solid #365878}
 .profile>div{min-width:0;padding:13px 12px;border:0;border-right:1px solid #365878;
   background:transparent;overflow-wrap:anywhere}
@@ -153,11 +153,19 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
 <h1>Burgerpersoneelsdossiers</h1>
 <p class="muted">Burgerraad en Korpsleiding kunnen notities, observaties en sancties registreren; geverifieerd technisch beheer kan dit ook. Alleen Korpsleiding en technisch beheer mogen registraties gemotiveerd verwijderen. Burgerraad kan niets wissen. Geen weekrapporten.</p>
 <div class="controls"><label for="search">Zoek op naam of Discord-ID</label><input id="search" type="search" placeholder="Zoek een BIO of Burger"></div>
+<label for="citizenPicker">Selecteer een Burger in opleiding of Volwaardige Burger</label>
+<select id="citizenPicker" aria-label="Kies een burgerpersoneelsdossier">
+  <option value="">Kies een BIO of Burger…</option>
+</select>
 <div id="roster"></div>
 </section>
 <section id="detail" hidden>
 <div class="controls dossier-toolbar noprint">
   <button type="button" id="back" class="alt">← Terug naar overzicht</button>
+  <label for="citizenColleague">Andere BIO / Burger selecteren</label>
+  <select id="citizenColleague" style="max-width:390px" aria-label="Ander burgerpersoneelsdossier">
+    <option value="">Selecteer een burger…</option>
+  </select>
   <button type="button" id="quickAdd" hidden>+ Nieuwe registratie toevoegen</button>
   <button type="button" id="print" class="alt">Persoonsgebonden rapport afdrukken</button>
 </div>
@@ -169,13 +177,41 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
     <div class="profile" aria-label="Algemene personeelsgegevens">
       <div><small>DC / DISCORD-ID</small><strong id="personId">—</strong></div>
       <div><small>RANG / ROL</small><strong id="personRole">—</strong></div>
-      <div><small>ROEPNUMMER</small><strong id="personCall">—</strong></div>
       <div><small>STATUS</small><strong id="personStatus">—</strong></div>
       <div><small>VOLWAARDIG SINDS</small><strong id="personPromoted">—</strong></div>
       <div><small>OBSERVATIES · LAATSTE 3 MAANDEN</small><strong id="personAvg">—</strong>
       <span id="personTrend" class="score-trend score-trend-insufficient">— Onvoldoende gegevens</span></div>
     </div>
     <p id="limited" class="muted" hidden>Een deel van de oudere registratie- of verwijderhistoriek is niet mee geladen; het rapport is mogelijk onvolledig.</p>
+  </section>
+
+  <section class="citizen-registration noprint" id="citizenProfileEditor" hidden>
+    <div class="citizen-section-header">
+      <h2>Burgerrol en volwaardig sinds beheren</h2>
+      <span class="muted">Burgerraad, Korpsleiding en technisch beheer</span>
+    </div>
+    <form id="citizenProfileForm">
+      <div class="form-grid">
+        <div><label for="profileRole">Rang / rol</label>
+          <select id="profileRole" required>
+            <option value="">Kies een rol…</option>
+            <option value="bio">Burger in opleiding</option>
+            <option value="burger">Volwaardige Burger</option>
+          </select>
+        </div>
+        <div><label for="profileSince">Volwaardig sinds</label>
+          <input type="date" id="profileSince">
+        </div>
+      </div>
+      <p class="muted">Dit is een administratieve burgerdossieraanduiding. De wijziging kent geen Discord-rollen of portaalrechten toe.</p>
+      <label for="profileReason">Motivering van de wijziging (verplicht, minimaal 10 tekens)</label>
+      <textarea id="profileReason" minlength="10" maxlength="500" required></textarea>
+      <div class="citizen-savebar">
+        <button type="submit" id="profileSave">Burgergegevens opslaan</button>
+        <span class="muted">Revisiecontrole en auditregistratie in Firebase.</span>
+      </div>
+      <p id="profileSaveStatus" class="muted" role="status" aria-live="polite"></p>
+    </form>
   </section>
 
   <section class="citizen-registration noprint" id="formCard" hidden>
@@ -191,7 +227,6 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
             <option value="observatie">Observatie</option>
             <option value="sanctie_mondeling">Mondelinge sanctie</option>
             <option value="sanctie_schriftelijk">Schriftelijke sanctie</option>
-            <option value="volwaardig">Notitie: volwaardig Burger geworden</option>
           </select>
         </div>
         <div><label for="eventDate">Datum van gebeurtenis</label>
@@ -212,9 +247,6 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
   </section>
 
   <div class="citizen-section-list">
-    <section class="citizen-section" id="citizenLeave">
-      <h2>Verlof</h2><div id="leave"></div>
-    </section>
     <section class="citizen-section" id="citizenNotes">
       <h2>Notities</h2><div id="notes"></div>
     </section>
@@ -230,7 +262,7 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
     </section>
     <section class="citizen-section" id="citizenReport">
       <h2>Persoonsgebonden rapport</h2>
-      <p class="muted">Dit rapport bevat bovenstaande registraties en de centrale verlofhistoriek, met auteur en registratiedatum. Er wordt geen weekrapport aangemaakt.</p>
+      <p class="muted">Dit rapport bevat uitsluitend burgerdossierregistraties en geauditeerde wijzigingen van de burgerrol en datum Volwaardig sinds. Er wordt geen weekrapport aangemaakt.</p>
     </section>
     <section class="citizen-section citizen-audit-section" id="citizenDeletionLog">
       <h2>Verwijderhistoriek</h2>
@@ -258,13 +290,16 @@ html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;backgr
 <script type="module">
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
+import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 import {attachDossierRecordPreview} from '/dossier-entry-preview.js';
 const $=id=>document.getElementById(id);
-let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null;
+let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null,profileRevision=0;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
 const mark=(msg,error=false)=>{set('message',msg);$('message').className=error?'error':'muted'};
 const fmt=iso=>iso?new Date(iso).toLocaleString('nl-BE'):'—';
+const dateBE=value=>/^\d{4}-\d{2}-\d{2}$/.test(value||'')?
+  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):'—';
 async function api(url,method='GET',payload){
   if(!auth?.currentUser)throw Error('Meld je eerst aan via het portaal');
   const current=auth.currentUser,token=await current.getIdToken();
@@ -276,28 +311,50 @@ async function api(url,method='GET',payload){
   if(!response.ok)throw Error(data.error||'Dossier niet beschikbaar');
   return data;
 }
-const line=(container,title,details,meta)=>{
+const line=(container,title,details,meta,{expand=true}={})=>{
   const node=document.createElement('div');node.className='record';
   const h=document.createElement('strong');h.textContent=title;node.append(h);
-  if(details){const p=document.createElement('p');p.textContent=details;node.append(p)}
+  if(details){const p=document.createElement('p');p.textContent=details;node.append(p);
+    if(expand)attachExpandableDossierText(node,p,details,{label:'Lees volledige tekst'})}
   if(meta){const m=document.createElement('small');m.textContent=meta;node.append(m)}
   container.append(node);return node;
 };
 function fill(containerId,items,render){
-  const container=$(containerId);container.replaceChildren();
-  if(!items?.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Geen registraties';container.append(empty);return}
-  items.forEach(item=>render(container,item));
+ const container=$(containerId);
+ return renderRecentDossierEntries(container,items,render,{
+   empty:'Geen registraties',noun:'registraties'});
+}
+function populateCitizenPickers(){
+  for(const id of ['citizenPicker','citizenColleague']){
+    const select=$(id),previous=id==='citizenColleague'?selectedId:select.value;
+    const intro=document.createElement('option');
+    intro.value='';intro.textContent='Kies een BIO of Burger…';
+    select.replaceChildren(intro);
+    for(const [code,label] of [
+      ['bio','Burger in opleiding'],['burger','Volwaardige Burger'],
+      [null,'Rol nog niet geregistreerd']]){
+      const group=document.createElement('optgroup');group.label=label;
+      for(const p of rows.filter(person=>person.roleCode===code)){
+        const choice=document.createElement('option');
+        choice.value=p.discordId;
+        choice.textContent=(p.name||'Onbekende burger')+' · '+p.discordId;
+        group.append(choice);
+      }
+      if(group.children.length)select.append(group);
+    }
+    if(previous&&rows.some(p=>p.discordId===previous))select.value=previous;
+  }
 }
 function renderRoster(){
   const term=$('search').value.toLocaleLowerCase('nl-BE').trim();
-  const filtered=rows.filter(p=>(p.name+' '+p.discordId+' '+p.rank).toLocaleLowerCase('nl-BE').includes(term));
+  const filtered=rows.filter(p=>(p.name+' '+p.discordId+' '+p.roleLabel).toLocaleLowerCase('nl-BE').includes(term));
   const root=$('roster');root.replaceChildren();
   if(!filtered.length){line(root,'Geen BIO of Burger gevonden','','');return}
   for(const p of filtered){
     const button=document.createElement('button');button.type='button';button.className='row';
     const name=document.createElement('span');
     const strong=document.createElement('strong');strong.textContent=p.name||'Onbekende burger';
-    const small=document.createElement('small');small.textContent=(p.rank||'Burger')+' · '+p.discordId;
+    const small=document.createElement('small');small.textContent=(p.roleLabel||'Niet geregistreerd')+' · '+p.discordId;
     name.append(strong,small);button.append(name);
     const action=document.createElement('span');action.textContent='Open dossier';button.append(action);
     button.onclick=()=>openPerson(p.discordId);root.append(button);
@@ -305,9 +362,23 @@ function renderRoster(){
 }
 function renderPerson(data){
   const p=data.person;set('personName',p.name||'Burgerpersoneelsdossier');
-  set('personId',p.discordId);set('personRole',data.roleType||p.rank||'Niet bevestigd');
-  set('personCall',p.call);renderDossierStatus($('personStatus'),p.status);
-  set('personPromoted',data.volwaardigDate);
+  set('personId',p.discordId);set('personRole',data.roleLabel||'Niet geregistreerd');
+  renderDossierStatus($('personStatus'),p.status);
+  set('personPromoted',dateBE(data.volwaardigDate));
+  profileRevision=data.profileRevision||0;
+  $('citizenProfileEditor').hidden=data.canEditProfile!==true;
+  $('profileRole').value=data.roleCode||'';
+  $('profileSince').value=data.volwaardigDate||'';
+  $('profileReason').value='';
+  syncCitizenProfileDate();
+  $('profileSaveStatus').textContent='';
+  if(rows.some(row=>row.discordId===p.discordId)){
+    const current=rows.find(row=>row.discordId===p.discordId);
+    current.roleCode=data.roleCode||null;
+    current.roleLabel=data.roleLabel||'Niet geregistreerd';
+    populateCitizenPickers();
+    $('citizenColleague').value=p.discordId;
+  }
   const score=data.observation||{};
   set('personAvg',score.count?String(score.average).replace('.',',')+'/10 ('+
     score.count+')':'Geen scores');
@@ -319,9 +390,7 @@ function renderPerson(data){
     '. Trend: eerdere versus recente observaties, verschil vanaf 0,5 punt.'+
     (score.limited?' Onvolledige registratiebron; geen trend.':'');
   $('personAvg').title='Alleen geldige observatiescores van de laatste drie maanden.';
-  $('limited').hidden=!(data.entriesLimited||data.leaveLimited||data.deletionLogLimited);
-  fill('leave',data.leave,(root,l)=>line(root,
-    l.startDate+' t/m '+l.endDate,l.status+(l.manual?' · manueel':''),fmt(l.createdAt)));
+  $('limited').hidden=!(data.entriesLimited||data.deletionLogLimited);
   const entries=data.entries||[],canDelete=data.canDelete===true;
   const originalAuthor=e=>{
     const matches=rows.filter(x=>x.discordId===e.byDiscordId);
@@ -331,8 +400,7 @@ function renderPerson(data){
     const actor=originalAuthor(e);
     return (e.eventDate||'—')+' · '+fmt(e.createdAt)+' · Door '+
       (actor?.name||e.byDiscordId||'onbekend')+
-      (actor?.call?' · '+actor.call:'')+
-      (actor?.rank?' · huidige graad: '+actor.rank:'');
+      (actor?.roleLabel?' · '+actor.roleLabel:'');
   };
   const renderRegistration=(root,e,title,isObservation=false)=>{
     const actor=originalAuthor(e);
@@ -340,7 +408,8 @@ function renderPerson(data){
     const disclosure=isObservation?createObservationDisclosure({
       title,score:e.score,details:e.details||'—',attribution
     }):null;
-    const record=disclosure?disclosure.element:line(root,title,e.details,attribution);
+    const record=disclosure?disclosure.element:
+      line(root,title,e.details,attribution,{expand:false});
     if(disclosure)root.append(record);
     else{
       const description=record.querySelector('p');
@@ -348,7 +417,7 @@ function renderPerson(data){
       attachDossierRecordPreview(record,{row:e,title,
         text:e.details||'—',bodyNode:description,metaNode:recordMeta,
         authorText:attribution,
-        extra:actor?.rank?[['Huidige graad (niet historisch)',actor.rank]]:[]});
+        extra:actor?.roleLabel?[['Huidige burgerrol',actor.roleLabel]]:[]});
     }
     if(canDelete){
       const remove=document.createElement('button');
@@ -371,8 +440,19 @@ function renderPerson(data){
     'Evaluatiehistoriek is tijdelijk niet beschikbaar.';
   if(data.evaluationsLimited)$('citizenCheckrides').append(
     document.createTextNode(' Mogelijk zijn oudere evaluaties niet getoond.'));
-  fill('promotions',entries.filter(e=>e.kind==='volwaardig'),(root,e)=>
-    renderRegistration(root,e,'Volwaardig sinds '+e.eventDate));
+  const citizenPromotions=[
+    ...entries.filter(e=>e.kind==='volwaardig'),
+    ...(data.profileHistory||[]).map(e=>({...e,_profileHistory:true,
+      eventDate:e.at||e.eventDate||''}))
+  ];
+  fill('promotions',citizenPromotions,(root,e)=>{
+    if(e._profileHistory)
+      line(root,'Burgergegevens aangepast · '+(e.role||'Rol'),
+        'Volwaardig sinds: '+dateBE(e.volwaardigSince)+' · Reden: '+e.reason,
+        fmt(e.at)+' · door '+(e.byDiscordId||'onbekend'));
+    else renderRegistration(root,e,
+      'Historische registratie · volwaardig sinds '+dateBE(e.eventDate));
+  });
   fill('deletionLog',data.deletionLog||[],(root,e)=>line(root,
     'Verwijderd · '+(e.kind||'registratie')+' · '+(e.eventDate||'datum onbekend'),
     'Reden: '+e.reason,
@@ -399,7 +479,7 @@ async function load(){
   try{
     await api('/api/citizen-staff/access');
     const data=await api('/api/citizen-staff/overview');
-    rows=data.rows||[];renderRoster();$('overview').hidden=false;
+    rows=data.rows||[];renderRoster();populateCitizenPickers();$('overview').hidden=false;
     mark(rows.length+' burgerdossiers beschikbaar');
     const target=new URLSearchParams(location.search).get('discordId');
     if(target&&rows.some(p=>p.discordId===target))await openPerson(target);
@@ -407,6 +487,46 @@ async function load(){
 }
 $('kind').onchange=()=>{$('scoreField').hidden=$('kind').value!=='observatie'};
 $('search').oninput=renderRoster;
+for(const id of ['citizenPicker','citizenColleague'])
+  $(id).onchange=()=>{const chosen=$(id).value;
+    if(chosen&&rows.some(p=>p.discordId===chosen))void openPerson(chosen);
+  };
+function syncCitizenProfileDate(){
+  const trainee=$('profileRole').value==='bio';
+  $('profileSince').disabled=trainee;
+  if(trainee)$('profileSince').value='';
+}
+$('profileRole').onchange=syncCitizenProfileDate;
+$('citizenProfileForm').onsubmit=async event=>{
+  event.preventDefault();if(!selectedId)return;
+  const targetId=selectedId,button=$('profileSave');
+  button.disabled=true;$('profileSaveStatus').textContent='Burgergegevens opslaan…';
+  let saved=false;
+  try{
+    const payload={role:$('profileRole').value,
+      volwaardigSince:$('profileRole').value==='burger'?
+        $('profileSince').value||null:null,
+      reason:$('profileReason').value.trim(),expectedRevision:profileRevision};
+    const response=await api('/api/citizen-staff/'+encodeURIComponent(targetId)+
+      '/profile','POST',payload);
+    if(response.saved!==true)throw Error('De server heeft geen opslag bevestigd');
+    saved=true;
+    const fresh=await api('/api/citizen-staff/'+encodeURIComponent(targetId));
+    if(fresh.profileRevision!==response.revision)
+      throw Error('De nieuwe dossierrevisie kon niet teruggelezen worden');
+    if(selectedId===targetId){
+      renderPerson(fresh);
+      renderRoster();
+      $('profileSaveStatus').textContent='Burgergegevens gecontroleerd opgeslagen.';
+    }
+    mark('Burgerrol en datum zijn opgeslagen met revisiecontrole en audit.');
+  }catch(e){
+    const warning=saved?
+      'Opgeslagen, maar nacontrole mislukte. Vernieuw het dossier.':
+      'Opslaan mislukt: '+e.message;
+    $('profileSaveStatus').textContent=warning;mark(warning,true);
+  }finally{button.disabled=false}
+};
 $('back').onclick=()=>{if($('deleteDialog').open)$('deleteDialog').close();deleteTarget=null;
   selectedId=null;$('detail').hidden=true;$('overview').hidden=false;
   history.replaceState(null,'',location.pathname);mark('Burgerpersoneelsdossiers')};

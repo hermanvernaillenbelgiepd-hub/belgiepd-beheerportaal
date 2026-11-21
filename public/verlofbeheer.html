@@ -268,8 +268,10 @@ body.bpd-leave-page #content>#managementLink p{
   </div>
 </dialog>
 <script type="module">
+import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 let firebaseAuth=null,firebaseFns=null,me=null,extendingId=null;
 const el=id=>document.getElementById(id);
+enhanceBelgianDateInputs(['start','end','extensionEnd']);
 const escapeHtml=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const statusText={pending:'In behandeling',approved:'Goedgekeurd',rejected:'Geweigerd',withdrawn:'Ingetrokken'};
 const auditActionText={
@@ -322,6 +324,7 @@ function record(x){
    extendButton.onclick=()=>{
      extendingId=x.id;
      el('extensionEnd').value='';
+     refreshBelgianDateInputs(['extensionEnd']);
      el('extensionEnd').min=new Date(Date.parse(x.endDate+'T00:00:00Z')+86400000)
        .toISOString().slice(0,10);
      el('extensionNote').value='';

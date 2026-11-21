@@ -5,10 +5,12 @@
   // One page-independent preference, never tied to an account or a permission.
   const themeKey='bpdPortalThemeV1';
   function storedTheme(){
-    try{return window.localStorage?.getItem(themeKey)==='dark'?'dark':'light'}
-    catch{return 'light'}
+    try{const value=window.localStorage?.getItem(themeKey);
+      return value==='light'||value==='dark'?value:null}
+    catch{return null}
   }
-  let currentTheme=storedTheme();
+  let portalDefaultTheme='light';
+  let currentTheme=storedTheme()||portalDefaultTheme;
   function applyTheme(value,persist=false){
     currentTheme=value==='dark'?'dark':'light';
     document.documentElement?.setAttribute('data-bpd-theme',currentTheme);
@@ -31,32 +33,52 @@
     button.addEventListener('click',()=>applyTheme(currentTheme==='dark'?'light':'dark',true));
     return button;
   }
-  // Initial theme is applied after the SVG icon helper definitions.
-  // Purely cosmetic TEST reference skin (not on MAIN).
+  // Theme init runs after the SVG helper/allowlist has been defined.
+  // Keep each user's own light/dark switch; centrally managed theme is only
+  // the initial default for a browser with no explicit preference.
+  window.addEventListener('bpd:visual-design-default',event=>{
+    const value=event.detail?.themeDefault==='dark'?'dark':'light';
+    portalDefaultTheme=value;
+    if(event.detail?.preview===true||storedTheme()===null)applyTheme(value);
+    else applyTheme(storedTheme());
+  });
+  // TEST-approved navy design skin and responsive layouts; personal theme
+  // preferences and all per-page design overrides remain in force.
   document.documentElement.classList.add('bpd-reference-ui');
+  const adaptiveFile=window.location.pathname.split('/').pop()||'index.html';
+  const adaptivePage=/^[a-z0-9-]+[.]html$/.test(adaptiveFile)?
+    adaptiveFile.slice(0,-5):'unknown';
+  document.documentElement.setAttribute('data-bpd-adaptive-page',adaptivePage);
   if(!document.getElementById('bpdReferenceDashboardStyles')){
     const reference=document.createElement('link');
     reference.id='bpdReferenceDashboardStyles';reference.rel='stylesheet';
     reference.href='/bpd-reference-dashboard.css';
     document.head.append(reference);
   }
-  // One shared adaptive layer for all portal pages, including embedded
-  // personnel viewers. Layout only; the TO board keeps its fixed controls.
-  const adaptiveFile=window.location.pathname.split('/').pop()||'index.html';
-  const adaptivePage=/^[a-z0-9-]+[.]html$/.test(adaptiveFile)?
-    adaptiveFile.slice(0,-5):'unknown';
-  document.documentElement.setAttribute('data-bpd-adaptive-page',adaptivePage);
   if(!document.getElementById('bpdAdaptiveLayoutStyles')){
     const adaptive=document.createElement('link');
     adaptive.id='bpdAdaptiveLayoutStyles';adaptive.rel='stylesheet';
     adaptive.href='/bpd-adaptive-layout.css';
     document.head.append(adaptive);
   }
-  // Shared SVG icon assets, loaded on TEST only until reviewed.
+  if(!document.querySelector('script[data-bpd-visual-design]')){
+    const design=document.createElement('script');
+    design.src='/bpd-visual-design.js';
+    design.dataset.bpdVisualDesign='1';
+    document.head.append(design);
+  }
+  // Standalone SVG icon library: names are fixed by the portal, never user input.
   if(!document.getElementById('bpdUiIconStyles')){
     const icons=document.createElement('link');
     icons.id='bpdUiIconStyles';icons.rel='stylesheet';
     icons.href='/bpd-ui-icons.css';document.head.append(icons);
+  }
+  // Page-specific, validated visual layer; existing page role checks still apply.
+  if(!document.querySelector('script[data-bpd-page-design]')){
+    const pageStyle=document.createElement('script');
+    pageStyle.src='/bpd-page-design.js';
+    pageStyle.dataset.bpdPageDesign='1';
+    document.head.append(pageStyle);
   }
   // Display-only DD/MM/YYYY formatting for all services, including embedded views.
   // Input values and API payloads remain ISO dates for consistent sorting.
@@ -67,7 +89,9 @@
     document.head.append(dateScript);
   }
   window.addEventListener?.('storage',event=>{
-    if(event.key===themeKey)applyTheme(event.newValue==='dark'?'dark':'light');
+    if(event.key===themeKey)
+      applyTheme(event.newValue==='dark'?'dark':event.newValue==='light'?
+        'light':portalDefaultTheme);
   });
   if(window.self!==window.top)return; // Never duplicate inside embedded dossiers.
   const here=window.location.pathname;
@@ -485,8 +509,11 @@
     const header=document.querySelector('body > header');
     if(header)header.after(top);
     else(document.querySelector('body > main')||document.body).before(top);
-    function show(list){
-      const items=list.map(key=>NAV[key]).filter(Boolean);
+    let identityConfirmed=false;
+    function show(list,verified=false){
+      identityConfirmed=verified===true;
+      const items=list.map(key=>key==='profile'&&!identityConfirmed?
+        {...NAV.profile,label:'Aanmelden',short:'Aanmelden'}:NAV[key]).filter(Boolean);
       // Group only the ALREADY verified links; labels add no authority.
       // No inaccessible module may be constructed from a group heading.
       const groupCatalog=[
@@ -593,7 +620,7 @@
               const dossierIndex=visible.indexOf('dossiers');
               visible.splice(dossierIndex>=0?dossierIndex+1:visible.length,0,'citizen');
             }
-            show(visible);
+            show(visible,true);
           };
           if(citizenGranted&&here==='/dossiercentrum.html'){
             const nav=document.querySelector('body > header nav');
@@ -633,10 +660,6 @@
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}
   }
-  // The action marker is derived only from per-user, server-authorized
-  // unread follow-ups. It never reveals case details or grants access.
-  // Show an action-required triangle for unread personal notices and
-  // outstanding work within each user's existing server-authorized scopes.
   function watchUnreadLeaveReturns(){
     let count=0,unread=0,authenticated=null,requestSeq=0;
     const mark=()=>{
@@ -817,10 +840,13 @@
     // The management matrix has many compact, carefully sized columns.
     // Desktop conversion to giant two-column cards makes personnel unusable.
     // Keep the matrix; its existing holder can scroll where unavoidable.
-    const desktopAdminMatrix=table.classList.contains('staff-roster-table')&&
-      table.closest('#staffManagePanel')&&
-      document.documentElement.clientWidth>=900;
-    if(desktopAdminMatrix){
+    // The editable personnel matrix must keep the SAME table layout at
+    // every viewport width. A narrow viewport scrolls inside its holder;
+    // adaptive cards break the specialist columns and make rows unreadable.
+    const fixedAdminMatrix=table.classList.contains('staff-roster-table')&&
+      (table.closest('#staffManagePanel')||
+       table.dataset.bpdTableLayout==='always');
+    if(fixedAdminMatrix){
       table.classList.remove('bpd-adaptive-cards');
       return;
     }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {canManageHistoricalObservationImport,historicalObservationSettings,
- validateHistoricalObservationToggle,historicalObservationAllowed}
+ validateHistoricalObservationToggle,historicalObservationAllowed,validateHistoricalActorSelection}
  from '../src/historical-observation-import-policy.js';
 import {specialFields} from '../src/report-export.js';
 import {eligibleRepresentative,representativeFromPersonnel} from '../src/registrations.js';
@@ -58,6 +58,36 @@ test('de server verifieert bevoegdheid en schakelt middels Firestore-transactie 
  assert.match(source,/importSource:represented\?'spreadsheet':null/);
  assert.match(source,/historicalObservationImport:importConfig/);
 });
+test('Oorspronkelijke observator mag de actuele, geverifieerde invoerder zelf zijn',()=>{
+ const ownId='111111111111111111';
+ const reason='Overgenomen uit het vroegere dossier met behoud van originele auteur';
+ assert.deepEqual(validateHistoricalActorSelection(ownId,reason,ownId),
+  {actorId:ownId,reason});
+ assert.throws(()=>validateHistoricalActorSelection('ongeldig',reason,ownId),
+  /oorspronkelijke registrator/);
+ assert.throws(()=>validateHistoricalActorSelection(ownId,'kort',ownId),
+  /bron en reden/);
+ const routes=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
+ assert.ok(routes.includes('subset.filter(p=>eligibleRepresentative(p,p.dept))'));
+ assert.ok(!routes.includes('p.personId!==actor?.discordId'));
+});
+test('Een eigen historische observatie kan worden opgeslagen zonder de zelfde-ID blokkade',()=>{
+ const routes=readFileSync(new URL('../src/registration-routes.js',import.meta.url),'utf8');
+ const ownId='111111111111111111';
+ const reason='Oorspronkelijke observatie ingevoerd in de oude spreadsheet';
+ assert.deepEqual(validateHistoricalActorSelection(ownId,reason,ownId),{
+   actorId:ownId,reason
+ });
+ assert.match(routes,/if\(representedId && !represented\)/,
+   'Alleen een ongeldige of ontbrekende oorspronkelijke observator wordt geweigerd');
+ assert.doesNotMatch(routes,/representedId\s*===\s*actor\.discordId/,
+   'De eigenaar van de oorspronkelijke registratie mag ook de huidige invoerder zijn');
+ assert.match(routes,/const represented=representedId\?representativeFromPersonnel\(snap\.data,dept,representedId\):null/);
+ assert.match(routes,/registeredBy:represented\|\|actor,submittedByActor:actor/);
+ assert.match(routes,/historicalImport:Boolean\(represented\),importSource:represented\?'spreadsheet':null/);
+ // Eigen dossierregistraties blijven afzonderlijk beschermd.
+ assert.match(routes,/verifiedBoardCorpsDossierAdmin\(req\.bpd\)&&id===req\.bpd\.discordId/);
+});
 test('in het dossier wordt de originele waarnemer gekozen en de invoerder afzonderlijk vermeld',()=>{
  const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
  assert.match(page,/id="historicalObservationCheck"/);
@@ -106,4 +136,38 @@ test('oorspronkelijke observator kan Middenkader, Officierenkader of Korpsleidin
  assert.match(ui,/p\.rank\|\|'Politie'/);
  assert.match(api,/representativeFromPersonnel\(snap\.data,dept,representedId\)/);
  assert.match(api,/submittedByActor:actor/);
+});
+
+test('historische verlofovername heeft een bereikbare schakelaar en preflight, zonder rechten te verruimen',()=>{
+ const page=readFileSync(new URL('../public/personeelsbeheer.html',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+ assert.match(page,/\.after\(\$\('historicalMigrationManage'\)\)/,
+   'Migratieschakelaar staat in de registratiehub, niet verborgen in het sanctieformulier');
+ assert.match(page,/id="historicalLeaveAvailability"/);
+ assert.match(page,/migrationKinds=\['leave','sanctie'/);
+ assert.match(page,/async function verifyHistoricalLeaveTransfer\(transfer,dossierKey\)/);
+ assert.match(page,/if\(!transfer\.onBehalfOfDiscordId\)return/);
+ assert.match(page,/await request\('\/api\/registrations\/subjects'\)/);
+ assert.match(page,/fresh\?\.historicalMigration\?\.enabled!==true/);
+ assert.match(page,/const historical=historicalTransferData\('historicalLeave'\)/);
+ assert.match(page,/await verifyHistoricalLeaveTransfer\(historical,dossierKey\)/);
+ assert.match(page,/note:\$\('leaveNote'\)\.value\.trim\(\),\.\.\.historical/);
+ assert.doesNotMatch(page,/\.\.\.historicalTransferData\('historicalLeave'\)\}\}/,
+   'Overnamegegevens worden eerst expliciet gevalideerd');
+ assert.match(server,/historicalMigrationAllowed\(req\.bpd,dept,'verlof'/,
+   'De bestaande servertoegangscontrole blijft ongewijzigd');
+});
+
+test('historische verlofweigering noemt de echte serverreden en verzwakt geen beveiliging',()=>{
+ const leave=readFileSync(new URL('../src/leave-routes.js',import.meta.url),'utf8');
+ assert.match(leave,/const migration=historicalMigrationSettings\(config\.data\(\)\)/);
+ assert.match(leave,/const authorized=canManageHistoricalObservationImport\(req\.bpd\)/);
+ assert.match(leave,/if\(!historicalMigrationAllowed\(req\.bpd,dept,'verlof',migration\)\)/);
+ assert.match(leave,/cause=!migration\.enabled\?'feature-disabled'/);
+ assert.match(leave,/!authorized\?'actor-not-authorized'/);
+ assert.match(leave,/historical_leave_denied/);
+ assert.match(leave,/Historische verlofovername staat op de SERVER uit/);
+ assert.match(leave,/Je HUIDIGE aanmelding is niet meer gemachtigd/);
+ assert.match(leave,/throw rejection\([\s\S]*?403\)/);
+ assert.doesNotMatch(leave,/console\.warn\('historical_leave_denied',\s*(personId|representedId|req\.bpd\.discordId)/);
 });

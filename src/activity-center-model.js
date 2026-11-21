@@ -56,7 +56,7 @@ export function activityAssessment(activity,today){
   return {kind:'verlof_nazien',days,reason:'Verlofstatus eerst bevestigen in het dossier'};
  if(days>=60)return {kind:'beoordelen',days,reason:'60+ dagen niet online: beoordeling door leiding, nooit automatisch ontslag'};
  if(days>=30)return {kind:'inactief',days,reason:'30+ dagen geen verbinding: voorstel INACTIEF-ping'};
- if(days>=14)return {kind:'50/50',days,reason:'14+ dagen geen verbinding: voorstel 50/50-ping'};
+ if(days>=15)return {kind:'50/50',days,reason:'15+ dagen geen verbinding: voorstel 50/50-ping'};
  return {kind:'ok',days,reason:'Geen afwezigheidsdrempel bereikt'};
 }
 export function activityOverview(personnel,sourceRows,today){

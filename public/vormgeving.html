@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="nl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>BelgiëPD · Uitgebreide vormgeving</title>
+<style>
+:root{font:14px/1.5 Inter,system-ui,Arial,sans-serif;color-scheme:dark;
+ --page:#0a1527;--panel:#142640;--field:#0c1d36;--border:#344e70;
+ --text:#edf4ff;--muted:#aebfd4;--accent:#8bb8ff;--control:#3862c3;
+ --bad:#ffb3c2;--ok:#94e6b2}
+html[data-bpd-theme="light"]{color-scheme:light;--page:#f4f6fb;--panel:#fff;
+ --field:#f5f7fb;--border:#cbd5e2;--text:#1b304a;--muted:#50627d;
+ --accent:#2655aa;--control:#315fc2;--bad:#a42139;--ok:#187d4f}
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);background:var(--page)}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+ padding:15px max(16px,calc((100vw - 1520px)/2));background:var(--panel);
+ border-bottom:1px solid var(--border)}
+h1{font-size:23px;margin:0}h2{font-size:19px;margin:0 0 12px}h3{font-size:15px;margin:10px 0}
+header a{color:var(--accent)}
+a{color:var(--accent)}
+main{max-width:1600px;margin:auto;padding:18px 22px 40px}
+p{line-height:1.55}small,.muted{color:var(--muted);font-size:12px}
+.card{border:1px solid var(--border);background:var(--panel);border-radius:12px;padding:18px;margin:13px 0}
+.notice{padding:12px 16px;border-radius:9px;background:var(--panel);
+ border:1px solid var(--border);margin-bottom:13px}
+.notice.bad{border-color:var(--bad);color:var(--bad)}
+.tabs,.row,.buttons,.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.tabs{margin:12px 0}.tabs button[aria-selected="true"]{background:var(--control);color:white}
+button,.button{border:1px solid var(--border);border-radius:8px;background:var(--field);
+ color:var(--text);font:inherit;font-weight:600;padding:9px 13px;cursor:pointer}
+button:hover{border-color:var(--accent)}button:disabled{opacity:.55;cursor:not-allowed}
+button[type="submit"],.primary{background:var(--control);color:#fff;border-color:var(--control)}
+label{display:block;font-size:13px;font-weight:600;margin:0 0 9px}
+label small{display:block;font-weight:400}
+input,select,textarea{display:block;width:100%;background:var(--field);border:1px solid var(--border);
+ color:var(--text);border-radius:7px;padding:8px;margin-top:5px;font:inherit}
+input[type="color"]{height:38px;padding:3px;cursor:pointer}
+input[type="range"]{padding:0}
+input[type="checkbox"]{width:auto;margin:0;accent-color:var(--control)}
+textarea{resize:vertical;min-height:68px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:12px}
+.row{justify-content:space-between}
+.workspace{display:grid;grid-template-columns:minmax(290px,390px) minmax(0,1fr);gap:16px;align-items:start}
+.controls{position:sticky;top:12px;max-height:calc(100vh - 28px);overflow:auto}
+.preview-side{min-width:0}.preview-shell{padding:12px;border:1px solid var(--border);
+ background:#17263d;border-radius:12px;overflow:auto}
+html[data-bpd-theme="light"] .preview-shell{background:#dce4ef}
+#pageFrame{display:block;width:100%;height:70vh;min-height:550px;border:1px solid #667c9b;
+ background:#fff;border-radius:7px;margin:0 auto;max-width:100%}
+#pageFrame[data-preview-width="430"]{width:430px}
+#pageFrame[data-preview-width="768"]{width:768px}
+#pageFrame[data-preview-width="1200"]{width:1200px}
+#propertyFields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin:13px 0}
+.prop{padding:8px;border:1px solid var(--border);border-radius:9px;min-width:0}
+.prop label{margin:0}.prop .enable{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.prop .enable span{font-weight:650;font-size:12px}.prop input,.prop select{margin:0}
+.preview-mode button[aria-pressed="true"]{background:var(--control);color:#fff}
+#visualDesignPreview{border:1px solid var(--accent);background:var(--field);
+ color:var(--text);border-radius:9px;padding:13px;max-width:520px;margin:10px 0}
+#visualDesignPreview strong{display:block}#visualDesignHistory{padding-left:22px}
+#visualDesignStatus.bad,#visualGrantStatus.bad{color:var(--bad)}
+#visualDesign .card{box-shadow:none}.config-block{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+#visualGrantRows{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px}
+.tile{padding:12px;border:1px solid var(--border);border-radius:9px}
+.tile p{font-size:12px}
+#pageHistory{padding-left:20px}#pageHistory li{padding:6px 0}
+[hidden]{display:none!important}
+@media(max-width:1000px){.workspace{grid-template-columns:1fr}.controls{position:static;max-height:none}
+ #pageFrame{height:65vh}}
+@media(max-width:640px){main{padding:10px}.card{padding:12px}.form-grid{grid-template-columns:1fr}
+ #pageFrame{min-height:410px;height:60vh}}
+</style>
+<link rel="stylesheet" href="/bpd-navigation.css">
+</head><body>
+<header><div><small>BelgiëPD · Technisch ontwerp</small><h1>🎨 Uitgebreide vormgeving</h1>
+ <small>Per pagina, kader en thema · live voorbeeld · apart beveiligd</small></div>
+ <nav class="toolbar"><a href="/beheercentrum.html">Beheercentrum</a>
+ <a href="/discord-status.html">Mijn profiel</a>
+ <button type="button" id="login">Aanmelden</button></nav>
+</header>
+<main>
+<div id="notice" class="notice" role="status" aria-live="polite">Aanmelding en vormgevingsrechten controleren...</div>
+<section id="work" hidden>
+ <nav class="tabs" aria-label="Onderdelen van Vormgeving">
+  <button type="button" data-tab="pages" aria-selected="true">Per pagina en kader</button>
+  <button type="button" data-tab="global" aria-selected="false">Algemene stijl</button>
+  <button type="button" data-tab="rights" aria-selected="false">Tijdelijke machtigingen</button>
+ </nav>
+ <section id="pagesTab">
+  <div class="workspace">
+   <aside class="card controls">
+    <h2>Pagina en onderdeel</h2>
+    <label>Pagina<select id="pageSelect"></select></label>
+    <label>Kader op de pagina<select id="slotSelect"></select></label>
+    <label>Thema<select id="pageTheme"><option value="both">Beide thema's</option>
+     <option value="light">Enkel licht</option><option value="dark">Enkel donker</option></select></label>
+    <p class="muted">Klik op een kader in het voorbeeld of kies het hier. Vink alleen de eigenschappen aan die je wilt wijzigen. Niet-aangevinkte eigenschappen erven hun bestaande opmaak.</p>
+    <div class="row"><h3>Instellingen van dit kader</h3>
+     <button type="button" id="clearStyle">Herstel dit kader</button></div>
+    <div id="propertyFields"></div>
+    <label>Motivering voor publicatie
+     <textarea id="pageReason" minlength="10" maxlength="240"
+      placeholder="Bijvoorbeeld: betere leesbaarheid en aangepast raster"></textarea></label>
+    <div class="buttons">
+     <button type="button" id="savePage" class="primary">Publiceer deze kaderopmaak</button>
+     <button type="button" id="reloadPage">Annuleer voorbeeld</button>
+    </div>
+    <p id="pageStatus" class="muted" role="status" aria-live="polite"></p>
+    <details><summary>Laatste wijzigingen van deze pagina</summary>
+     <ol id="pageHistory"></ol></details>
+   </aside>
+   <section class="preview-side">
+    <div class="card">
+     <div class="row"><div><h2>Live voorbeeld</h2><small>Geen gegevens of rollen worden gewijzigd</small></div>
+      <div class="toolbar preview-mode">
+       <button type="button" data-preview-size="100%" aria-pressed="true">Automatisch</button>
+       <button type="button" data-preview-size="1200" aria-pressed="false">Desktop</button>
+       <button type="button" data-preview-size="768" aria-pressed="false">Tablet</button>
+       <button type="button" data-preview-size="430" aria-pressed="false">Mobiel</button>
+      </div>
+     </div>
+     <div class="preview-shell"><iframe id="pageFrame" title="Voorbeeld van de geselecteerde portaalpagina" loading="lazy"></iframe></div>
+     <p class="muted">Het voorbeeld wordt niet opgeslagen totdat je publiceert. Beveiligde inhoud blijft afhankelijk van je bestaande portaalrechten. Met "Kaders vernieuwen" kan je onderdelen ophalen nadat een pagina is ingeladen.</p>
+     <div class="buttons"><button id="refreshFrames" type="button">Kaders vernieuwen</button>
+      <a id="openPage" href="/" target="_blank" rel="noopener">Open originele pagina</a></div>
+    </div>
+   </section>
+  </div>
+ </section>
+ <section id="globalTab" hidden>
+  <p class="muted">Algemene standaardwaarden blijven van kracht als er geen specifieke pagina- of kaderinstelling is.</p>
+  <span id="visualDesignTile" hidden></span>
+  <section id="visualDesign" class="card" hidden aria-labelledby="visualDesignTitle">
+ <div class="row"><div><p><a href="/vormgeving.html">Open de uitgebreide vormgevingseditor per pagina en per kader →</a></p><h2 id="visualDesignTitle">🎨 Vormgeving · centrale standaard</h2>
+ <p>Kleuren, leesbaarheid en licht/donkermodus aanpassen zonder CSS-code of GitHub-deploy.
+ Dienstkleuren, statussen, rangtekens en patches blijven behouden.</p></div>
+ <button type="button" class="secondary" id="visualReload">↻ Opnieuw laden</button></div>
+ <form id="visualDesignForm">
+  <div class="form-grid">
+   <label for="visual-themeDefault">Standaard licht/donkermodus
+    <small>Persoonlijke licht/donkerkeuzes blijven voorgaan.</small>
+    <select id="visual-themeDefault"><option value="light">Licht</option>
+     <option value="dark">Donker</option></select></label>
+   <label for="visual-accent">Accentkleur
+    <small>Links, navigatie en knoppen; niet de dienst-/rangkleuren.</small>
+    <select id="visual-accent"><option value="blue">Blauw</option>
+     <option value="teal">Petrolgroen</option><option value="violet">Paars</option>
+     <option value="amber">Amber</option></select></label>
+   <label for="visual-fontFamily">Lettertype
+    <select id="visual-fontFamily"><option value="inter">Inter / standaard</option>
+     <option value="system">Systeemlettertype</option><option value="arial">Arial</option>
+     <option value="serif">Georgia</option></select></label>
+   <label for="visual-fontScale">Tekstgrootte <output id="visualScaleOut">100%</output>
+    <small>90–120%. Compacte personeelskolommen behouden hun eigen afmetingen.</small>
+    <input id="visual-fontScale" type="range" min="90" max="120" step="5" value="100"></label>
+   <label for="visual-density">Ruimte tussen onderdelen
+    <select id="visual-density"><option value="compact">Compact</option>
+     <option value="normal">Normaal</option>
+     <option value="comfortable">Ruim</option></select></label>
+  </div>
+  <div id="visualDesignPreview" role="img" aria-label="Voorbeeld van de portaalvormgeving">
+    <strong>Voorbeeld: Beheerportaal</strong>
+    <p>Personeelsdossiers en opleidingen behouden hun bestaande inhoud en rechten.</p>
+  </div>
+  <label for="visualReason">Motivering voor de wijziging (verplicht)
+   <textarea id="visualReason" rows="2" minlength="10" maxlength="240"
+    placeholder="Bijvoorbeeld: grotere letters en een duidelijker contrast"></textarea></label>
+  <div class="buttons">
+   <button type="submit" id="visualSave">Instellingen publiceren</button>
+   <button type="button" class="secondary" id="visualReset">Voorbeeld annuleren</button>
+   <button type="button" class="secondary" id="visualDefaults">Standaardwaarden herstellen</button>
+   <span id="visualRevision" class="muted"></span>
+  </div>
+  <p class="muted" id="visualDesignStatus" role="status" aria-live="polite"></p>
+ </form>
+ <details><summary>Laatste wijzigingen</summary><ol id="visualDesignHistory"></ol></details>
+</section>
+
+ </section>
+ <section id="rightsTab" hidden>
+  <div class="card"><h2>Afzonderlijke toegang tot vormgeving</h2>
+   <p>Dit is <strong>geen algemeen beheer</strong>. Een gemachtigde kan uitsluitend de vormgeving van het portaal aanpassen en publiceren. Geen personeelsbeheer, dossiers, rollen of machtigingen aan anderen.</p>
+   <p id="rightsHint" class="muted">De machtigingen worden gecontroleerd.</p>
+  </div>
+ </section>
+</section>
+</main>
+<script type="module" src="/visual-design-workspace.js"></script>
+<script defer src="/bpd-navigation.js"></script>
+</body></html>

@@ -5,7 +5,8 @@ import {PERSONNEL_LIFECYCLE_COLLECTION,LIFECYCLE_SERVICES,lifecycleKey,validateL
  validateHonorableRequest,validateHonorableDecision,validateHonorableInpActivation,
  honorablePreviousTraining} from './personnel-lifecycle-policy.js';
 import {canManageLifecycleDepartment,canReadPersonnelLifecycle,
- canManagePersonnelLifecycle} from './personnel-lifecycle-access.js';
+ canManagePersonnelLifecycle,canGloballyArchivePersonnel,
+ canApproveServiceReentry,canSupervisePersonnelLifecycle} from './personnel-lifecycle-access.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {departureEvidence} from './personnel-departure-evidence.js';
 import {getBelgiumPdDisplayRoles} from './bpd-discord-users-display.js';
@@ -114,7 +115,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
   try{input=validateHonorableDecision(req.body)}catch(e){return respond(res,fail(400,e.message))}
   try{
    const discordId=req.params.discordId,person=await resolve('politie',discordId);
-   if(!allowed(req.bpd,person))throw fail(403,'Geen onafhankelijke bevoegdheid voor dit personeelslid');
+   if(!allowed(req.bpd,person)||!canGloballyArchivePersonnel(req.bpd,person))
+     throw fail(403,'Alleen geverifieerd politioneel Officierenkader of Korpsleiding kan dit volledige ontslag goedkeuren');
    const requestRef=honorable().doc('politie_'+discordId);
    const stateRef=store().doc('politie_'+discordId);
    const approved=input.decision==='approve';
@@ -122,8 +124,10 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    if(archiveRoster?.stale)throw fail(503,'Personeelsbron niet actueel voor centrale archivering');
    const archiveSubjects=approved?
      identityArchiveSubjects(archiveRoster.data,discordId):[];
-   if(approved&&archiveSubjects.some(p=>!allowed(req.bpd,p)))
-     throw fail(403,'Centrale archivering vereist bevoegdheid voor alle gekoppelde diensten');
+   // Police's verified global authority is identity-scoped, not scoped to
+   // permissions within each other service. All memberships are retired.
+   if(approved&&!canGloballyArchivePersonnel(req.bpd,person))
+     throw fail(403,'Centrale archivering is uitsluitend politioneel toegestaan');
    const result=await db().runTransaction(async tx=>{
     const [request,life]=await Promise.all([tx.get(requestRef),tx.get(stateRef)]);
     if(request.get('status')!=='pending')
@@ -185,6 +189,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
           discordId:req.bpd.discordId},actorUid:req.bpd.uid,
         reason:input.reason,cause:'honorable_resignation',
         source:'honorable-resignation'});
+      tx.set(stateRef,{globalArchiveId:cross.globalArchiveId,
+        globalArchiveOrigin:'politie'},{merge:true});
       return {status:'approved',archived:true,cmsRoleSyncPending:true,...cross};
     }
     return {status:'rejected',archived:false,cmsRoleSyncPending:false};
@@ -198,7 +204,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
   try{
    const dept=String(req.query.dept||'');
    if(!LIFECYCLE_SERVICES.includes(dept)||
-      !canManageLifecycleDepartment(req.bpd,dept))
+      !(canManageLifecycleDepartment(req.bpd,dept)||
+        canSupervisePersonnelLifecycle(req.bpd)))
     throw fail(403,'Geen bevoegdheid tot dit personeelsarchief');
    const [records,snapshot]=await Promise.all([
      store().where('dept','==',dept).limit(600).get(),
@@ -215,9 +222,9 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
       revision:d.get('revision')||0,
       canRestore:d.get('state')==='archived'&&allowed(req.bpd,byId.get(d.get('discordId'))),
       canActivate:d.get('state')==='pending'&&d.get('honorableResignation')!==true&&
-        allowed(req.bpd,byId.get(d.get('discordId'))),
+        canApproveServiceReentry(req.bpd,byId.get(d.get('discordId'))),
       canActivateInp:d.get('state')==='pending'&&d.get('honorableResignation')===true&&
-        allowed(req.bpd,byId.get(d.get('discordId'))),
+        canApproveServiceReentry(req.bpd,byId.get(d.get('discordId'))),
       previousSpecializationTraining:d.get('honorableResignation')===true?
         honorablePreviousTraining(d.get('snapshot')):[],
       lastHours:Number.isFinite(d.get('snapshot')?.totalHours)?d.get('snapshot').totalHours:null}));
@@ -255,7 +262,13 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    res.set('Cache-Control','private, no-store');
    return res.json({state:['archived','pending'].includes(d.state)?d.state:'active',
     revision:Number.isSafeInteger(d.revision)?d.revision:0,
-    canManage:allowed(req.bpd,person),
+    canManage:allowed(req.bpd,person)||dept==='politie'&&
+      canGloballyArchivePersonnel(req.bpd,person),
+    canArchiveService:dept!=='politie'&&allowed(req.bpd,person),
+    canArchiveGlobally:canGloballyArchivePersonnel(req.bpd,person),
+    canRequestReentry:allowed(req.bpd,person),
+    canApproveReentry:canApproveServiceReentry(req.bpd,person),
+    archiveScope:d.globalArchiveId?'global':'service',
     cause:d.cause||'',cmsRoleSyncPending:d.cmsRoleSyncPending===true,
     honorableResignation:d.honorableResignation===true,
     previousSpecializationTraining:d.honorableResignation===true?
@@ -378,7 +391,32 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        reason:input.reason,revision:revision+1,
        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,at
      });
+     // A verified INP reentry is an actual career movement, never only
+     // an invisible lifecycle/account audit.
+     const eventDate=brusselsEventDate();
+     const movementRef=db().collection('bpd_cases').doc('politie_'+discordId)
+       .collection('entries').doc();
+     const movementNotice=db().collection('bpd_notices').doc('politie')
+       .collection('events').doc();
+     tx.create(movementRef,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+       source:'honorable-inp-reentry',dept:'politie',subjectDiscordId:discordId,
+       subjectNameAtCreation:String(previous.name||'').slice(0,120),
+       subjectCallAtCreation:String(previous.call||'').slice(0,24),
+       subjectRankAtCreation:String(previous.rank||'').slice(0,100),
+       eventDate,movement:'Herintreding als Inspecteur',
+       previousRank:previous.rank||'',newRank:'Inspecteur',
+       previousCall:previous.call||'',newCall:input.newCall,
+       details:'Herintreding als Inspecteur · '+String(previous.rank||'')+
+         ' → Inspecteur · Roepnummer '+String(previous.call||'')+
+         ' → '+input.newCall+' · Motivering: '+input.reason,
+       registeredBy:{discordId:req.bpd.discordId,name:req.bpd.name||'Bevoegd kader',
+         call:req.bpd.call||''},
+       submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+       createdAt:at,modifiedAt:null});
+     tx.create(movementNotice,{caseId:'politie_'+discordId,entryId:movementRef.id,
+       type:'personeelsbeweging',dept:'politie',createdAt:at});
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
+       dossierCaseLogged:true,eventDate,
        type:'personnel_restored',dept:'politie',discordId,
        name:String(previous.name||'').slice(0,120),call:input.newCall,
        before:'Eervol uit dienst',after:'INP · Actief',
@@ -402,15 +440,25 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
    try{input=validateLifecycleAction(req.body,action)}catch(e){return respond(res,fail(400,e.message))}
    try{
     const person=await resolve(dept,discordId);
-    if(!allowed(req.bpd,person))throw fail(403,'Alleen bevoegde dienstleiding kan dit personeelslid beheren');
-    const fullRoster=action==='archive'?await getSnapshot({includeArchived:true}):null;
+    const globalArchive=action==='archive'&&
+      (dept==='politie'||input.scope==='global');
+    if(globalArchive){
+      if(!canGloballyArchivePersonnel(req.bpd,person))
+        throw fail(403,'Volledige archivering vereist geverifieerd politioneel Officierenkader of Korpsleiding');
+    }else if(action==='activate'){
+      if(!canApproveServiceReentry(req.bpd,person))
+        throw fail(403,'Alleen politioneel Officierenkader of Korpsleiding mag heractivering definitief vrijgeven');
+    }else if(!allowed(req.bpd,person))
+      throw fail(403,'Alleen bevoegde dienstleiding kan dit dienstverband beheren');
+    const fullRoster=action==='archive'?
+      await getSnapshot({includeArchived:true}):null;
     if(fullRoster?.stale)throw fail(503,'Personeelsbron niet actueel voor uitdiensthistoriek');
-    const readableServices=fullRoster?
-      identityArchiveSubjects(fullRoster.data,discordId):[];
-    if(action==='archive'&&readableServices.some(p=>!allowed(req.bpd,p)))
-      throw fail(403,'Centrale archivering vereist bevoegdheid voor alle gekoppelde diensten');
-    const actorProfile=fullRoster?.data.find(p=>p.personId===req.bpd.discordId&&
-      p.dept===dept);
+    const archiveSubjects=globalArchive?
+      identityArchiveSubjects(fullRoster.data,discordId):
+      action==='archive'?[person]:[];
+    const actorProfile=(fullRoster?.data||[]).find(p=>
+      p.personId===req.bpd.discordId&&
+      p.dept===(globalArchive?'politie':dept));
     // Membership loss alone never mutates an operational record. Even when a
     // trusted snapshot omits a member, a human must confirm the transition.
     if(action!=='archive'||input.cause==='voluntary_discord_leave'){
@@ -424,8 +472,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
     const ref=store().doc(dept+'_'+discordId);
     const result=await db().runTransaction(async tx=>{
      const current=await tx.get(ref),prev=current.data()||{};
-     const archivePlan=action==='archive'?await prepareIdentityArchive(tx,db(),{
-       subjects:readableServices,primaryDept:dept,discordId}):null;
+     const archivePlan=globalArchive?await prepareIdentityArchive(tx,db(),{
+       subjects:archiveSubjects,primaryDept:dept,discordId}):null;
      const revision=Number.isSafeInteger(prev.revision)?prev.revision:0;
      if(revision!==input.expectedRevision)throw fail(409,'Fiche is intussen gewijzigd. Vernieuw eerst');
      if(action==='archive'&&prev.state==='archived')
@@ -442,7 +490,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      const historic=action==='archive'?lifecycleSourceSnapshot(person):prev.snapshot;
      if(!historic)throw fail(409,'Geen veilig bewaarbaar personeelsprofiel gevonden');
      const departure=action==='archive'?
-       departureEvidence(historic,readableServices,input.cause,input.reason):null;
+       departureEvidence(historic,archiveSubjects,input.cause,input.reason):null;
      const data={dept,discordId,state,revision:revision+1,
        snapshot:historic,cause:input.cause,reason:input.reason,
        updatedAt:FieldValue.serverTimestamp(),
@@ -460,31 +508,59 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId||null,
        at:FieldValue.serverTimestamp()
      });
-     if(action==='archive'){
-       const movement=input.cause==='inactive_dismissal'?'Ontslag inactief':
-         input.cause==='service_resignation'||input.cause==='voluntary_discord_leave'?
-           'Vrijwillig':'Ontslag';
-       const eventDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
-         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-       const entry=db().collection('bpd_cases').doc(dept+'_'+discordId)
-         .collection('entries').doc();
-       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
-       tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
-         source:'personnel-lifecycle-archive',dept,subjectDiscordId:discordId,
-         subjectNameAtCreation:historic.name,subjectCallAtCreation:historic.call,
-         eventDate,movement,previousRank:historic.rank,
-         newRank:'Ontslag',previousCall:historic.call,newCall:'',
-         previousSeries:departure.previousSeries,
+     // Every transition (dismissal, voluntary departure, reentry review,
+     // final reactivation) is a distinct immutable dated dossier event.
+     const movement=action==='archive'?
+       input.cause==='inactive_dismissal'?'Ontslag inactief':
+       input.cause==='service_resignation'||input.cause==='voluntary_discord_leave'?
+         'Vrijwillig':'Ontslag':
+       action==='restore'?'Herintreding in controle':'Herintreding afgerond';
+     const previousState=action==='archive'?'Actief':
+       action==='restore'?'Uit dienst':'Herintreding in controle';
+     const nextState=action==='archive'?'Uit dienst':
+       action==='restore'?'Herintreding in controle':'Actief';
+     const eventDate=brusselsEventDate();
+     const entry=db().collection('bpd_cases').doc(dept+'_'+discordId)
+       .collection('entries').doc();
+     const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
+     const at=FieldValue.serverTimestamp();
+     tx.create(entry,{type:'personeelsbeweging',reportCategory:'personeelsbeweging',
+       source:'personnel-lifecycle-'+action,dept,subjectDiscordId:discordId,
+       subjectNameAtCreation:historic.name,subjectCallAtCreation:historic.call,
+       subjectRankAtCreation:historic.rank||'',
+       eventDate,movement,previousRank:historic.rank||'',
+       newRank:action==='archive'?'Ontslag':historic.rank||'',
+       previousCall:historic.call||'',newCall:action==='archive'?'':historic.call||'',
+       ...(departure?{previousSeries:departure.previousSeries,
          previousSpecialties:departure.specialties,
-         previousDepartments:departure.departments,
-         details:departure.details,
-         registeredBy:{discordId:req.bpd.discordId,name:actorProfile?.name||
-           req.bpd.name||'Bevoegd kader',
-           call:actorProfile?.call||req.bpd.call||'',rank:actorProfile?.rank||''},
-         submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
-         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
-       tx.create(notice,{caseId:dept+'_'+discordId,entryId:entry.id,
-         type:'personeelsbeweging',dept,createdAt:FieldValue.serverTimestamp()});
+         previousDepartments:departure.departments}:{}),
+       details:departure?departure.details:movement+': '+previousState+' → '+nextState+
+         '. Motivering: '+input.reason,
+       registeredBy:{discordId:req.bpd.discordId,name:actorProfile?.name||
+         req.bpd.name||'Bevoegd kader',
+         call:actorProfile?.call||req.bpd.call||'',rank:actorProfile?.rank||''},
+       submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null},
+       createdAt:at,modifiedAt:null});
+     tx.create(notice,{caseId:dept+'_'+discordId,entryId:entry.id,
+       type:'personeelsbeweging',dept,createdAt:at});
+     // Burger heeft een eigen native dossierbron in plaats van het
+     // algemene bpd_cases-overzicht. Bewaar daar dezelfde dienstactie.
+     // De globale burgerregistratie wordt reeds door writeIdentityArchive
+     // geaudit; schrijf die gebeurtenis niet dubbel.
+     if(dept==='burger'&&!globalArchive){
+      tx.create(db().collection('bpd_citizen_staff_dossiers').doc(discordId)
+       .collection('entries').doc(),{
+        kind:'notitie',eventDate,
+        details:'Burgerpersoneelsverloop: '+movement+' · '+previousState+
+          ' → '+nextState+' · Reden: '+input.reason,
+        source:'personnel-lifecycle-'+action,byDiscordId:req.bpd.discordId,
+        createdAt:at
+      });
+     }
+     if(action==='archive'){
+       // A removal creates a distinct, truthful activity follow-up entry.
+       // NO Discord message is sent automatically and NO automatic departure
+       // is ever triggered by a 60-day ping.
        const ping=db().collection('bpd_cases').doc(dept+'_'+discordId)
          .collection('entries').doc();
        const pingNotice=db().collection('bpd_notices').doc(dept)
@@ -493,7 +569,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
          source:'personnel-lifecycle-archive',dept,
          subjectDiscordId:discordId,subjectNameAtCreation:historic.name,
          subjectCallAtCreation:historic.call,subjectRankAtCreation:historic.rank||'',
-         eventDate,createdAt:FieldValue.serverTimestamp(),modifiedAt:null,
+         eventDate,createdAt:at,modifiedAt:null,
          activityStatus:'VERWIJDERD',discordPingSent:false,
          archiveReason:input.cause,lifecycleRevision:revision+1,
          details:departure.details,
@@ -502,12 +578,11 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
            call:actorProfile?.call||req.bpd.call||'',rank:actorProfile?.rank||''},
          submittedBy:{uid:req.bpd.uid,email:req.bpd.email||null}});
        tx.create(pingNotice,{caseId:dept+'_'+discordId,entryId:ping.id,
-         type:'inactiviteitsping',dept,
-         createdAt:FieldValue.serverTimestamp(),
+         type:'inactiviteitsping',dept,createdAt:at,
          source:'personnel-lifecycle-archive'});
      }
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
-       dossierCaseLogged:action==='archive',
+       dossierCaseLogged:true,eventDate,
        type:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
        dept,discordId,name:historic.name,call:historic.call,
        before:action==='archive'?'Actief':action==='restore'?'Uit dienst':'Herintreding in controle',
@@ -521,9 +596,16 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
          discordId:req.bpd.discordId},
        actorUid:req.bpd.uid,reason:input.reason,cause:input.cause,
        source:'personnel-lifecycle-archive'}):{};
-     return {state,revision:revision+1,...cross};
+     if(globalArchive)tx.set(ref,{globalArchiveId:cross.globalArchiveId,
+       globalArchiveOrigin:'politie'},{merge:true});
+     // A single-service departure leaves central leave untouched.
+     // Police's global departure closes all open leave in the same transaction.
+     return {state,revision:revision+1,archiveScope:globalArchive?'global':'service',
+       archivedDepartments:globalArchive?cross.archivedDepartments:action==='archive'?[dept]:[],
+       closedLeaveRequests:globalArchive?cross.closedLeaveRequests:0,...cross};
     });
     invalidateLifecycle();
+    if(action==='archive'||action==='activate')invalidateUserAccess(discordId);
     res.set('Cache-Control','no-store');
     return res.json({...result,cmsRoleSyncPending:action!=='activate',
      discordRolesChanged:false,historyPreserved:true});

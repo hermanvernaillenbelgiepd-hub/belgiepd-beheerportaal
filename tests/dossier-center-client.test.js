@@ -19,16 +19,9 @@ test('Dossier UI renders fetched data as text and cannot grant access',()=>{
 
 test('Dossier controls offer authorised filters and one scrollable overview',()=>{
   const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
-  for(const id of ['query','series','department','historyKind','sortOrder','stats'])
+  for(const id of ['query','department','series','historyKind','sortOrder','stats'])
     assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
   assert.ok(html.includes("from '/dossiercentrum-view.js'"));
-  assert.ok(html.includes('Reeks (Politie)'));
-  assert.ok(html.includes('value="1">Reeks 1</option>'));
-  assert.ok(html.includes('value="2">Reeks 2</option>'));
-  assert.ok(html.includes('value="3">Reeks 3</option>'));
-  assert.ok(html.includes('synchronizeSeriesFilter'));
-  assert.ok(html.includes("$('series').onchange=changedFilters"));
-  assert.ok(html.includes("series:$('series').value"));
   assert.match(html,/\.scroller\{max-height:560px;overflow-y:auto/);
   assert.doesNotMatch(html,/id="nextPage"|id="previousPage"/);
   assert.equal(html.includes('Open volledige personeelsfiche · observaties & sancties'),false);
@@ -65,4 +58,13 @@ test('Dossier sorting selector preserves numeric and alphabetical choices and de
   assert.ok(html.includes("$('sortOrder').onchange=changedFilters"));
   assert.ok(html.includes("$('sortOrder').value='callsign-bpd'"));
   assert.ok(html.includes("function changedFilters(){page=1;render()}"));
+});
+
+test('Police series selection follows existing server-authorized department scope',()=>{
+  const html=readFileSync(new URL('../public/dossiercentrum.html',import.meta.url),'utf8');
+  assert.match(html,/<select id="series" disabled>/);
+  for(const series of ['1','2','3'])assert.ok(html.includes('value="'+series+'">Reeks '+series));
+  assert.ok(html.includes('syncSeriesFilter()'));
+  assert.ok(html.includes("policeAllowed&&(current==='all'||current==='politie')"));
+  assert.ok(html.includes("$('series').value='all';selectDepartment('all')"));
 });

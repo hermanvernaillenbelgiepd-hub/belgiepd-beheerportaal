@@ -239,6 +239,7 @@ import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fi
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
 import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {threeMonthObservationScore,observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 const $=id=>document.getElementById(id);
 enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
@@ -375,12 +376,7 @@ function addFireRetireControl(card,record,containerId){
  card.append(button);
 }
 function cards(root,items,heading,text,metadata){
- root.replaceChildren();
- if(!items.length){
-  const empty=document.createElement('p');empty.className='muted';
-  empty.textContent='Geen registraties beschikbaar.';root.append(empty);return;
- }
- for(const item of items){
+ renderRecentDossierEntries(root,items,(mount,item)=>{
   if(root.id==='observations'){
     const disclosure=createObservationDisclosure({
       title:heading(item),
@@ -391,14 +387,16 @@ function cards(root,items,heading,text,metadata){
         (item.createdAt?' · geregistreerd '+item.createdAt:'')
     });
     addFireRetireControl(disclosure.content,item,root.id);
-    root.append(disclosure.element);
-    continue;
+    mount.append(disclosure.element);
+    return; // Observation rendered in its own expandable card
   }
   const card=document.createElement('div');card.className='record';
   const title=document.createElement('h3');title.textContent=heading(item);
   const details=document.createElement('p');details.textContent=text(item)||'—';
   const meta=document.createElement('small');meta.textContent=metadata(item)||'';
   card.append(title,details,meta);
+  // The original service-verified metadata remains the sole source of detail.
+  attachExpandableDossierText(card,meta,meta.textContent,{label:'Lees volledige gegevens'});
   if(['entries','basicNotes','sanctions'].includes(root.id)){
    attachDossierRecordPreview(card,{row:item,title:title.textContent,
      text:text(item)||'—',bodyNode:details,metaNode:meta,
@@ -409,22 +407,19 @@ function cards(root,items,heading,text,metadata){
        ['Status',item.status]]:[]});
   }
   addFireRetireControl(card,item,root.id);
-  root.append(card);
- }
+  mount.append(card);
+ },{empty:'Geen registraties beschikbaar.',
+   noun:root.id==='leavePeriods'?'verlofperiodes':'registraties'});
 }
 function displayFirePromotionProposals(data){
- const root=$('promotionRecords');root.replaceChildren();
+ const root=$('promotionRecords');
  const proposals=data.promotionProposals||[];
  $('overviewPromotionCount').textContent=proposals.length+
    ' promotievoorstel(len)'+(data.visibility==='identity'?' door jou ingediend':' in dit dossier');
- if(!proposals.length){
-  const p=document.createElement('p');p.className='muted';
-  p.textContent='Er zijn nog geen zichtbare promotievoorstellen.';
-  root.append(p);return;
- }
+
  const displayDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||'')?
   d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):d||'—';
- for(const entry of proposals){
+ renderRecentDossierEntries(root,proposals,(mount,entry)=>{
   const card=document.createElement('div');card.className='record';
   const title=document.createElement('h3');
   title.textContent=displayDate(entry.eventDate)+' · Voorgestelde graad: '+entry.proposedRank;
@@ -433,12 +428,16 @@ function displayFirePromotionProposals(data){
   meta.textContent='Voorsteller: '+(entry.registeredBy||'Onbekend')+
    ' · Status: in behandeling · '+entry.opinionCount+' advies/adviezen';
   card.append(title,note,meta);
+  attachExpandableDossierText(card,note,note.textContent,{
+    label:'Lees volledig promotievoorstel'});
   for(const advice of entry.opinions||[]){
     const summary=document.createElement('p');
     summary.className='muted';
     summary.textContent=(advice.actorCall||'')+' '+(advice.actorName||'Officier')+
       ' · '+(advice.opinion||'')+' · '+(advice.reason||'');
     card.append(summary);
+   attachExpandableDossierText(card,summary,summary.textContent,{
+     label:'Lees volledige motivering'});
   }
   if(data.canAdvisePromotion===true){
     const form=document.createElement('form');form.className='fieldgrid';
@@ -463,8 +462,9 @@ function displayFirePromotionProposals(data){
     };
     card.append(form);
   }
-  root.append(card);
- }
+  mount.append(card);
+ },{empty:'Er zijn nog geen zichtbare promotievoorstellen.',
+   noun:'promotievoorstellen'});
 }
 function setAvailableTabs(data){
  allowedTabs.clear();

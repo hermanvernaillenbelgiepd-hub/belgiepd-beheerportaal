@@ -159,11 +159,39 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Opvolging</th><th>Laatste connectie</th><th>Geen connectie</th><th>Speeluren</th><th>Verlof</th><th>Dossierpings</th><th>Advies</th></tr></thead>
 <tbody id="rows"></tbody></table></div></section>
 </div>
+<section id="cadrePanel" hidden aria-labelledby="cadreTitle">
+ <h2 id="cadreTitle">Kaderactiviteit en statistieken</h2>
+ <p>Administratieve activiteit van het actuele Middenkader. Bij rangwijzigingen volgt de selectie automatisch de actuele personeelslijst. Aantallen zijn geen prestatie- of kwaliteitsbeoordeling.</p>
+ <div id="cadreVisibility" hidden>
+  <h3>Inzage nevendiensten beheren</h3>
+  <p>Politie blijft permanent beschikbaar. Alleen geverifieerd politioneel Officierenkader en Korpsleiding kunnen andere diensten afzonderlijk inschakelen. Dienstleiding ziet alleen haar eigen dienst en uitsluitend na inschakeling.</p>
+  <div class="controls">
+   <label>Hulpdienst<select id="cadreSettingDept"><option value="brandweer">Brandweer</option><option value="ambulance">Ambulance</option><option value="depannage">Depannage</option><option value="burger">Burger</option></select></label>
+   <label>Inzage door eigen dienstleiding<select id="cadreSettingEnabled"><option value="false">Uitgeschakeld</option><option value="true">Ingeschakeld</option></select></label>
+   <label>Motivering (minstens 10 tekens)<input id="cadreSettingReason" maxlength="300" placeholder="Waarom wijzigt de toegang?"></label>
+   <button type="button" id="cadreSettingSave">Instelling bewaren</button>
+  </div>
+  <p class="source-note" id="cadreSettingStatus" role="status"></p>
+ </div>
+ <div class="controls">
+   <label>Dienst<select id="cadreDept"></select></label>
+   <label>Periode<select id="cadreDays"><option value="7">Laatste 7 dagen</option><option value="30" selected>Laatste 30 dagen</option><option value="90">Laatste 90 dagen</option><option value="365">Laatste 12 maanden</option></select></label>
+   <label>Zoeken<input id="cadreSearch" type="search" placeholder="Naam of roepnummer"></label>
+   <button type="button" id="cadreRefresh">↻ Statistieken vernieuwen</button>
+ </div>
+ <p id="cadreStatus" role="status" aria-live="polite"></p>
+ <div id="cadreCounters" class="counts"></div>
+ <div class="tablewrap"><table>
+ <thead><tr><th>Personeelslid</th><th>Observaties</th><th>Notities</th><th>Sancties</th><th>Opvolgingen</th><th>Overig</th><th>Opleidingsregistraties</th><th>Gegeven lesmomenten</th><th>Deelnames</th><th>Verlofbeslissingen</th><th>Overnames</th><th>Correcties</th><th>Registratiedagen</th></tr></thead>
+ <tbody id="cadreRows"></tbody></table></div>
+ <p class="source-note" id="cadreNote"></p>
+</section>
 </main>
 <script type="module">
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel} from '/activity-roster-order.js';
 const $=id=>document.getElementById(id);
 let auth,authSdk,records=[],asOf='',sources=null;
+let cadreConfig=null,cadreData=null;
 function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
@@ -216,7 +244,9 @@ function render(){
    /^50\/50$/i.test(p.currentStatus||'')?'half':
    /^inactief$/i.test(p.currentStatus||'')?'inactive':'other';
   if(p.statusMismatch)current.append(el('small','Verschilt van oude bron','warn'));row.append(current);
-  const follow=el('td',p.returnChecking?'⚠ CHECKING':p.pingDossier?.latestStatus||'—');
+  const follow=el('td',p.returnChecking?'⚠ CHECKING':
+   p.pingDossier?.latestStatus==='GEEN_VERBETERING_NA_PING'?'⚠ Geen verbetering na eerdere ping':
+   p.pingDossier?.latestStatus||'—');
   if(p.returnChecking)follow.className='state-checking';row.append(follow);
   row.append(el('td',p.lastConnection||'Geen gegevens'));
   row.append(el('td',p.daysInactive===null?'—':p.daysInactive+' dagen'));
@@ -313,6 +343,129 @@ async function loadReturnChecks(){
  }catch(e){list.textContent='Verlofcontroles niet geladen: '+e.message;panel.hidden=false}
 }
 
+async function cadreApi(url,body){
+ const user=auth?.currentUser;if(!user)throw Error('Aanmelden vereist');
+ const token=await user.getIdToken();
+ const response=await fetch(url,{method:body?'PUT':'GET',cache:'no-store',
+   headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+   ...(body?{body:JSON.stringify(body)}:{})});
+ const payload=await response.json().catch(()=>({}));
+ if(user!==auth.currentUser)throw Error('Aanmelding gewijzigd; laad de pagina opnieuw');
+ if(!response.ok)throw Error(payload.error||'Geen toegang tot kaderstatistieken');
+ return payload;
+}
+const cadenceLabel={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
+ depannage:'Depannage',burger:'Burger'};
+function syncCadreSettings(){
+ if(!cadreConfig?.canManage)return;
+ const d=$('cadreSettingDept').value;
+ $('cadreSettingEnabled').value=String(cadreConfig.settings?.enabled?.[d]===true);
+ $('cadreSettingStatus').textContent=
+   'Politie: altijd ingeschakeld. '+cadenceLabel[d]+': '+
+   (cadreConfig.settings?.enabled?.[d]?'zichtbaar voor eigen dienstleiding':
+      'niet zichtbaar voor eigen dienstleiding')+
+   ' · revisie '+cadreConfig.revision;
+}
+async function loadCadreConfig(){
+ if(!auth?.currentUser){$('cadrePanel').hidden=true;cadreConfig=null;return}
+ try{
+   const data=await cadreApi('/api/cadre-activity/config');
+   cadreConfig=data;
+   $('cadrePanel').hidden=false;
+   $('cadreVisibility').hidden=data.canManage!==true;
+   const available=data.departments||[];
+   const selection=$('cadreDept').value;
+   $('cadreDept').replaceChildren(...available.map(d=>new Option(cadenceLabel[d]||d,d)));
+   if(available.includes(selection))$('cadreDept').value=selection;
+   syncCadreSettings();
+   if(available.length)await loadCadre();
+   else $('cadreStatus').textContent='Geen ingeschakelde en bevoegde dienst beschikbaar.';
+ }catch(e){
+   $('cadrePanel').hidden=true;cadreConfig=null;
+   // 403 is expected for non-leadership roles; no list or configuration leak.
+ }
+}
+function drawCadre(){
+ if(!cadreData)return;
+ const query=$('cadreSearch').value.trim().toLocaleLowerCase('nl');
+ const rows=(cadreData.people||[]).filter(p=>!query||
+   [p.name,p.call,p.rank,p.series].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query)));
+ $('cadreCounters').replaceChildren();
+ for(const [label,key] of [['Kaderleden','members'],['Observaties','observaties'],
+  ['Notities','notities'],['Sancties','sancties'],['Opvolgingen','opvolgingen'],
+  ['Opleidingsregistraties','opleidingsregistraties'],
+  ['Gegeven lesmomenten','lesmomenten'],
+  ['Deelnames aan lessen','lesdeelnames'],
+  ['Verlofbeslissingen','verlofbeslissingen']]){
+    const sum=key==='members'?rows.length:rows.reduce((n,p)=>n+(p[key]||0),0);
+    const box=el('div','','counter');box.append(el('strong',sum),el('small',label));
+    $('cadreCounters').append(box);
+ }
+ const body=$('cadreRows');body.replaceChildren();
+ for(const p of rows){
+   const tr=document.createElement('tr');
+   const person=el('td',p.name);
+   person.append(el('small',(p.call||'—')+' · '+(p.rank||'—')+
+     (p.series?' · '+p.series:'')));
+   tr.append(person);
+   for(const key of ['observaties','notities','sancties','opvolgingen',
+     'overig','opleidingsregistraties','lesmomenten','lesdeelnames',
+     'verlofbeslissingen','overgenomen','correcties',
+     'actieveRegistratiedagen'])tr.append(el('td',p[key]||0));
+   body.append(tr);
+ }
+ if(!rows.length){const tr=document.createElement('tr'),cell=el('td','Geen kaderleden binnen de selectie.');
+   cell.colSpan=13;tr.append(cell);body.append(tr)}
+ $('cadreStatus').textContent='Periode '+cadreData.period.start+' t/m '+
+   cadreData.period.end+' · '+rows.length+' actuele kaderleden'+
+   (cadreData.incomplete?' · NIET VOLLEDIG: bronlimiet bereikt':'');
+ $('cadreNote').textContent=cadreData.info+
+   (cadreData.incomplete?' Sommige oudere gegevens konden niet volledig worden geteld.':'')+
+   ' Gegeven lesmomenten tellen alleen wanneer de geverifieerde opleider een afzonderlijk lesmoment vastlegde en er minstens één actief deelnemersresultaat aan gekoppeld is. Opleidingsregistraties worden apart geteld.';
+}
+async function loadCadre(){
+ if(!cadreConfig||!$('cadreDept').value)return;
+ $('cadreRefresh').disabled=true;$('cadreStatus').textContent='Kadergegevens controleren…';
+ try{
+   const dept=$('cadreDept').value,days=$('cadreDays').value;
+   const data=await cadreApi('/api/cadre-activity/overview?department='+
+     encodeURIComponent(dept)+'&days='+encodeURIComponent(days));
+   if($('cadreDept').value!==dept||$('cadreDays').value!==days)return;
+   cadreData=data;drawCadre();
+ }catch(e){
+   cadreData=null;$('cadreRows').replaceChildren();$('cadreCounters').replaceChildren();
+   $('cadreStatus').textContent='Kaderstatistieken niet geladen: '+e.message;
+ }finally{$('cadreRefresh').disabled=false}
+}
+$('cadreSettingDept').addEventListener('change',syncCadreSettings);
+$('cadreSettingSave').onclick=async()=>{
+ if(!cadreConfig?.canManage)return;
+ const button=$('cadreSettingSave'),department=$('cadreSettingDept').value,
+   enabled=$('cadreSettingEnabled').value==='true',
+   reason=$('cadreSettingReason').value.trim();
+ if(reason.length<10||reason.length>300)
+   return $('cadreSettingStatus').textContent='Motivering verplicht: 10 tot 300 tekens.';
+ if(!confirm('Inzage voor '+cadenceLabel[department]+' '+
+   (enabled?'inschakelen':'uitschakelen')+'? Politie blijft altijd toegankelijk.'))return;
+ button.disabled=true;
+ try{
+   const result=await cadreApi('/api/cadre-activity/config',
+     {department,enabled,reason,expectedRevision:cadreConfig.revision});
+   $('cadreSettingReason').value='';
+   await loadCadreConfig();
+   $('cadreSettingStatus').textContent='Instelling met audit bewaard · revisie '+result.revision;
+ }catch(e){$('cadreSettingStatus').textContent=e.message}
+ finally{button.disabled=false}
+};
+$('cadreDept').onchange=loadCadre;
+$('cadreDays').onchange=loadCadre;
+$('cadreSearch').oninput=drawCadre;
+$('cadreRefresh').onclick=loadCadre;
+// Hercontroleer de servermachtigingen als een beheerder terugkeert na
+// promotie, degradatie of gewijzigde zichtbaarheid.
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&auth?.currentUser)void loadCadreConfig();
+});
 for(const control of ['department','filter','search'])$(control).addEventListener('input',render);
 $('refresh').addEventListener('click',load);
 (async()=>{
@@ -326,7 +479,9 @@ $('refresh').addEventListener('click',load);
   const {setupPortalLogin}=await import('/portal-login.js');
   setupPortalLogin({button:$('login'),auth,authModule:authSdk,config:cfg,
    onError:e=>{$('feedback').textContent=e.message}});
-  authSdk.onAuthStateChanged(auth,load);
+  authSdk.onAuthStateChanged(auth,()=>{
+    void load();void loadCadreConfig();
+   });
  }catch(e){$('feedback').textContent=e.message}
 })();
 </script><script defer src="/bpd-navigation.js"></script>

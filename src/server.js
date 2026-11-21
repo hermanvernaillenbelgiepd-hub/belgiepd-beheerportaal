@@ -19,16 +19,20 @@ import { planPersonnelMigration } from './personnel-migration.js';
 import { dossierLinksFromGrid, mayOpenLegacyDossierLink } from './dossier-links.js';
 import { ALLOWED_ROLES } from './registrations.js';
 import { installRegistrationRoutes } from './registration-routes.js';
+import {installSanctionOverviewRoutes} from './sanction-overview-routes.js';
 import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
 import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
+import {installVisualDesignRoutes} from './visual-design-routes.js';
+import {installVisualDesignPageRoutes} from './visual-design-page-routes.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
 import {installCallsignBotRoutes} from './callsign-bot-routes.js';
 import {installActivityTelemetryRoutes} from './activity-telemetry-routes.js';
 import {installActivityCenterRoutes} from './activity-center-routes.js';
+import {installCadreActivityRoutes} from './cadre-activity-routes.js';
 import {scheduleAutomaticActivityPings} from './activity-ping-runner.js';
 import {installActivityReturnRoutes,scheduleLeaveReturnChecks} from './activity-return-routes.js';
 import {projectLeaveReturnChecking} from './personnel-return-status-projection.js';
@@ -59,9 +63,11 @@ import {installDcIdTransferRoutes} from './dc-id-transfer-routes.js';
 import {DC_TRANSFER_ALIASES,applyCompletedDcAliases} from './dc-id-transfer-policy.js';
 import { createTestPersonnel } from './test-personnel.js';
 import { installLeaveRoutes } from './leave-routes.js';
+import {installPolicePromotionRoutes} from './police-promotion-routes.js';
 import { installUserRoutes } from './user-routes.js';
 import {installManualRoleRoutes} from './manual-role-routes.js';
-import {activeManualCitizenCouncil} from './citizen-dossier-policy.js';
+import {activeManualCitizenCouncil,verifiedCitizenCouncil,verifiedManualCitizenCouncil}
+ from './citizen-dossier-policy.js';
 import {installBoardAppointmentRoutes} from './board-appointment-routes.js';
 import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from './user-access.js';
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
@@ -70,6 +76,8 @@ import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
 import {readPoliceSeriesAssignments} from './police-series-store.js';
 import {overlayPoliceSeriesAssignments} from './police-series-policy.js';
 import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
+import {PERSONNEL_IDENTITY_NAMES,projectCanonicalPersonnelNames} from './personnel-identity-policy.js';
+import {installPersonnelReturnReviewRoutes} from './personnel-return-review-routes.js';
 import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleKey,overlayPersonnelLifecycle} from './personnel-lifecycle-policy.js';
 import {installPersonnelActivityRoutes} from './personnel-activity-routes.js';
 import {installSpecializationRoutes} from './specialization-routes.js';
@@ -161,6 +169,7 @@ app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',
  setHeaders:(res,filename)=>res.set('Cache-Control',publicStaticCacheControl(filename))}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));
 app.use('/api/registrations',express.json({limit:'24kb',strict:true}));
+app.use('/api/sanctieoverzicht',express.json({limit:'4kb',strict:true}));
 // Basiskaderobservaties have their OWN POST route. Without a JSON parser,
 // req.body is undefined and every selected Discord subject is rejected.
 app.use('/api/basic-observations',basicObservationJsonParser);
@@ -171,6 +180,7 @@ app.use('/api/activity',express.json({limit:'4kb',strict:true,
   verify:(req,_res,raw)=>{req.bpdRawBody=Buffer.from(raw)}}));
 app.use('/api/management',express.json({limit:'24kb',strict:true}));
 app.use('/api/technical-center',express.json({limit:'3kb',strict:true}));
+app.use('/api/visual-design',express.json({limit:'2kb',strict:true}));
 app.use('/api/technical-cleanup',express.json({limit:'4kb',strict:true}));
 app.use('/api/roles',express.json({limit:'4kb',strict:true}));
 app.use('/api/role-artwork',express.json({limit:'230kb',strict:true}));
@@ -481,6 +491,50 @@ async function requireUser(req,res,next){
     }
     actor.profileTechnicalAvailable=canSwitch;
     actor.discordPoliceRank=verifiedPoliceRank(discordMember,process.env.DISCORD_GUILD_ID);
+    // Burgerraad lifecycle rights require the same fresh, guild-bound
+    // membership evidence as citizen dossier writes. A saved portal title
+    // or the user's callsign is never sufficient.
+    actor.citizenCouncilVerified=Boolean(
+      verifiedCitizenCouncil(actor,discordMember,process.env.DISCORD_GUILD_ID)||
+      verifiedManualCitizenCouncil(actor,discordMember,process.env.DISCORD_GUILD_ID)
+    );
+    // Personnel rank decisions use the independently verified operational
+    // Discord role. A member's existing role snapshot can outlive the short
+    // privileged-role window while the portal login remains active. Refresh
+    // ONLY the same signed Discord identity, directly from the guild bot;
+    // never infer promotion rights from callsign, Board or portal role alone.
+    const personnelRankAction=req.path==='/api/personnel/overview'||
+      /^\/api\/personnel\/politie\/\d{15,22}\/rank-change$/.test(req.path)||
+      req.path.startsWith('/api/police-promotions/')||
+      req.path.startsWith('/api/personnel-lifecycle/');
+    const policeScoped=departmentRoles.politie;
+    // An approved Police service role is the scope. The independent guild
+    // proof is refreshed even for a Board/technical dual appointment whose
+    // global account label differs from the Police service role.
+    // The final rank policy still rejects unverified and out-of-scope actors.
+    // Read-only proposals and effective changes share ONE fresh role check.
+    // The stored session's Discord proof can expire between opening the
+    // personnel overview and clicking "suggest". Always revalidate the same
+    // signed Discord identity when a Police cadre action is requested.
+    // The 45-second guild-bot cache prevents a new Discord request per click.
+    // A bot outage never manufactures a verified cadre role.
+    const possiblePoliceCadre=['officierenkader','korpsleiding'].includes(policeScoped)||
+      ['officierenkader','korpsleiding'].includes(actor.role);
+    if(personnelRankAction&&verified.uid==='discord:'+discordId&&
+      departments.includes('politie')&&possiblePoliceCadre){
+      const guild=await verifyGuildAuthorizationRoles(discordId);
+      actor.policeRankVerificationStatus=guild.status;
+      if(guild.status==='ok'){
+        actor.discordPoliceRank=verifiedPoliceRank({
+          guildId:process.env.DISCORD_GUILD_ID,verifiedAt:Date.now(),
+          roleIds:guild.roleIds
+        },process.env.DISCORD_GUILD_ID);
+      }else if(guild.status==='not_member'){
+        actor.discordPoliceRank=null;
+      }
+      // On bot_unavailable, only an existing *unexpired* signed guild proof
+      // may be used. An expired role never gains authority from the account.
+    }
     // Scoped read-only proof, used ONLY for writing lower-rank Police observations.
     actor.discordPoliceMemberVerified=Boolean(verified.uid==='discord:'+discordId&&
       verifiedPoliceMembership(discordMember,process.env.DISCORD_GUILD_ID));
@@ -572,7 +626,7 @@ async function getSourceSnapshot(forceRefresh=false){
 async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const base=await getSourceSnapshot(forceRefresh);
   const on=personnelDataEnabled(process.env);
-  const [created,edits,specialties,rosterConfigs,identityAliases,policeSeries]=await Promise.all([
+  const [created,edits,specialties,rosterConfigs,identityAliases,policeSeries,identityNames]=await Promise.all([
     on?getFirestore().collection(CREATED_PERSONNEL_COLLECTION).limit(500).get():null,
     process.env.BPD_PERSONNEL_OVERRIDES_ACTIVE==='true'
       ?getFirestore().collection(PERSONNEL_EDITS_COLLECTION).limit(400).get():null,
@@ -580,9 +634,11 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
       ?getFirestore().collection(PERSONNEL_SPECIALIZATIONS_COLLECTION).limit(600).get():null,
     specialtyReadEnabled(process.env)?loadRosterConfigs():null,
     getFirestore().collection(DC_TRANSFER_ALIASES).limit(201).get(),
-    readPoliceSeriesAssignments()
+    readPoliceSeriesAssignments(),
+    getFirestore().collection(PERSONNEL_IDENTITY_NAMES).limit(1001).get()
   ]);
-  if(created?.size===500||edits?.size===400||specialties?.size===600||identityAliases.size===201)
+  if(created?.size===500||edits?.size===400||specialties?.size===600||
+     identityAliases.size===201||identityNames.size===1001)
     throw Error('Te veel personeelsrecords; migratiecontrole nodig');
   const added=(created?.docs||[]).map(d=>asCreatedPersonnel(d.data())).filter(Boolean);
   // Never silently override or duplicate an original service+Discord ID.
@@ -593,7 +649,8 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   const combined=canonicalBase.concat(extra);
   const edited=edits?mergePersonnelEdits(combined,edits.docs.map(d=>d.data())):combined;
   const personnel=overlayPoliceSeriesAssignments(edited,policeSeries);
-  let visible=specialties?applySpecialtyOverlays(personnel,specialties.docs,rosterConfigs):personnel;
+  const named=projectCanonicalPersonnelNames(personnel,identityNames.docs);
+  let visible=specialties?applySpecialtyOverlays(named,specialties.docs,rosterConfigs):named;
   // Reuse the already-authorized BelgiumPD members API to project fresh,
   // verified Discord specializations across the personnel roster. Display
   // only: no Firestore writes, role grants, cadre or dossier-right changes.
@@ -658,6 +715,9 @@ async function getSnapshot({forceRefresh=false,includeArchived=false}={}){
   // Protected archive routes explicitly request includeArchived=true.
   const lifecycleDocs=await getPersonnelLifecycleDocs();
   visible=overlayPersonnelLifecycle(visible,lifecycleDocs,{includeArchived});
+  // Display CHECKING on the roster only when the matching approved leave
+  // really ended. It remains a review overlay, not a persisted personnel
+  // status, and active extensions take precedence. Fail closed on outages.
   if(process.env.BPD_ENABLE_LEAVE_RETURN_CHECKS==='true'&&!includeArchived){
     try{
       const [open,approved]=await Promise.all([
@@ -936,8 +996,10 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
   }
 });
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installSanctionOverviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installManagementRoutes(app,{requireUser:requireDossierUser,requireMemberUser:requireUser,getSnapshot});
+installPolicePromotionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
 installActivityTelemetryRoutes(app);
@@ -959,6 +1021,8 @@ installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
+installVisualDesignRoutes(app,{requireUser});
+installVisualDesignPageRoutes(app,{requireUser});
 installPortalLabelRoutes(app,{requireUser:requireDossierUser});
 installTechnicalTestCleanupRoutes(app,{requireUser,getSnapshot});
 installTechnicalSimulatorRoutes(app,{requireUser});
@@ -1002,8 +1066,10 @@ installDiscordPersonalProfileRoutes(app,{getSnapshot});
 installPersonnelActivityRoutes(app,{requireUser,getSnapshot});
 // Isolated legacy activity read: no automated pings or personnel changes.
 installActivityCenterRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installCadreActivityRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installActivityReturnRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelEditorRoutes(app,{requireUser,requireDossierUser,getSnapshot});
+installPersonnelReturnReviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installPersonnelLifecycleRoutes(app,{requireUser:requireDossierUser,
   getSnapshot,invalidateLifecycle:invalidatePersonnelLifecycle,
   invalidateUserAccess:id=>{

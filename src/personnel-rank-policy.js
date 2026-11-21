@@ -1,5 +1,5 @@
 import {roleForDepartment} from './leave-policy.js';
-import {canReadPersonnelSubject,canEditPersonnel} from './personnel-editor-policy.js';
+import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 
 // This is a personnel-record change, NOT a Discord role/cadre assignment.
 // Officer and corps authorisations always come from the verified portal session.
@@ -14,6 +14,38 @@ export const POLICE_RANK_CHOICES=Object.freeze([
   {rank:'Aspirant Commissaris',hundreds:[9],grade:7}
 ]);
 export const policeRankByName=name=>POLICE_RANK_CHOICES.find(r=>r.rank===name)||null;
+// Official labels are PRESENTATION ONLY. Internal rank decisions keep the
+// stable short grade values used by the validated Firestore mutation flow.
+const POLICE_RANK_PUBLIC_LABELS=Object.freeze({
+ 'Agent':'Agent van Politie (AP)',
+ 'Aspirant Inspecteur':'Aspirant Inspecteur van Politie (A-INP)',
+ 'Inspecteur':'Inspecteur van Politie (INP)',
+ 'Eerste Inspecteur':'Eerste Inspecteur van Politie (1INP)',
+ 'Aspirant Hoofdinspecteur':'Aspirant Hoofdinspecteur van Politie (A-HINP)',
+ 'Hoofdinspecteur':'Hoofdinspecteur van Politie (HINP)',
+ 'Eerste Hoofdinspecteur':'Eerste Hoofdinspecteur van Politie (1HINP)',
+ 'Aspirant Commissaris':'Aspirant Commissaris van Politie (ACP)'
+});
+export function policeOfficialRankLabel(rank){
+ const value=String(rank||'').trim();
+ return POLICE_RANK_PUBLIC_LABELS[value]||value;
+}
+
+/**
+ * Some source-sheet personnel grades use extended descriptions (such as
+ * "Aspirant Inspecteur van Politie (A-INP)") while the grade editor uses
+ * the canonical short label. We may recover the grade from an official
+ * callsign without changing the persisted source grade or granting rights.
+ * A known canonical grade that conflicts with its callsign fails closed.
+ */
+export function policeSubjectGradeOption(subject){
+  const byName=policeRankByName(subject?.rank);
+  const callGrade=policeCallGrade(subject?.call);
+  if(callGrade===null)return null;
+  if(byName&&byName.grade!==callGrade)return null;
+  return byName||POLICE_RANK_CHOICES.find(item=>item.grade===callGrade)||null;
+}
+
 export function policeCallNumber(call){
   const match=/^(?:S[- ]?)?([1-9]\d{2})$/i.exec(String(call||'').trim());
   return match?Number(match[1]):null;
@@ -24,31 +56,61 @@ export function policeCallGrade(call){
   return n>=920?7:Math.floor(n/100)===9?null:
     Math.floor(n/100)<=2?0:Math.floor(n/100)-2;
 }
+// Technical profile switching does not erase a separately approved,
+// Discord-verified operational Police rank. Nor does technical access itself
+// create any power to promote: only the preserved operational role plus
+// independent Police Discord evidence can enable grade changes.
+export function verifiedPoliceRankAuthority(actor){
+  if(!actor||actor.uid!=='discord:'+actor.discordId||
+     !actor.departments?.includes('politie'))return null;
+  const technical=actor.portalTechnicalMode===true;
+  if(technical&&actor.profileTechnicalAvailable!==true)return null;
+  const role=technical?actor.operationalRole:actor.role;
+  const scoped=technical?actor.operationalDepartmentRoles?.politie:
+    roleForDepartment(actor,'politie');
+  // Dual-appointed Bestuur/Korpsleiding members can have an administrative
+  // profile while their signed Police service scope stays operational.
+  // A separate CURRENT Discord Korpsleiding proof is still mandatory.
+  const permittedProfile=role==='korpsleiding'||role==='officierenkader'||
+    // A verified Board profile may coexist with a separately approved
+    // service role; technical mode MUST keep its original operational role.
+    // If operationalRole was 'beheerder', no Police promotion authority.
+    !technical&&role==='beheerder'&&actor.boardPersonnelAdmin===true&&
+      actor.dossierSourceFresh===true;
+  if(!permittedProfile)return null;
+  if(scoped==='korpsleiding'&&
+     (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true))
+    return 'korpsleiding';
+  if(scoped==='officierenkader'&&actor.discordPoliceRank==='officierenkader')
+    return 'officierenkader';
+  return null;
+}
 export function canChangePoliceGrade(actor,subject){
   if(!subject||subject.dept!=='politie'||actor?.discordId===subject.personId||
      actor?.uid!=='discord:'+actor?.discordId||
      !actor?.departments?.includes('politie')||
      !actor?.dossierNativeDepartments?.includes('politie')||
      !actor?.dossierAllowedDepartments?.includes('politie')||
-     !canReadPersonnelSubject(actor,subject)||!canEditPersonnel(actor,subject))
+     !canReadPersonnelSubject(actor,subject))
     return false;
-  const scoped=roleForDepartment(actor,'politie');
-  const officer=actor.role==='officierenkader'&&scoped==='officierenkader'&&
-    actor.discordPoliceRank==='officierenkader';
-  const corps=actor.role==='korpsleiding'&&scoped==='korpsleiding'&&
-    (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true);
-  if(!officer&&!corps)return false;
+  const cadre=verifiedPoliceRankAuthority(actor);
+  if(!cadre)return false;
+  // The Police-grade permission above is STRICTER and more specific than
+  // generic personnel editing: it requires a matching approved Police cadre
+  // AND independently verified Discord role. A Board/technical profile or
+  // a stale generic editor flag must not veto that verified narrow permission.
+  // Never reuse this exception for names, sanctions, Discord roles or other
+  // personnel edits.
   const grade=policeCallGrade(subject.call);
   // Callsign and official personnel grade must not disagree on the cadre.
-  if(grade===null)return false;
-  if(officer&&grade>6)return false;
+  if(grade===null||policeSubjectGradeOption(subject)===null)return false;
+  if(cadre==='officierenkader'&&grade>6)return false;
   return true;
 }
 export function allowedPoliceGradeChoices(actor){
-  const corps=actor?.role==='korpsleiding'&&
-    roleForDepartment(actor,'politie')==='korpsleiding'&&
-    (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true);
-  return POLICE_RANK_CHOICES.filter(item=>item.grade<=(corps?7:6))
+  const cadre=verifiedPoliceRankAuthority(actor);
+  if(!cadre)return [];
+  return POLICE_RANK_CHOICES.filter(item=>item.grade<=(cadre==='korpsleiding'?7:6))
     .map(item=>item.rank);
 }
 export function validatePoliceGradeChange(body){

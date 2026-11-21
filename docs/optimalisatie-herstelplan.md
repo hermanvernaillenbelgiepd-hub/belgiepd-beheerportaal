@@ -36,7 +36,7 @@ Bewaar de koppeling van commit, branch, Render-service en deploy-ID in het chang
    (geen force-push/branch-reset, zodat andere tussentijdse wijzigingen en audit behouden blijven).
 4. Controleer de automatische Render-publicatie en vergelijk
    `GET /api/health` met de verwachte `deployment.commit` en `deployment.branch`.
-5. Controleer in TEST/MMAIN de getroffen workflow met bevoegde en niet-bevoegde gebruikers.
+5. Controleer in TEST/MAIN de getroffen workflow met bevoegde en niet-bevoegde gebruikers.
 6. Maak daarna een gerichte herstelwijziging en publiceer opnieuw volgens TEST → MAIN.
 
 Een Git-revert herstelt nooit automatisch Firestore-data, sessies of reeds uitgevoerde

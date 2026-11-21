@@ -44,9 +44,10 @@ export function installCallsignSelfServiceRoutes(app,{getSnapshot}){
   app.get('/api/callsigns/self/status',ownDiscord,async(req,res)=>{
     const id=req.selfCallsign.id;
     try{
-      const [proof,request]=await Promise.all([
+      const [proof,request,lifecycle]=await Promise.all([
         db().collection('bpd_callsign_eligibility_proofs').doc(id).get(),
-        db().collection('bpd_callsign_requests').doc(id).get()
+        db().collection('bpd_callsign_requests').doc(id).get(),
+        db().collection('bpd_personnel_lifecycle').doc('politie_'+id).get()
       ]);
       const evidence=proof.data();
       res.set('Cache-Control','private, no-store');
@@ -55,7 +56,9 @@ export function installCallsignSelfServiceRoutes(app,{getSnapshot}){
         request:request.exists?{
           status:request.get('status'),temporaryCall:request.get('temporaryCall'),
           assignedCall:request.get('assignedCall')||null}:null,
-        eligible:recentVerifiedProof(evidence,id),
+        eligible:recentVerifiedProof(evidence,id)&&
+          !['archived','pending'].includes(lifecycle.get('state')),
+        reentryRequired:['archived','pending'].includes(lifecycle.get('state')),
         hasFiveDays:evidence?.hasFiveDays===true,
         hasTenHours:evidence?.hasTenHours===true,
         playHours:Number.isFinite(evidence?.playHours)?Math.floor(evidence.playHours*100)/100:null,
@@ -77,8 +80,28 @@ export function installCallsignSelfServiceRoutes(app,{getSnapshot}){
     try{data=checkApplicant({name:raw.name,temporaryCall:raw.temporaryCall,discordId:id},{allowMissingTemporary:true})}
     catch(error){return res.status(400).json({error:error.message})}
     try{
-      const snap=await getSnapshot();
+      const snap=await getSnapshot({includeArchived:true});
       if(snap.stale)return res.status(503).json({error:'Personeelslijst is tijdelijk niet actueel'});
+      const archived=snap.data.filter(p=>p.dept==='politie'&&p.personId===id&&
+        ['archived','pending'].includes(p.lifecycleState));
+      const possiblePrior=snap.data.filter(p=>p.dept==='politie'&&p.personId!==id&&
+        ['archived','pending'].includes(p.lifecycleState)&&
+        String(p.name||'').trim().toLocaleLowerCase('nl-BE')===
+          data.name.toLocaleLowerCase('nl-BE'));
+      if(archived.length||possiblePrior.length){
+        // An applicant's name is not proof of identity. Only flag to the cadre.
+        const proof=await db().collection('bpd_callsign_eligibility_proofs').doc(id).get();
+        if(archived.length||recentVerifiedProof(proof.data(),id)){
+          await db().collection('bpd_personnel_reentry_alerts').doc(id).set({
+            discordId:id,name:archived[0]?.name||data.name,
+            kind:archived.length?'archived_callsign_attempt':'possible_identity_transfer',
+            status:'pending',updatedAt:FieldValue.serverTimestamp()
+          },{merge:true});
+        }
+        return res.status(409).json({error:archived.length?
+          'Je oude politiedossier is gearchiveerd. Vraag herintreding aan bij Officierenkader of Korpsleiding.':
+          'Mogelijk eerder personeelsdossier. Laat Officierenkader je identiteit controleren.'});
+      }
       const currentPolice=snap.data.filter(p=>p.dept==='politie'&&p.personId===id);
       if(currentPolice.length>1)
         return res.status(409).json({error:'Meerdere politieregistraties gevonden; laat Officierenkader je dossier controleren'});

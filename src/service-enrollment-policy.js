@@ -4,7 +4,8 @@
 const discordId=/^\d{15,22}$/;
 export function verifiedFixedPoliceRosterMember(records,id){
  if(!discordId.test(String(id||''))||!Array.isArray(records))return null;
- const matches=records.filter(p=>p?.dept==='politie'&&p.personId===id);
+ const matches=records.filter(p=>p?.dept==='politie'&&p.personId===id&&
+  !['archived','pending'].includes(p.lifecycleState));
  if(matches.length!==1)return null;
  const call=String(matches[0].call||'').trim();
  const number=/^(?:[A-Za-z]{1,12}[- ]?)?(\d{3})$/.exec(call)?.[1];

@@ -225,8 +225,7 @@ async function load(){
   $('department').value=SERVICE_ORDER.includes(selected)?selected:
     (scopes.find(s=>s.canRequest)?.department||'politie');
   syncCourse();
-  // Een doorklik vanuit de Opleidingsmatrix vult alleen vooraf in;
-  // de server controleert nog steeds de bevoegdheid en de actuele catalogus.
+  // Vooraf invullen vanuit opleidingstraject: server controleert de bevoegdheid en catalogus.
   if(params.has('course')){
     const wanted=params.get('course');
     if($('courseWrap').hidden){
