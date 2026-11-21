@@ -116,17 +116,23 @@
     saveStack(stack);
   }
   function back(){
+    // Native history retains tabs, filters and query parameters. Prefer it
+    // only for same-origin navigations; never send users to outside referrers.
+    try{
+      const ref=new URL(document.referrer),current=new URL(window.location.href);
+      if(ref.origin===current.origin&&
+         (ref.pathname!==current.pathname||ref.search!==current.search||
+          ref.hash!==current.hash)&&window.history.length>1){
+        window.history.back();return;
+      }
+    }catch{}
+    // A directly opened/bookmarked module has no usable browser history.
+    // Fall back to the existing same-origin, path-only portal trail.
     const trail=readStack();
     if(trail[trail.length-1]===here&&trail.length>1){
       trail.pop();const dest=trail[trail.length-1];saveStack(trail);
       if(validPath(dest)){window.location.assign(dest);return}
     }
-    try{
-      const ref=new URL(document.referrer),current=new URL(window.location.href);
-      if(ref.origin===current.origin&&
-         (ref.pathname!==current.pathname||ref.search!==current.search)&&
-         window.history.length>1){window.history.back();return}
-    }catch{}
     window.location.assign('/');
   }
   const portalLabelScript=document.createElement('script');
