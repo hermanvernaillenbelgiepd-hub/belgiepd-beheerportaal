@@ -1814,10 +1814,20 @@ function canRegisterOfficialTraining(){
   return Boolean(dept&&trainingRights?.trainingWritesEnabled===true&&
     trainingRights.permissions?.[dept]?.['training.log']===true);
 }
+function currentCaseRegistrationRights(){
+  const dept=selected?.dept;
+  const usable=rights=>rights?.writesEnabled===true&&Boolean(rights.actor)&&
+    Array.isArray(rights.typesByDepartment?.[dept])&&
+    rights.typesByDepartment[dept].length>0;
+  if(usable(casePermissions))return casePermissions;
+  const fallback=typeof registrationCaseFallback==='undefined'?null:registrationCaseFallback;
+  return usable(fallback)?fallback:casePermissions;
+}
 function availablePersonnelRegistrationKinds(){
   const dept=selected?.dept;
   if(!dept)return [];
   const kinds=[];
+  const caseRights=currentCaseRegistrationRights();
   if(dept==='depannage'){
     // Depannage behoudt zijn bestaande drie operationele categorieën;
     // Algemene notities zijn louter dossierinformatie en krijgen geen
@@ -1829,11 +1839,11 @@ function availablePersonnelRegistrationKinds(){
          formalPermissions.sanctionOptionsByDepartment?.[dept]?.length)
         kinds.push(['sanctie','Sanctie']);
     }
-    if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
-       casePermissions.typesByDepartment?.[dept]?.includes('specialisatiebeperking'))
+    if(caseRights?.writesEnabled===true&&caseRights.actor&&
+       caseRights.typesByDepartment?.[dept]?.includes('specialisatiebeperking'))
       kinds.push(['case:specialisatiebeperking','Beperking van specialisatie']);
-    if(casePermissions?.writesEnabled===true&&casePermissions.actor&&
-       casePermissions.typesByDepartment?.[dept]?.includes('algemene_notitie'))
+    if(caseRights?.writesEnabled===true&&caseRights.actor&&
+       caseRights.typesByDepartment?.[dept]?.includes('algemene_notitie'))
       kinds.push(['case:algemene_notitie','Algemene notitie']);
     return kinds;
   }
@@ -1843,8 +1853,8 @@ function availablePersonnelRegistrationKinds(){
     if(formalPermissions.sanctionDepartments?.includes(dept))
       kinds.push(['sanctie','Sanctie']);
   }
-  if(casePermissions?.writesEnabled===true&&casePermissions.actor){
-    for(const type of casePermissions.typesByDepartment?.[dept]||[]){
+  if(caseRights?.writesEnabled===true&&caseRights.actor){
+    for(const type of caseRights.typesByDepartment?.[dept]||[]){
       // Opleiding blijft als dossierregistratie beschikbaar wanneer het
       // formele opleidingsregister hier niet actief is, zonder dubbel menu.
       if(type==='verlof')continue;
@@ -3299,7 +3309,7 @@ const staffNotesLabels={opleiding:'Opleiding',begeleiding:'Begeleiding',
 
 /* Dezelfde categoriebevoegdheden als de kaderregister-API:
    het formulier is alleen een andere weergave van bestaande registraties. */
-let casePermissions=null;
+let casePermissions=null,registrationCaseFallback=null;
 function populateLinkedColleagues(){
  if(!selected)return;
  const known=new Map();
@@ -3612,8 +3622,10 @@ async function loadStaffCasePermissions(person,key,canManage){
     if(!sameDossier(key))return;
     casePermissions=overview;
     populateLinkedColleagues();
-    const types=overview.typesByDepartment?.[person.dept]||[];
-    registrationModuleStates.cases=!overview.writesEnabled?
+    const rights=currentCaseRegistrationRights();
+    const types=rights?.typesByDepartment?.[person.dept]||[];
+    registrationModuleStates.cases=rights===registrationCaseFallback&&types.length?
+      'beschikbaar':!overview.writesEnabled?
       'schrijven momenteel uitgeschakeld':
       !overview.actor?
         'eigen personeelsidentiteit is niet gekoppeld':
@@ -3621,15 +3633,20 @@ async function loadStaffCasePermissions(person,key,canManage){
         'geen goedgekeurd schrijfrecht voor deze dienst':'beschikbaar';
     $('staffCaseType').replaceChildren(...types
       .map(type=>option(type,staffCaseLabels[type]||type)));
-    $('staffCaseForm').hidden=!(overview.writesEnabled&&overview.actor&&types.length);
+    $('staffCaseForm').hidden=!(rights?.writesEnabled&&rights.actor&&types.length);
     if(!types.length)$('staffCaseHint').textContent='Geen schrijfrechten voor deze categorieën.';
     else $('staffCaseHint').textContent='Alleen categorieën toegestaan door je huidige dienst- en kaderrol.';
     updateStaffCaseFields();
   }catch(error){
     if(sameDossier(key)){
-      $('staffCaseForm').hidden=true;
-      registrationModuleStates.cases='ophalen mislukt';
-      $('staffCaseHint').textContent='Kaderregistratie niet beschikbaar: '+error.message;
+      const fallback=currentCaseRegistrationRights();
+      const types=fallback?.typesByDepartment?.[person.dept]||[];
+      const usable=Boolean(fallback?.writesEnabled&&fallback.actor&&types.length);
+      $('staffCaseForm').hidden=!usable;
+      registrationModuleStates.cases=usable?'beschikbaar':'ophalen mislukt';
+      $('staffCaseHint').textContent=usable?
+        'Categorieën worden gecontroleerd via het beveiligde personeelsdossier.':
+        'Kaderregistratie niet beschikbaar: '+error.message;
     }
   }
   if(sameDossier(key))refreshPersonnelRegistrationOptions();
@@ -5875,6 +5892,7 @@ async function loadStaffDossier(p){
   for(const key of Object.keys(registrationModuleStates))
     registrationModuleStates[key]='laden';
   casePermissions=null;
+  registrationCaseFallback=null;
   trainingRights=null;
   formalPermissions=null;
   staffDossierCanMaintain=false;
@@ -5885,6 +5903,12 @@ async function loadStaffDossier(p){
     if(!selected||selected.dept+':'+selected.discordId!==key||$('panel').hidden)return;
     staffDossierRevision=result.revision;
     staffDossierCanMaintain=result.canMaintain===true;
+    registrationCaseFallback={
+      writesEnabled:result.cadreActions?.cases===true,
+      actor:result.cadreActions?.caseActorAvailable===true?{verified:true}:null,
+      typesByDepartment:{[p.dept]:Array.isArray(result.cadreActions?.caseTypes)?
+        result.cadreActions.caseTypes:[]}
+    };
     // Query a scoped server capability; never infer deletion powers from
     // the user's displayed rank or a local form selector.
     try{
@@ -6130,7 +6154,9 @@ $('staffCaseForm').onsubmit=async event=>{
   if(!person)return;
   const button=$('staffCaseSave');button.disabled=true;
   const type=$('staffCaseType').value,key=person.dept+':'+person.discordId;
-  if(!casePermissions?.writesEnabled||!casePermissions.typesByDepartment?.[person.dept]?.includes(type)){
+  const caseRights=currentCaseRegistrationRights();
+  if(!caseRights?.writesEnabled||!caseRights.actor||
+     !caseRights.typesByDepartment?.[person.dept]?.includes(type)){
     button.disabled=false;return notice('Je hebt geen bevoegdheid voor deze dossiercategorie.',true);
   }
   const courseName=type==='opleiding'?selectedStaffCaseCourse():'';
