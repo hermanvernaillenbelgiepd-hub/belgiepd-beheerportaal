@@ -16,7 +16,7 @@ test('dossiercentrum offers only the authorized dossier route',()=>{
  assert.match(page,/\$\('query'\)\.value=requestedDossierSearch/);
  assert.match(page,/requestedDossierSearch=\(dossierDeepLink\.get\('zoek'\)\|\|''\)\.slice\(0,110\)/);
 });
-test('weekreports deep links choose only authorized report departments and entries',()=>{
+test('weekrapporten tonen alleen rapporten en verbergen historische deeplinks',()=>{
  const page=read('public/weekrapporten.html');
  assert.match(page,/data\.reportDepartments\|\|\[\]\)\.includes\(/);
  assert.match(page,/new URLSearchParams\(location\.search\)\.get\('dept'\)/);
@@ -24,8 +24,9 @@ test('weekreports deep links choose only authorized report departments and entri
  assert.match(page,/viewData\?\.departments\?\.includes\(dept\)/);
  assert.match(page,/subjects\.some\(p=>p\.dept===dept&&p\.discordId===person\)/);
  assert.match(page,/if\(!details\.open\)\{details\.open=true;return\}/);
- assert.match(page,/requestAnimationFrame\(\(\)=>\$\('reportRegistrations'\)\.scrollIntoView/);
- assert.match(page,/location\.hash==='#registraties'/);
+ assert.doesNotMatch(page,/requestAnimationFrame\(\(\)=>\$\('reportRegistrations'\)\.scrollIntoView/);
+ assert.doesNotMatch(page,/location\.hash==='#registraties'/);
+ assert.match(page,/<details id="reportRegistrations" class="report-archive" hidden inert aria-hidden="true"/);
  assert.match(page,/\$\('reportRegistrations'\)\.addEventListener\('toggle'/);
  assert.match(page,/await api\('\/api\/management\/reports\?dept='/);
 });
