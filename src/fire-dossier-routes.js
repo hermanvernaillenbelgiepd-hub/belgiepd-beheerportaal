@@ -1,5 +1,6 @@
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from './service-dossier-access.js';
+import {isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
 import {fireRecordVisibility,fireMayCreate,fireSanctionLevel,fireCanWithdrawSanction,FIRE_COURSES,fireMayProposePromotion,fireMayAdvisePromotion} from './fire-dossier-policy.js';
 import {firePromotionInput,firePromotionOpinionInput,updatedPromotionOpinions,firePublicProposal} from './fire-promotion-policy.js';
 import {brusselsEventDate} from './personnel-event-date.js';
@@ -41,16 +42,18 @@ function safeCase(row,id){
  }
  return v;
 }
-async function subjectFor(req,getSnapshot){
+async function subjectFor(req,getSnapshot,{inspection=false}={}){
  const snap=await getSnapshot();
  if(snap.stale)return {error:503,message:'Personeelsbron niet actueel'};
  const matches=snap.data.filter(p=>p.dept==='brandweer'&&p.personId===req.params.discordId);
  if(matches.length!==1)return {error:404,message:'Geen eenduidig Brandweerpersoneelslid'};
  const person=matches[0];
- if(!canReadServiceDossier(req.bpd,'brandweer'))
+ if(!(inspection?canInspectServiceDossier(req.bpd,'brandweer'):
+   canReadServiceDossier(req.bpd,'brandweer')))
   return {error:403,message:'Geen Brandweerrechten'};
  const roles=req.bpd.fireSubjectRoleSets?.get(person.personId)||null;
- const level=fireRecordVisibility(req.bpd,person,roles);
+ const level=inspection&&isVerifiedReportCorpsReader(req.bpd)?'full':
+   fireRecordVisibility(req.bpd,person,roles);
  if(level==='none')return {error:403,message:'Dit Brandweerdossier is afgeschermd'};
  return {person,roles,level,snap};
 }
@@ -62,7 +65,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
  app.get('/api/fire-dossiers/:discordId',requireUser,async(req,res)=>{
    if(!ID.test(req.params.discordId))return code(res,400,'Ongeldige Discord-ID');
    try{
-     const s=await subjectFor(req,getSnapshot);
+     const s=await subjectFor(req,getSnapshot,{inspection:true});
      if(s.error)return code(res,s.error,s.message);
      const {person,roles,level}=s;
      const policeMember=s.snap.data.find(p=>p.dept==='politie'&&p.personId===person.personId);
