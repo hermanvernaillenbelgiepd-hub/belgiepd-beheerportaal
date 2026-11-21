@@ -25,15 +25,15 @@ test('Middenkader sees lower staff identity only, not confidential registrations
  assert.equal(mayOpenFireSubject(actor,subject,leadership),false);
  assert.equal(fireRecordVisibility(actor,subject,basic),'identity');
  assert.equal(fireMayCreate(actor,subject,basic,'observatie'),true);
- assert.equal(fireMayCreate(actor,subject,basic,'notitie'),false);
+ assert.equal(fireMayCreate(actor,subject,basic,'notitie'),true);
  assert.equal(fireMayCreate(actor,subject,basic,'sanctie'),false);
 });
 test('Brandweerleiding can register observations notes and sanctions for ordinary staff',()=>{
  const actor={departments:['brandweer'],fireAccessLevel:'leadership'};
  for(const type of ['observatie','notitie','sanctie'])
    assert.equal(fireMayCreate(actor,subject,basic,type),true);
- assert.equal(mayOpenFireSubject(actor,subject,middle),false);
- assert.equal(mayOpenFireSubject(actor,subject,leadership),false);
+ assert.equal(mayOpenFireSubject(actor,subject,middle),true);
+ assert.equal(mayOpenFireSubject(actor,subject,leadership),true);
 });
 test('ZONE can see higher staff, Bestuur reads without operational write powers',()=>{
  const zone={departments:['brandweer'],fireZoneChief:true,fireAccessLevel:'zone'};
@@ -49,15 +49,15 @@ test('Fire leadership mirrors Police Middenkader registrations and ZONE mirrors 
  const leader={departments:['brandweer'],fireAccessLevel:'leadership'};
  const zone={departments:['brandweer'],fireAccessLevel:'zone',fireZoneChief:true};
  for(const type of ['basisnotitie','notitie','observatie','sanctie']){
-   assert.equal(fireMayCreate(mid,subject,basic,type),type==='observatie');
+   assert.equal(fireMayCreate(mid,subject,basic,type),type!=='sanctie');
    assert.equal(fireMayCreate(leader,subject,basic,type),true);
    assert.equal(fireMayCreate(zone,subject,middle,type),true);
  }
- assert.equal(fireSanctionLevel(leader),'middenkader');
+ assert.equal(fireSanctionLevel(leader),'korpsleiding');
  assert.equal(fireSanctionLevel(zone),'korpsleiding');
  assert.equal(fireSanctionLevel(mid),null);
- assert.equal(fireMayCreate(leader,subject,middle,'notitie'),false);
- assert.equal(fireMayCreate(leader,subject,leadership,'sanctie'),false);
+ assert.equal(fireMayCreate(leader,subject,middle,'notitie'),true);
+ assert.equal(fireMayCreate(leader,subject,leadership,'sanctie'),true);
  const readOnlyBoard={boardPersonnelAdmin:true,departments:['brandweer']};
  assert.equal(fireMayCreate(readOnlyBoard,subject,basic,'basisnotitie'),false);
 });
@@ -67,7 +67,7 @@ test('Only ZONE or signed technical mode can withdraw Fire sanctions',()=>{
  const zone={departments:['brandweer'],fireZoneChief:true,
    fireAccessLevel:'zone',discordId:'333333333333333333'};
  assert.equal(fireCanWithdrawSanction(mid,subject,basic),false);
- assert.equal(fireCanWithdrawSanction(leader,subject,basic),false);
+ assert.equal(fireCanWithdrawSanction(leader,subject,basic),true);
  assert.equal(fireCanWithdrawSanction(zone,subject,middle),true);
  assert.equal(fireCanWithdrawSanction(zone,{...subject,personId:zone.discordId},middle),false);
  assert.equal(fireCanWithdrawSanction(
@@ -83,4 +83,28 @@ test('All eight training categories are available without creating new Discord r
  assert.equal(FIRE_COURSES.length,8);
  for(const name of ['RED-TEAM','Gevaarlijke stoffen','Basistraining'])
    assert.equal(FIRE_COURSES.find(course=>course.name===name)?.roleId,null);
+});
+
+test('Officiële basis- en stagefuncties blijven zichtbaar als doelrolcache verloopt',()=>{
+  const staff={dept:'brandweer',personId:'222222222222222222',call:'BWM-11',rank:'Brandweerman'};
+  const trainee={...staff,call:'STAG-04',rank:'Stagiair'};
+  const middle={...staff,call:'OOFF-12',rank:'Sergeant'};
+  const higher={...staff,call:'OFF-04',rank:'Kapitein'};
+  assert.equal(fireSubjectClass(staff,null),'member');
+  assert.equal(fireSubjectClass(trainee,null),'trainee');
+  assert.equal(fireSubjectClass(middle,null),'middle');
+  assert.equal(fireSubjectClass(higher,null),'leadership');
+  const actor={departments:['brandweer'],fireAccessLevel:'middle'};
+  assert.equal(mayOpenFireSubject(actor,staff,null),true);
+  assert.equal(mayOpenFireSubject(actor,trainee,null),true);
+  assert.equal(mayOpenFireSubject(actor,middle,null),false);
+  assert.equal(mayOpenFireSubject(actor,higher,null),false);
+  const lead={departments:['brandweer'],fireAccessLevel:'leadership'};
+  assert.equal(mayOpenFireSubject(lead,middle,null),true);
+  assert.equal(mayOpenFireSubject(lead,higher,null),true);
+  assert.equal(mayOpenFireSubject({departments:['brandweer'],fireAccessLevel:'none'},staff,null),false);
+  for(const type of ['observatie','notitie','basisnotitie','promotievoorstel'])
+    assert.equal(fireMayCreate(actor,staff,null,type),true);
+  for(const type of ['sanctie','personeelsbeweging'])
+    assert.equal(fireMayCreate(actor,staff,null,type),false);
 });
