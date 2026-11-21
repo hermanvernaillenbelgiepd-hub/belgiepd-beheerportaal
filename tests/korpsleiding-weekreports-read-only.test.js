@@ -5,7 +5,7 @@ import {
  isVerifiedReportCorpsReader,fortnightReportDepartments,mayReadFortnightReport,
  mayRemoveWeekReport
 } from '../src/fortnight-report-policy.js';
-import {canReadServiceDossier} from '../src/service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from '../src/service-dossier-access.js';
 
 const ID='666666666666666666';
 const services=['politie','ambulance','brandweer','depannage'];
@@ -39,6 +39,17 @@ test('cross-service report observation never widens dossier access or write/dele
  assert.match(routes,/!mayRemoveWeekReport\(req\.bpd,report\.dept,snap\.data\)/);
 });
 
+test('Korpsleiding inspecteert alle dienstdossiers zonder bevoegdheden voor schrijven',()=>{
+ for(const dept of services){
+  assert.equal(canInspectServiceDossier(corps,dept),true);
+  assert.equal(canReadServiceDossier(corps,dept),dept==='politie');
+ }
+ const fake={...corps,dossierSourceFresh:false};
+ assert.equal(canInspectServiceDossier(fake,'brandweer'),false);
+ const policy=read('src/service-dossier-access.js');
+ assert.match(policy,/canInspectServiceDossier/);
+ assert.match(policy,/isVerifiedReportCorpsReader\(actor\)/);
+});
 test('unverified, non-Police or stale Corps labels do not unlock other services',()=>{
  const denied=[
  {...corps,discordPoliceRank:null},

@@ -1,6 +1,7 @@
 import {roleForDepartment} from './leave-policy.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {VERIFIED_CORPS_SESSION_MS} from './verified-police-cadre.js';
+import {isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
 
 export const SERVICE_DOSSIER_DEPARTMENTS=Object.freeze(['politie','ambulance','brandweer','depannage']);
 const DISCORD=/^\d{15,22}$/;
@@ -89,6 +90,16 @@ export function canReadServiceDossier(actor,dept){
        actor?.uid==='discord:'+actor?.discordId&&DISCORD.test(actor?.discordId)))
     return false;
   return true;
+}
+
+/**
+ * Cross-service CORPS observation is separate from operational dossier
+ * authorization. This function MUST only be used by read-only endpoints.
+ * Keeping canReadServiceDossier unchanged protects every existing write path.
+ */
+export function canInspectServiceDossier(actor,dept){
+  return Boolean(SERVICE_DOSSIER_DEPARTMENTS.includes(dept)&&
+    (canReadServiceDossier(actor,dept)||isVerifiedReportCorpsReader(actor)));
 }
 
 /** Server-only proof of medical and towing leadership for reading reports.

@@ -1,7 +1,7 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import {brusselsEventDate} from './personnel-event-date.js';
 import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries,sameDayCategories} from './dossier-linked-cases.js';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {SPECIALTY_LABELS} from './normalize.js';
 import {roleForDepartment} from './leave-policy.js';
@@ -104,8 +104,8 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   app.get('/api/registrations/subjects',requireUser,async(req,res)=>{
     try{
       const snap=await getSnapshot();
-      const subset=snap.data.filter(p=>req.bpd.boardCorpsDossierAdmin===true?
-        req.bpd.dossierAllowedDepartments?.includes(p.dept):req.bpd.departments.includes(p.dept));
+      const subset=snap.data.filter(p=>canInspectServiceDossier(req.bpd,p.dept)||
+        req.bpd.departments.includes(p.dept));
       const actor=actorFromPersonnel(req.bpd,subset);
       const importConfig=await historicalSettings();
       const migrationConfig=historicalMigrationSettings((await db()
@@ -142,7 +142,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
   // Registraties zijn uitsluitend zichtbaar voor kaderleden van de juiste dienst.
   app.get('/api/registrations/entries',requireUser,async(req,res)=>{
     const dept=trim(req.query.dept), id=trim(req.query.discordId);
-    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
+    if(!canInspectServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
     if(!isDiscordId(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const snap=await getSnapshot();

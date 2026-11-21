@@ -198,6 +198,7 @@ async function loadReports(){
   reportItems=data.reports||[];
   archivedReportItems=data.archivedReports||[];
   canRemoveReport=data.canRemove===true&&viewData.removeReportDepartments?.includes(dept);
+  updateExportControls(dept);
   renderReports();
   if(data.limited)msg('Maximaal 200 historische handmatige rapporten worden getoond.','notice');
  }catch(e){
@@ -233,21 +234,38 @@ function renderReport(out){
   const end=out.truncated?'<div class="info warn">Let op: ten minste één dossier bevat meer registraties dan deze weergave kan verwerken. Export is geblokkeerd; dit rapport is onvolledig.</div>':'';
   return info+out.sections.map(reportSection).join('')+end;
 }
-function resetReportExport(){activeReport=null;$('exportDocx').disabled=true;$('exportPrint').disabled=true;$('printSheet').replaceChildren();}
+function mayExportCurrentDepartment(dept){
+ return viewData?.exportReportDepartments?.includes(dept)===true;
+}
+function updateExportControls(dept){
+ const allowed=mayExportCurrentDepartment(dept);
+ $('reportExportActions').classList.toggle('hidden',!allowed);
+ $('exportReadOnlyNote').classList.toggle('hidden',allowed);
+ document.body.classList.toggle('can-export',Boolean(allowed&&activeReport));
+}
+function resetReportExport(){
+ activeReport=null;
+ document.body.classList.remove('can-export');
+ $('exportDocx').disabled=true;$('exportPrint').disabled=true;$('printSheet').replaceChildren();
+}
 async function openReport(id){
   resetReportExport();$('reportContents').textContent='Dossiergegevens voor de periode ophalen...';
   try{
     const out=await api('/api/management/reports/'+encodeURIComponent(id));
     const html=renderReport(out);
     $('reportContents').innerHTML=html;
-    // Alleen toegestane exportgebruikers krijgen het afzonderlijke afdrukdocument.
-    if(viewData?.reportDepartments?.includes(out.report.dept)) $('printSheet').innerHTML=html;
-    if(!out.truncated && viewData?.reportDepartments?.includes(out.report.dept)){activeReport=id;$('exportDocx').disabled=false;$('exportPrint').disabled=false;}
-    else msg('Dit weekrapport is niet volledig. Downloaden of afdrukken is geblokkeerd.','error');
+    // Server and selected department must explicitly permit export.
+    const canExport=out.canExport===true&&mayExportCurrentDepartment(out.report.dept);
+    if(canExport&&!out.truncated){
+      $('printSheet').innerHTML=html;activeReport=id;
+      document.body.classList.add('can-export');
+      $('exportDocx').disabled=false;$('exportPrint').disabled=false;
+    }else if(out.truncated && canExport)
+      msg('Dit weekrapport is niet volledig. Downloaden of afdrukken is geblokkeerd.','error');
   }catch(e){$('reportContents').textContent='Rapport niet geladen: '+e.message}
 }
 async function exportWord(){
-  if(!viewData?.canExportReports||!activeReport||!firebaseAuth?.currentUser)return;
+  if(!mayExportCurrentDepartment($('reportDept').value)||!activeReport||!firebaseAuth?.currentUser)return;
   const btn=$('exportDocx');btn.disabled=true;
   try{
     const token=await firebaseAuth.currentUser.getIdToken();
@@ -259,13 +277,14 @@ async function exportWord(){
     const href=URL.createObjectURL(blob),a=document.createElement('a');a.href=href;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),60000);
     msg('Word-bestand aangemaakt. Het blijft een dynamisch concept, geen afgesloten rapport.','good');
   }catch(e){msg('Word-download mislukt: '+e.message,'error')}
-  finally{btn.disabled=!activeReport||!viewData?.canExportReports;}
+  finally{btn.disabled=!activeReport||!mayExportCurrentDepartment($('reportDept').value);}
 }
 $('exportDocx').addEventListener('click',exportWord);
-$('exportPrint').addEventListener('click',()=>{if(!viewData?.canExportReports||!activeReport)return;window.print()});
-function showUser(data){viewData=data;const exportAllowed=data.canExportReports===true;document.body.classList.toggle('can-export',exportAllowed);$('reportExportActions').classList.toggle('hidden',!exportAllowed);$('exportReadOnlyNote').classList.toggle('hidden',exportAllowed);resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),(data.reportDepartments||[]).map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x})),'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=(data.reportDepartments||[]).includes(
+$('exportPrint').addEventListener('click',()=>{if(!mayExportCurrentDepartment($('reportDept').value)||!activeReport)return;window.print()});
+function showUser(data){viewData=data;resetReportExport();subjects=data.subjects;const depts=data.departments.map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x}));selectOptions($('caseDept'),depts,'Kies dienst');selectOptions($('reportDept'),(data.reportDepartments||[]).map(x=>({value:x,label:({'politie':'Politie','ambulance':'Ambulance','brandweer':'Brandweer','depannage':'Depannage'})[x]||x})),'Kies dienst');$('caseDept').value=depts[0]?.value||'';$('reportDept').value=(data.reportDepartments||[]).includes(
  new URLSearchParams(location.search).get('dept'))?
  new URLSearchParams(location.search).get('dept'):data.reportDepartments?.[0]||'';
+ updateExportControls($('reportDept').value);
  let choices=allTypes.filter(t=>roleHigher(data.role)||!['naamswijziging','personeelsbeweging'].includes(t));selectOptions($('entryType'),choices.map(x=>({value:x,label:labels[x]})),'Kies categorie');$('entryType').value=choices[0];$('actorLabel').textContent=data.actor?`Ingevuld door: ${data.actor.name} – ${data.actor.call} (${data.role})`:'Geen gekoppeld personeelslid: opslaan is niet mogelijk.';$('saveCase').disabled=!data.actor||!data.writesEnabled;$('createReport').disabled=!data.actor||!data.writesEnabled;$('needLogin').classList.add('hidden');$('app').classList.remove('hidden');$('status').textContent='';$('status').className='hidden';filterCases();changeExtra();const params=new URLSearchParams(location.search),dept=params.get('dept'),id=params.get('discordId');if(dept&&depts.some(x=>x.value===dept)){$('caseDept').value=dept;filterCases();}if(id&&subjects.some(x=>x.dept===$('caseDept').value&&x.discordId===id)){$('casePerson').value=id;}// Only live reports and their archive remain in the Weekrapportcentrum.
 if((data.reportDepartments||[]).length)loadReports();
 else $('reportList').textContent='Geen weekrapporten beschikbaar binnen je dienstbevoegdheid.';

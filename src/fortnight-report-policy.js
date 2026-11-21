@@ -92,7 +92,7 @@ export function mayReadFortnightReport(actor,dept,roster){
      isVerifiedReportCorpsReader(actor))return true;
   if(!actor?.departments?.includes(dept))return false;
   const scoped=roleForDepartment(actor,dept);
-  if(dept==='politie')return ['officierenkader','korpsleiding'].includes(scoped);
+  if(dept==='politie')return ['middenkader','officierenkader','korpsleiding'].includes(scoped);
   const person=ownRecord(actor,dept,roster);
   if(!person)return false;
   if(dept==='brandweer')return actor.fireZoneChief===true;
@@ -108,6 +108,32 @@ export function mayReadFortnightReport(actor,dept,roster){
   if(dept==='depannage')return actor.reportServiceRoles?.depannageAwv===true||
     matchesDuty(person,/^(?:(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?|AGENTSCHAP WEGEN (?:EN|&) VERKEER(?:[ -]\(?LEIDING\)?)?)$/);
   return false;
+}
+/**
+ * Police Middenkader reads the CURRENT fortnight and immediately previous
+ * automatic fortnight only. Older IDs, manual reports and direct URLs are
+ * rejected server-side; service leaders and higher cadres retain full history.
+ */
+export function mayReadFortnightPeriod(actor,report,today,roster){
+  if(!report||!mayReadFortnightReport(actor,report.dept,roster)||
+     utcDay(today)===null)return false;
+  if(report.dept!=='politie'||
+     isVerifiedReportTechnicalAdmin(actor)||isBoardReader(actor)||
+     isVerifiedReportCorpsReader(actor)||
+     roleForDepartment(actor,'politie')!=='middenkader')return true;
+  if(report.source!=='automatic')return false;
+  const current=fortnightFor(today,'politie');
+  const previousStart=datestr(utcDay(current.periodStart)-14*MS);
+  const previousId='Fpolitie'+previousStart.replaceAll('-','');
+  return report.id===current.id||report.id===previousId;
+}
+/** Export must not inherit read rights. Cross-service leaders retain prior
+ * authorized exports; Police Middenkader is always read-only. */
+export function mayExportFortnightReport(actor,dept,roster){
+  if(!mayReadFortnightReport(actor,dept,roster))return false;
+  return !(dept==='politie'&&roleForDepartment(actor,'politie')==='middenkader'&&
+    !isVerifiedReportTechnicalAdmin(actor)&&!isBoardReader(actor)&&
+    !isVerifiedReportCorpsReader(actor));
 }
 export function fortnightReportDepartments(actor,roster){
   return DEPTS.filter(d=>mayReadFortnightReport(actor,d,roster));

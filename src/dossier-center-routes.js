@@ -1,6 +1,7 @@
 import {getFirestore} from 'firebase-admin/firestore';
 import {dossierScopes,dossierOverviewRows,dossierTimelineEntry} from './dossier-center-policy.js';
 import {validPersonnelKey,canReadPersonnelSubject} from './personnel-editor-policy.js';
+import {isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
 import {CREATED_PERSONNEL_COLLECTION,personnelDataEnabled} from './personnel-create.js';
 import {PERSONNEL_EDITS_COLLECTION} from './personnel-editor-policy.js';
 import {policeOfficialRankLabel} from './personnel-rank-policy.js';
@@ -55,8 +56,8 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
       if(!canReadPersonnelSubject(req.bpd,p))return respond(res,403,'Dossier van Korpsleiding is afgeschermd');
       // Brandweer Middenkader/leiding sees a narrowly scoped identity only;
       // personnel timelines can contain confidential decisions and are suppressed.
-      if(dept==='brandweer'&&req.bpd.fireZoneChief!==true&&
-          req.bpd.boardPersonnelAdmin!==true)
+      if(dept==='brandweer'&&!isVerifiedReportCorpsReader(req.bpd)&&
+          req.bpd.fireZoneChief!==true&&req.bpd.boardPersonnelAdmin!==true)
         return res.json({dept,discordId,readOnly:true,
           personnel:publicPerson(p),timeline:[],fireDossier:true});
       const db=getFirestore();

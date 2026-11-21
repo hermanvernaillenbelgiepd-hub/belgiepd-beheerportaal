@@ -1,5 +1,5 @@
 import {getFirestore,FieldValue,Timestamp} from 'firebase-admin/firestore';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from './service-dossier-access.js';
 import {canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {roleForDepartment} from './leave-policy.js';
 import {canRetireDossierRecord,mayRetireCaseType,isRetired} from './dossier-retirement-policy.js';
@@ -21,7 +21,7 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {POLICE_PROMOTION_PROPOSALS,nextPromotionRank} from './police-promotion-routes.js';
 import {POLICE_RANK_CHOICES,policeSubjectGradeOption} from './personnel-rank-policy.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
-import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin,isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayReadFortnightPeriod,mayExportFortnightReport,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin,isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase,mayAnnotateDossierCase} from './management-utils.js';
 const asString=x=>String(x??'').trim();
@@ -60,14 +60,16 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   app.get('/api/management/overview',requireUser,async(req,res)=>{
     try{
       const snap=await getSnapshot();
-      const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
+      const subjects=snap.data.filter(p=>canInspectServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
       // Only report READ/EXPORT receives the cross-service Korpsleiding
       // exception. Personnel dossiers, write rights and removal remain scoped.
       const reportDepartments=fortnightReportDepartments(req.bpd,snap.data)
         .filter(d=>canReadServiceDossier(req.bpd,d)||
           isVerifiedReportCorpsReader(req.bpd));
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments,writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:reportDepartments.length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
+      const exportReportDepartments=reportDepartments.filter(d=>
+        mayExportFortnightReport(req.bpd,d,snap.data));
+      res.json({role:req.bpd.role,departments:['politie','ambulance','brandweer','depannage'].filter(d=>canInspectServiceDossier(req.bpd,d)),reportDepartments,exportReportDepartments,writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:exportReportDepartments.length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
         typesByDepartment:Object.fromEntries(req.bpd.dossierAllowedDepartments
           .filter(d=>canReadServiceDossier(req.bpd,d))
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
@@ -92,7 +94,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
 
   app.get('/api/management/cases',requireUser,async(req,res)=>{
     const dept=asString(req.query.dept),id=asString(req.query.discordId);
-    if(!canReadServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
+    if(!canInspectServiceDossier(req.bpd,dept))return res.status(403).json({error:'Geen dossierrechten'});
     if(!validDiscord(id))return res.status(400).json({error:'Ongeldige Discord ID'});
     try{
       const snap=await getSnapshot(),subject=uniqueSubject(snap.data,dept,id);
@@ -674,7 +676,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         automated[0].restartedAt=toIso(latestRestart.get('restartedAt'));
         automated[0].restartRevision=latestRestart.get('revision')||1;
       }
-      const available=visibleFortnightReports([...automated,...legacy],hidden,today).sort((a,b)=>
+      const available=visibleFortnightReports([...automated,...legacy],hidden,today)
+        .filter(r=>mayReadFortnightPeriod(req.bpd,r,today,snapshot.data)).sort((a,b)=>
         (b.periodStart||'').localeCompare(a.periodStart||''));
       const {active,archive}=splitReportsByPeriod(available,today);
       res.json({reports:active,archivedReports:archive,
@@ -807,6 +810,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     if(removal.exists&&!isCurrentAutomaticReport(report,today))
       return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
+    if(!mayReadFortnightPeriod(req.bpd,report,today,snap.data))
+      return {status:403,error:'Geen inzagerecht voor deze rapportperiode'};
     const restart=automatic?await db().collection('bpd_weekreport_restarts').doc(id).get():null;
     const resetAt=restart?.exists?restart.get('restartedAt'):null;
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
@@ -989,7 +994,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         item.trainingRequestId&&item.reportCategory==='opleiding').length
     };
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;
-    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,completionSummary,
+    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,completionSummary,canExport:mayExportFortnightReport(req.bpd,report.dept,snap.data),
       recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties en registraties van vóór een rapportherstart zijn uitgesloten. Originele dossiergegevens blijven bestaan. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
   }
   app.get('/api/management/reports/:id',requireUser,async(req,res)=>{
@@ -1003,9 +1008,9 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   app.get('/api/management/reports/:id/docx',requireUser,async(req,res)=>{
     try{
       const report=await assembleReport(req,req.params.id);
-      // Exports use exactly the same server-side service scope as viewing.
-      // The report builder rejects cross-service and non-leadership access.
+      // Export is a separate server-enforced right, never inherited from READ.
       if(report.status)return res.status(report.status).json({error:report.error});
+      if(report.canExport!==true)return res.status(403).json({error:'Downloaden is uitsluitend toegestaan voor bevoegd hoger kader of dienstleiding'});
       if(report.truncated)return res.status(409).json({error:'Rapportinhoud is onvolledig. Word-export is geblokkeerd totdat de ontbrekende registraties zijn verwerkt.'});
       const file=createWeekReportDocx(report);
       const safeName=`BelgiePD_Weekrapport_${report.report.dept}_${report.report.periodStart}_${report.report.periodEnd}.docx`;

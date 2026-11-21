@@ -20,7 +20,7 @@ import {CREATED_PERSONNEL_COLLECTION,PENDING_PERSONNEL_COLLECTION,TEST_RANKS,
 
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {RETURN_CHECK_COLLECTION} from './activity-return-policy.js';
-import {canReadServiceDossier} from './service-dossier-access.js';
+import {canReadServiceDossier,canInspectServiceDossier} from './service-dossier-access.js';
 import {isPolice9xx} from './verified-police-cadre.js';
 import {checkServiceEnrollment} from './service-enrollment-policy.js';
 import {displaySeries} from './normalize.js';
@@ -62,8 +62,8 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
     try {
       const lifecycleDepartments=LIFECYCLE_SERVICES.filter(dept=>canManageLifecycleDepartment(req.bpd,dept));
       const allowed=[...new Set([
-       ...(req.bpd.dossierAllowedDepartments||req.bpd.departments||[])
-        .filter(d=>canReadServiceDossier(req.bpd,d)),
+       ...['politie','ambulance','brandweer','depannage']
+        .filter(d=>canInspectServiceDossier(req.bpd,d)),
        ...(lifecycleDepartments.includes('burger')?['burger']:[])
       ])];
       if(!allowed.length)return error(res,403,'Je hebt geen kaderrechten voor personeelsbeheer');
@@ -949,7 +949,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
   });
   app.get('/api/personnel/:dept/:discordId/history',requireDossierUser,async(req,res)=>{
     if(!validPersonnelKey(req.params.dept,req.params.discordId))return error(res,400,'Ongeldige hulpdienst of Discord ID');
-    if(!canReadServiceDossier(req.bpd,req.params.dept))return error(res,403,'Geen toegang tot dit dienstdossier');
+    if(!canInspectServiceDossier(req.bpd,req.params.dept))return error(res,403,'Geen toegang tot dit dienstdossier');
     try{
       const snap=await getSnapshot();
       const target=snap.data.find(p=>p.dept===req.params.dept&&p.personId===req.params.discordId);

@@ -81,12 +81,12 @@ test('fortnight report permissions are proved separately for each service',()=>{
    {dept:'brandweer',personId:own.discordId,call:'BWM-205'},
    {dept:'depannage',personId:own.discordId,call:'AWV-105'}
  ];
- assert.equal(mayReadFortnightReport(own,'politie',roster),false);
+ assert.equal(mayReadFortnightReport(own,'politie',roster),true);
  // A generic medical cadre does not prove AZLS leadership.
  assert.equal(mayReadFortnightReport(own,'ambulance',roster),false);
  assert.equal(mayReadFortnightReport(own,'brandweer',roster),false);
  assert.equal(mayReadFortnightReport(own,'depannage',roster),true);
- assert.deepEqual(fortnightReportDepartments(own,roster),['depannage']);
+ assert.deepEqual(fortnightReportDepartments(own,roster),['politie','depannage']);
  assert.equal(mayReadFortnightReport({...own,fireZoneChief:true},'brandweer',roster),true);
  assert.equal(mayReadFortnightReport({...own,reportServiceRoles:{ambulanceAzls:true}},'ambulance',roster),true);
  assert.equal(mayReadFortnightReport(own,'ambulance',
