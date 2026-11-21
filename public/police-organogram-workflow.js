@@ -44,8 +44,12 @@ export function buildPoliceWorkflow(item,{
     const list=el('div','persons personnel-card-grid police-workflow-people');
     for(const member of orderedPoliceMiddle(byCall[code])){
      const card=person(member);
-     if(policeWorkflowSeriesNumber(member.reekshoofdReeks)!==null)
-      card.append(el('span','police-workflow-head-tag','REEKSHOOFD'));
+     if(policeWorkflowSeriesNumber(member.reekshoofdReeks)!==null){
+      // Keep the head badge in the text column; as a fourth grid child it
+      // previously forced a new (very narrow) row on compact screens.
+      const identity=card.querySelector?.('.identity');
+      (identity||card).append(el('span','police-workflow-head-tag','REEKSHOOFD'));
+     }
      list.append(card);
     }
     sub.append(list);
