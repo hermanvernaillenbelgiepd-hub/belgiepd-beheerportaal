@@ -123,6 +123,16 @@ function showPane(pane){
 }
 $('requestTab').onclick=()=>showPane('request');
 $('registerTab').onclick=()=>showPane('register');
+// Het bestaande beveiligde register past zijn hoogte aan binnen deze werkruimte.
+// Herkomst én afzender moeten overeenkomen; er worden geen dossiergegevens gedeeld.
+window.addEventListener('message',event=>{
+ const frame=$('trainingRegisterFrame');
+ if(event.origin!==location.origin||event.source!==frame?.contentWindow||
+    event.data?.type!=='bpd-training-register-resize')return;
+ const height=event.data.height;
+ if(!Number.isSafeInteger(height)||height<320||height>16000)return;
+ frame.style.height=(height+16)+'px';
+});
 async function api(url,body){
  if(!auth?.currentUser)throw Error('Meld je aan met je eigen BelgiëPD-account');
  const token=await auth.currentUser.getIdToken();
