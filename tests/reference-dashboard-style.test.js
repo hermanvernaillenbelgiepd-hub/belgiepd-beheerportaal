@@ -25,7 +25,8 @@ test('topbar search is a real link/filter, never fabricated personnel data',()=>
  const roster=read('public/personeelslijst.html');
  assert.match(nav,/function makeReferenceSearch\(source\)/);
  assert.match(nav,/source\(\)\.filter\(item=>item\.href&&item\.label\)/);
- assert.match(nav,/window\.location\.assign\('\/personeelslijst\.html\?zoek='/);
+ assert.match(nav,/window\.location\.assign\('\/personeelsbeheer\.html\?zoek='/);
+ assert.match(read('public/personeelsbeheer.html'),/bpd-directory-search-filter/);
  assert.match(roster,/new URLSearchParams\(location\.search\)\.get\('zoek'\)/);
  assert.match(roster,/\$\('search'\)\.oninput=searchDirectory/);
 });
