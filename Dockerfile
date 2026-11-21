@@ -27,6 +27,7 @@ RUN node --test tests/sanction-overview.test.js
 RUN node --test tests/personnel-event-date-completeness.test.js
 RUN node --test tests/dossier-weekrapport-endcontrole.test.js
 RUN node --test tests/weekreport-immutable-archive.test.js
+RUN node --test tests/dossier-registration-menu-restored.test.js
 RUN node --test tests/leave-report-projection.test.js
 RUN node --test tests/training-completion-overview.test.js
 RUN node --test tests/meldingen-single-refresh-and-movement-groups.test.js
