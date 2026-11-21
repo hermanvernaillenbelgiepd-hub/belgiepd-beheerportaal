@@ -24,7 +24,7 @@ import {isPolice9xx,verifiedOfficerCadre} from './verified-police-cadre.js';
 import {eligibleGeneralTrainingInstructor} from './training-general-instructor-policy.js';
 import {TRAINING_SESSION_COLLECTION,TRAINING_SESSION_DEPARTMENTS,
  validLessonSessionId,validateHeldLessonInput} from './training-session-policy.js';
-import {verifiedFireRoles,fireSubjectClass,FIRE_ROLES} from './fire-dossier-policy.js';
+import {verifiedFireRoles,fireSubjectClass,fireActorClass,FIRE_ROLES} from './fire-dossier-policy.js';
 
 const asText=(v,n=300)=>typeof v==='string' ? v.trim().slice(0,n):'';
 const db=()=>getFirestore();
@@ -110,6 +110,12 @@ async function resolveActor(req,res,next){
     const fireTeacherIds=String(process.env.BPD_FIRE_INSTRUCTOR_ROLE_IDS||'')
       .split(/[\s,;]+/).filter(isDiscordId);
     const base=basePermissions(member,process.env.DISCORD_GUILD_ID,Date.now(),fireTeacherIds);
+    const fireRank=bpd.trustedStaff===true&&bpd.departments?.includes('brandweer')
+      ?bpd.departmentRoles?.brandweer:null;
+    bpd.manualFireRole=['officierenkader','korpsleiding'].includes(fireRank)
+      ?'leadership':fireRank==='middenkader'?'middle':null;
+    bpd.fireAccessLevel=fireActorClass(bpd,
+      verifiedFireRoles(member,process.env.DISCORD_GUILD_ID));
     // Never infer rank from a stale role snapshot, or from an unrelated Discord ID.
     const override=isDiscordId(discordId)?(await db().collection('bpd_permission_overrides').doc(discordId).get()).data():null;
     req.roleActor={bpd,discordId,member,base,perms:effectivePermissions(base,override),
@@ -141,7 +147,8 @@ function trainingAccess(req,dept,kind){
     // use the SAME service-bound permission checks as other departments.
     if(bpd?.boardPersonnelAdmin===true)return kind==='review';
     const verifiedRole=kind==='log'?
-      roles?.has(FIRE_ROLES.teacher)||roles?.has(FIRE_ROLES.leadership):
+      roles?.has(FIRE_ROLES.teacher)||roles?.has(FIRE_ROLES.middle)||
+      roles?.has(FIRE_ROLES.leadership):
       roles?.has(FIRE_ROLES.leadership);
     return Boolean(verifiedRole||
       (kind==='log'?canLogTraining(bpd,dept,perms):
@@ -252,8 +259,12 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
   const mayAccessSubject=(bpd,subject,roleMap)=>{
     if(bpd?.portalTechnicalMode===true&&bpd?.profileTechnicalAvailable===true)return true;
     if(bpd?.boardPersonnelAdmin===true)return true;
-    if(subject.dept==='brandweer')return ['member','trainee'].includes(
-      fireSubjectClass(subject,roleMap?.get(subject.personId)||null));
+    if(subject.dept==='brandweer'){
+      if(bpd.fireAccessLevel==='leadership'&&bpd.departments?.includes('brandweer'))
+        return true;
+      return ['member','trainee'].includes(
+        fireSubjectClass(subject,roleMap?.get(subject.personId)||null));
+    }
     const mayOpenCorps=bpd?.provider==='discord'&&bpd?.trustedStaff===true&&
       bpd?.role==='korpsleiding'&&roleForDepartment(bpd,'politie')==='korpsleiding'&&
       bpd?.discordPoliceRank==='Korpsleiding';
@@ -497,7 +508,8 @@ export function installRoleRoutes(app,{getSnapshot,onSpecialtyChanged}={}){
       const people=candidates.map(toChoice).sort(byCall);
       const instructors=candidates.filter(eligibleGeneralTrainingInstructor).map(toChoice).sort(byCall);
       res.set('Cache-Control','private, no-store');
-      res.json({department,people,instructors,limited:false});
+      res.json({department,people,instructors,limited:false,
+        eligibleSubjects:people.length,matchedRosterSubjects:counts.size});
     }catch(e){error(res,e)}
   });
   app.get('/api/training/:department/:discordId',resolveActor,guardTrainingSubject,async(req,res)=>{
