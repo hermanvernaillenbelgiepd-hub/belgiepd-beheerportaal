@@ -158,7 +158,9 @@ app.get('/technische-rollen-simulatie.html',(req,res,next)=>{
 });
 app.get('/personeelslijst.html',(req,res,next)=>{
  if(req.query.embed==='1')return next();
- res.redirect(302,'/personeelsbeheer.html');
+ const search=typeof req.query.zoek==='string'?req.query.zoek.trim():'';
+ const suffix=search&&search.length<=110?'?zoek='+encodeURIComponent(search):'';
+ res.redirect(302,'/personeelsbeheer.html'+suffix);
 });
 app.use(express.static(path.resolve(dir,'../public'),{index:'index.html',setHeaders:res=>res.set('Cache-Control','no-store')}));
 app.use('/api/citizens',(_req,res)=>res.status(410).json({error:'Burgerdossiers zijn buiten gebruik'}));

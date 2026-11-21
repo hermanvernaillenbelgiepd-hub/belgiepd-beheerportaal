@@ -643,8 +643,15 @@ $('search').oninput=searchDirectory;$('refresh').onclick=load;
 
 window.addEventListener('message',event=>{
  if(!directoryEmbedded||window.parent===window||
-    event.origin!==location.origin||event.source!==window.parent||
-    event.data?.type!=='bpd-directory-series-filter')return;
+    event.origin!==location.origin||event.source!==window.parent)return;
+ if(event.data?.type==='bpd-directory-search-filter'){
+  const query=event.data.query;
+  if(typeof query!=='string'||query.length>110)return;
+  $('search').value=query.trim();
+  searchDirectory();
+  return;
+ }
+ if(event.data?.type!=='bpd-directory-series-filter')return;
  const value=String(event.data.series||'');
  if(!['all','1','2','3'].includes(value))return;
  rosterSeriesFilter=value;

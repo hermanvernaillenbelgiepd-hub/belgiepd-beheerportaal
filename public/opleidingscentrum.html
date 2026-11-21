@@ -68,6 +68,7 @@ main .row h2{margin:0}
  <a class="education-link" href="/opleidingsplanning.html">🎓 Opleidingsplanning · deelnemers en doelgroepen</a>
  <a class="education-link" href="/koppelritten.html">Koppelritten & stages</a>
  <a class="education-link" href="/voltooide-opleidingen.html">Opleidingsresultaten · overzicht voor leiding</a>
+ <a class="education-link" href="/sollicitatiecentrum.html">📋 Sollicitatiecentrum · toekomstige instroom</a>
 </nav>
 <div id="requestPane" role="tabpanel" aria-labelledby="requestTab">
 <div id="feedback" class="status" role="status">Je account en opleidingsmogelijkheden controleren…</div>
@@ -105,7 +106,8 @@ const ADMISSION_NOTICES={
  ambulance:'Voor ambulancerelateerde opleidingen dient men aangenomen te zijn bij de ambulancedienst.',
  depannage:'Voor depannagegerelateerde opleidingen dient men aangenomen te zijn bij de depannagedienst.'
 };
-let auth,authMod,scopes=[],canRegister=false,canReview=false,currentPane='request';
+let auth,authMod,scopes=[],canRegister=false,canReview=false,currentPane=
+ new URLSearchParams(window.location.search).get('pane')==='register'?'register':'request';
 const feedback=(s,bad=false)=>{$('feedback').textContent=s;$('feedback').classList.toggle('error',bad)};
 const el=(tag,value)=>{const e=document.createElement(tag);e.textContent=String(value??'');return e};
 function showPane(pane){

@@ -257,7 +257,7 @@
         return;
       }
       // Backend on /personeelslijst.html still independently verifies access.
-      window.location.assign('/personeelslijst.html?zoek='+encodeURIComponent(q));
+      window.location.assign('/personeelsbeheer.html?zoek='+encodeURIComponent(q));
     });
     return form;
   }
