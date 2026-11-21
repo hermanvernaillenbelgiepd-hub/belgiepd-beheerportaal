@@ -24,3 +24,17 @@ export function resolveFunctionOverrides(instructors,overrides){
  }
  return {instructors:[...all],groupLeaders:leaders};
 }
+
+// Old management screens do not send functionOverrides. Their unrelated edits
+// must never erase an explicitly chosen Groepsleider/Instructeur function.
+// Called INSIDE the Firestore transaction with the current stored placement.
+export function retainPoliceFunctionOverrides(submitted,stored,selectedSpecialties){
+ const supplied=Object.prototype.hasOwnProperty.call(submitted||{},'functionOverrides');
+ if(supplied)return submitted.functionOverrides;
+ const preserved=stored&&typeof stored==='object'&&!Array.isArray(stored)?{...stored}:{};
+ const removed=Object.keys(preserved).filter(name=>!selectedSpecialties.includes(name));
+ if(removed.length)
+  throw Error('Een specialisatie met een vastgelegde groepsfunctie ('+removed.join(', ')+
+   ') kan niet via dit oude formulier verwijderd worden. Wijzig ze via het Organogram.');
+ return preserved;
+}

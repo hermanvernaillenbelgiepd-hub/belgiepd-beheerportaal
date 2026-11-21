@@ -1,3 +1,4 @@
+import {retainPoliceFunctionOverrides} from './specialty-function-overrides.js';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {USER_COLLECTION} from './user-access.js';
 import {activeManualCitizenCouncil} from './citizen-dossier-policy.js';
@@ -800,9 +801,12 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const [old,oldK9,oldMotard,oldDisp,oldAE]=await Promise.all([tx.get(ref),tx.get(k9Ref),tx.get(motardRef),tx.get(dispRef),tx.get(aeRef)]);
     const previous=rawDisplay(old);
     const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
+    // Legacy Rollenbeheer omits this field; resolve against CURRENT Firestore
+    // data inside the same transaction, not against a potentially stale UI.
+    const resolvedOverrides=retainPoliceFunctionOverrides(req.body,preserve.functionOverrides,values.specialties);
     const next=validatePlacement({...preserve,
      specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
-     teacherSpecialties:values.teacherSpecialties,functionOverrides:values.functionOverrides,
+     teacherSpecialties:values.teacherSpecialties,functionOverrides:resolvedOverrides,
      reason:values.reason},'politie');
     tx.set(ref,{...(old.data()||{}),dept:'politie',personId,status:'active',
      boardRole:next.boardRole,leadershipTier:next.leadershipTier,
@@ -817,7 +821,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       teacherSpecialties:previous.teacherSpecialties,functionOverrides:previous.functionOverrides},
      next:{specialties:values.specialties,
       instructorSpecialties:values.instructorSpecialties,
-      teacherSpecialties:values.teacherSpecialties,functionOverrides:values.functionOverrides},
+      teacherSpecialties:next.teacherSpecialties,functionOverrides:next.functionOverrides},
      reason:values.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
     const oldRole=oldK9.exists?oldK9.get('role')||'':'';
     if(oldRole!==values.k9Role){

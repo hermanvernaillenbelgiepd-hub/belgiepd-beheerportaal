@@ -124,6 +124,7 @@ button.alt{background:#26455f}
 <section id="policeVisualPanel" hidden>
 <h2>4. Politiespecialisaties en functievarianten (Organogram)</h2>
 <p class="help">Hier registreer je handmatige specialisatieweergaven zoals K-9 Geleider, Motard In opleiding of Dispatcher. Dit zijn <strong>alleen visuele organogramfuncties</strong>; ze veranderen geen Discord-rollen of bevoegdheden.</p>
+<p class="help"><strong>Groepsleider en instructeur apart instellen?</strong> Gebruik <a class="link" href="/organogram-hierarchie.html">Organogram → Handmatige specialisaties</a>. Een bestaande groepsfunctie blijft behouden wanneer je hier andere velden opslaat.</p>
 <div id="policeVisualChoices" class="chips" role="group" aria-label="Organogramspecialisaties"></div>
 <div class="grid" style="margin-top:12px">
  <label>K-9-functie<select id="visualK9"><option value="">Geen handmatige functie</option><option value="geleider_in_stage">Geleider in stage</option><option value="geleider">Geleider</option><option value="instructeur">Instructeur</option></select></label>
@@ -257,7 +258,15 @@ function renderVisualEditor(){
   wrap.style.cssText='display:flex;gap:6px;align-items:center;border:1px solid #52718e;padding:7px;border-radius:5px';
   const check=document.createElement('input');check.type='checkbox';check.value=spec;
   check.checked=selectedSpecs.has(spec);check.style.width='auto';check.dataset.roleSpec='member';
-  wrap.append(check,make('span',spec));box.append(wrap);
+  wrap.append(check,make('span',spec));
+  const chosenRole=person.functionOverrides?.[spec];
+  if(chosenRole){
+   const titles={lid:'Gewoon lid',groepsleider:'Groepsleider',
+    instructeur:'Instructeur',beide:'Groepsleider én instructeur'};
+   const note=make('small',' · Vastgelegde groepsfunctie: '+(titles[chosenRole]||chosenRole));
+   note.style.cssText='color:#c8e2ff;font-size:11px';wrap.append(note);
+  }
+  box.append(wrap);
   if(!['SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO'].includes(spec)){
    for(const [kind,values] of [['Instructeur',ins],['Docent',teacher]]){
     const tag=document.createElement('label');
@@ -301,6 +310,13 @@ $('visualSave').onclick=async()=>{
  if(dispRole&&dispRole!=='instructeur'){
   const i=instructors.indexOf('DISP');if(i>=0)instructors.splice(i,1);
  }
+ // A legacy screen may edit membership, but must not silently destroy a
+ // separately classified group leader/instructor when removing a specialty.
+ const classified=person.functionOverrides||{};
+ const removedClassified=Object.keys(classified).filter(spec=>!membership.has(spec));
+ if(removedClassified.length)return alertUser(
+  'Deze specialisatie heeft een vastgelegde groepsfunctie: '+removedClassified.join(', ')+
+  '. Wijzig of verwijder de functie eerst via Organogram → Handmatige specialisaties.',true);
  const body={specialties:[...membership],instructorSpecialties:instructors,
   teacherSpecialties:teachers,k9Role,motardRole,dispRole,reason};
  if(!confirm('Handmatige organisatiefuncties voor '+person.name+
