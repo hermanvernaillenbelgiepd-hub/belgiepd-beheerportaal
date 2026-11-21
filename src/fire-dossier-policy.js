@@ -19,19 +19,28 @@ export function verifiedFireRoles(member,guildId,now=Date.now()){
  return new Set(member.roleIds);
 }
 export function fireSubjectClass(subject,roles){
- if(!subject||subject.dept!=='brandweer')return 'none';
- if(!roles)return 'unverified';
- if(roles.has(FIRE_ROLES.leadership))return 'leadership';
- if(roles.has(FIRE_ROLES.middle))return 'middle';
- // Callsigns only restrict visibility, never confer operational authority.
- const duty=String(subject.call||'').trim().toUpperCase();
- const rank=String(subject.rank||'').trim().toUpperCase();
- if(/^ZONE(?:$|[- ]|[0-9])/.test(duty)||/^ZONE(?:$|[- ])/.test(rank))
-   return 'leadership';
- if(/^OOFF[- ]?(?:0[89]|1[0-5])$/.test(duty))return 'middle';
- if(roles.has(FIRE_ROLES.member))return 'member';
- const label=String(subject.call||'')+' '+String(subject.rank||'');
- return /STAG/i.test(label)?'trainee':'unverified';
+  if(!subject||subject.dept!=='brandweer')return 'none';
+  // Een actuele officiële Brandweerpersoneelslijst is een bron voor de
+  // doelpersoon, nooit een bron voor de bevoegdheid van de ingelogde gebruiker.
+  const duty=String(subject.call||'').trim().toUpperCase();
+  const rank=String(subject.rank||'').trim().toUpperCase();
+  if(roles?.has(FIRE_ROLES.leadership)||
+     /^(?:ZONE|OFF)(?:$|[- ]|[0-9])/.test(duty)||
+     /\b(?:ZONECHEF|ZONECOMMANDANT|KOLONEL|MAJOOR|KAPITEIN|LUITENANT|HOGER KADER)\b/.test(rank))
+    return 'leadership';
+  if(roles?.has(FIRE_ROLES.middle)||
+     /^(?:OOFF|OOF)[- ]?\d{1,3}$/.test(duty)||
+     /\b(?:ADJUDANT|SERGEANT|MIDDENKADER)\b/.test(rank))
+    return 'middle';
+  // Bekende basis- en stagefuncties blijven selecteerbaar bij een verlopen
+  // individuele Discord-cache. Een onbekend profiel blijft afgeschermd.
+  if(/^STAG(?:IAIR)?[- ]?\d{0,3}$/.test(duty)||/\bSTAGIAIR\b/.test(rank))
+    return 'trainee';
+  if(roles?.has(FIRE_ROLES.member)||
+     /^(?:BWM|BMW|BW)[- ]?\d{1,3}$/.test(duty)||
+     /\b(?:KORPORAAL|BRANDWEERMAN|BRANDWEERVROUW)\b/.test(rank))
+    return 'member';
+  return 'unverified';
 }
 export function fireActorClass(actor,roles){
  if(!actor?.departments?.includes('brandweer'))return 'none';
@@ -44,10 +53,13 @@ export function fireActorClass(actor,roles){
  return 'none';
 }
 export function mayOpenFireSubject(actor,subject,subjectRoles){
- if(actor?.boardPersonnelAdmin===true||actor?.fireZoneChief===true||
-    actor?.portalTechnicalMode===true)return true;
- return ['leadership','middle'].includes(actor?.fireAccessLevel)&&
- ['member','trainee'].includes(fireSubjectClass(subject,subjectRoles));
+  if(!subject||subject.dept!=='brandweer')return false;
+  if(actor?.boardPersonnelAdmin===true||actor?.fireZoneChief===true||
+     actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)return true;
+  if(!actor?.departments?.includes('brandweer'))return false;
+  if(actor.fireAccessLevel==='leadership')return true;
+  return actor.fireAccessLevel==='middle'&&
+    ['member','trainee'].includes(fireSubjectClass(subject,subjectRoles));
 }
 export function fireRecordVisibility(actor,subject,subjectRoles){
  if(!mayOpenFireSubject(actor,subject,subjectRoles))return 'none';
@@ -56,18 +68,20 @@ export function fireRecordVisibility(actor,subject,subjectRoles){
  return actor?.fireAccessLevel==='leadership'?'leadership':'identity';
 }
 export function fireCanWithdrawSanction(actor,subject,subjectRoles){
-  return actor?.discordId!==subject?.personId&&
+  return Boolean(actor?.discordId!==subject?.personId&&
     (verifiedBoardCorpsDossierAdmin(actor)||actor?.fireZoneChief===true||
+      actor?.fireAccessLevel==='leadership'&&actor?.departments?.includes('brandweer')||
       actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)&&
-    fireRecordVisibility(actor,subject,subjectRoles)==='full';
+    ['full','leadership'].includes(fireRecordVisibility(actor,subject,subjectRoles)));
 }
 export function fireSanctionLevel(actor){
   if(verifiedBoardCorpsDossierAdmin(actor)||actor?.fireZoneChief===true||
      actor?.portalTechnicalMode===true&&actor?.profileTechnicalAvailable===true)
     return 'korpsleiding';
-  return actor?.fireAccessLevel==='leadership'?'middenkader':null;
+  return actor?.fireAccessLevel==='leadership'&&
+    actor?.departments?.includes('brandweer')?'korpsleiding':null;
 }
-// Proposals and opinions are advisory only; no rank or access changes.
+// Promotievoorstellen blijven advies, zonder automatische rang-/rolwijziging.
 export function fireMayProposePromotion(actor,subject,subjectRoles){
  if(!actor||!subject||actor.discordId===subject.personId)return false;
  const scope=fireRecordVisibility(actor,subject,subjectRoles);
@@ -83,17 +97,16 @@ export function fireMayAdvisePromotion(actor,subject,subjectRoles){
   (actor.fireZoneChief===true&&scope==='full');
 }
 export function fireMayCreate(actor,subject,subjectRoles,type){
- if(type==='promotievoorstel')return fireMayProposePromotion(actor,subject,subjectRoles);
- if(verifiedBoardCorpsDossierAdmin(actor))
-   return actor.discordId!==subject?.personId&&
-     ['observatie','basisnotitie','notitie','sanctie'].includes(type);
- const scope=fireRecordVisibility(actor,subject,subjectRoles);
- if(actor?.boardPersonnelAdmin===true&&!actor?.fireZoneChief&&
-    actor?.portalTechnicalMode!==true)return false;
- // Brandweerleiding mirrors Police Middenkader for lower fire personnel:
- // observations, routine/important notes and limited sanctions. ZONE has
- // corps leadership powers, but only inside the Brandweer service.
- return scope==='identity'?type==='observatie':
- scope==='leadership'||scope==='full'?
- ['observatie','basisnotitie','notitie','sanctie','personeelsbeweging'].includes(type):false;
+  if(type==='promotievoorstel')return fireMayProposePromotion(actor,subject,subjectRoles);
+  if(!actor||!subject||actor.discordId===subject.personId)return false;
+  if(verifiedBoardCorpsDossierAdmin(actor))
+    return ['observatie','basisnotitie','notitie','sanctie'].includes(type);
+  const scope=fireRecordVisibility(actor,subject,subjectRoles);
+  if(actor?.boardPersonnelAdmin===true&&!actor?.fireZoneChief&&
+     actor?.portalTechnicalMode!==true)return false;
+  if(scope==='identity')
+    return ['observatie','basisnotitie','notitie'].includes(type);
+  if(scope==='leadership'||scope==='full')
+    return ['observatie','basisnotitie','notitie','sanctie','personeelsbeweging'].includes(type);
+  return false;
 }
