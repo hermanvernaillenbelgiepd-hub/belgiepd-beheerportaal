@@ -969,6 +969,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     // aan Brandweer Middenkader of Brandweerleiding.
     const restrictedFire=scope.departments.includes('brandweer')&&
       req.bpd.boardPersonnelAdmin!==true&&req.bpd.fireZoneChief!==true&&
+      req.bpd.fireAccessLevel!=='leadership'&&
       req.bpd.portalTechnicalMode!==true;
     if(restrictedFire&&new RegExp('^/api/(personnel|staff-dossiers|registrations|management|specializations|function-changes)(/|$)').test(req.path)){
       const dept=req.params?.dept||req.query?.dept||req.body?.dept;
