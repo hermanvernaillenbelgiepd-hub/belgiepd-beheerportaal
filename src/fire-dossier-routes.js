@@ -156,6 +156,7 @@ export function installFireDossierRoutes(app,{requireUser,getSnapshot}){
        leave,canLogManualLeave,profile,olderNotes:oldNotes,dossierHistory,
        canWrite,sanctionTypes,sanctionReasons:SANCTION_REASONS,
        canWithdrawSanctions:fireCanWithdrawSanction(req.bpd,person,roles),canEditSpecialties:(verifiedBoardCorpsDossierAdmin(req.bpd)||req.bpd.fireZoneChief===true||
+        req.bpd.fireAccessLevel==='leadership'&&req.bpd.departments?.includes('brandweer')||
         req.bpd.portalTechnicalMode===true&&req.bpd.profileTechnicalAvailable===true)&&
        req.bpd.discordId!==person.personId,
        specialties:listed(person.specialties).map(x=>({
