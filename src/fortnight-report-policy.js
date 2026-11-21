@@ -71,11 +71,25 @@ export const isVerifiedReportTechnicalAdmin=actor=>authenticatedActor(actor)&&
   actor.role==='beheerder'&&actor.portalTechnicalMode===true&&
   actor.profileTechnicalAvailable===true;
 
+/**
+ * Korpsleiding may inspect all service weekreports, independent of their
+ * personnel-dossier scope. Require the approved Police cadre plus separate,
+ * time-limited guild verification (or independently approved manual recovery).
+ * This is READ ONLY: deletion, restarting, creating and dossier mutations keep
+ * their own stricter, service-scoped policies.
+ */
+export const isVerifiedReportCorpsReader=actor=>authenticatedActor(actor)&&
+  actor?.portalTechnicalMode!==true&&actor?.dossierSourceFresh===true&&
+  actor.role==='korpsleiding'&&actor.departments?.includes('politie')&&
+  roleForDepartment(actor,'politie')==='korpsleiding'&&
+  (actor.discordPoliceRank==='korpsleiding'||actor.manualCorpsApproved===true);
+
 export function mayReadFortnightReport(actor,dept,roster){
   if(!DEPTS.includes(dept))return false;
   // Verified Bestuur reads every service's reports; only the separately
   // authenticated technical manager gains additional deletion rights.
-  if(isVerifiedReportTechnicalAdmin(actor)||isBoardReader(actor))return true;
+  if(isVerifiedReportTechnicalAdmin(actor)||isBoardReader(actor)||
+     isVerifiedReportCorpsReader(actor))return true;
   if(!actor?.departments?.includes(dept))return false;
   const scoped=roleForDepartment(actor,dept);
   if(dept==='politie')return ['officierenkader','korpsleiding'].includes(scoped);

@@ -21,7 +21,7 @@ import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {POLICE_PROMOTION_PROPOSALS,nextPromotionRank} from './police-promotion-routes.js';
 import {POLICE_RANK_CHOICES,policeSubjectGradeOption} from './personnel-rank-policy.js';
 import {staffActivityFollowup} from './staff-activity-followup.js';
-import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin} from './fortnight-report-policy.js';
+import {automaticFortnightReports,parseAutomaticReportId,mayReadFortnightReport,fortnightReportDepartments,mayRemoveWeekReport,splitReportsByPeriod,isCurrentAutomaticReport,visibleFortnightReports,includedAfterReportRestart,isVerifiedReportTechnicalAdmin,isVerifiedReportCorpsReader} from './fortnight-report-policy.js';
 import {verifiedBoardCorpsDossierAdmin} from './board-corps-dossier-policy.js';
 import {CADRE_ROLES, MANAGEMENT_TYPES, RECORD_LABELS,mayReadManagement,mayWriteManagement,uniqueSubject,validDiscord,validateManagementEntry,validateWeekReport,reportSections,safeReportId,mayClassifyTest,isTestRecord,validateTestClassification,mayExportWeekReport,mayCorrectManualCase,mayAnnotateDossierCase} from './management-utils.js';
 const asString=x=>String(x??'').trim();
@@ -62,7 +62,12 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       const snap=await getSnapshot();
       const subjects=snap.data.filter(p=>canReadServiceDossier(req.bpd,p.dept)).map(p=>({dept:p.dept,discordId:p.personId,name:p.name,call:p.call,rank:p.rank}));
       const actor=actorFromPersonnel(req.bpd,snap.data);
-      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)),writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d,t))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)).length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
+      // Only report READ/EXPORT receives the cross-service Korpsleiding
+      // exception. Personnel dossiers, write rights and removal remain scoped.
+      const reportDepartments=fortnightReportDepartments(req.bpd,snap.data)
+        .filter(d=>canReadServiceDossier(req.bpd,d)||
+          isVerifiedReportCorpsReader(req.bpd));
+      res.json({role:req.bpd.role,departments:req.bpd.dossierAllowedDepartments.filter(d=>canReadServiceDossier(req.bpd,d)),reportDepartments,writesEnabled:enabled()&&req.bpd.dossierAllowedDepartments.some(d=>MANAGEMENT_TYPES.some(t=>mayWriteManagement(req.bpd,d))),canClassifyTests:req.bpd.dossierNativeDepartments.some(d=>mayClassifyTest(req.bpd,d)),canExportReports:reportDepartments.length>0,removeReportDepartments:enabled()?fortnightReportDepartments(req.bpd,snap.data).filter(d=>canReadServiceDossier(req.bpd,d)&&mayRemoveWeekReport(req.bpd,d,snap.data)):[],actor,subjects,types:MANAGEMENT_TYPES.filter(t=>req.bpd.dossierAllowedDepartments.some(d=>mayWriteManagement(req.bpd,d,t))),
         typesByDepartment:Object.fromEntries(req.bpd.dossierAllowedDepartments
           .filter(d=>canReadServiceDossier(req.bpd,d))
           .map(d=>[d,MANAGEMENT_TYPES.filter(t=>mayWriteManagement(req.bpd,d,t))]))});
@@ -649,7 +654,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     try{
       const snapshot=await getSnapshot();
       if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
-      if(!canReadServiceDossier(req.bpd,dept)||
+      if((!canReadServiceDossier(req.bpd,dept)&&
+          !isVerifiedReportCorpsReader(req.bpd))||
         !mayReadFortnightReport(req.bpd,dept,snapshot.data))
         return res.status(403).json({error:'Alleen de aangewezen leiding van deze dienst mag de rapporten raadplegen'});
       const [snaps,removals]=await Promise.all([
@@ -791,7 +797,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     // This does NOT reactivate them in the regular personnel roster.
     const snap=await getSnapshot({includeArchived:true});
     if(snap.stale)return {status:503,error:'Personeelsbron niet actueel'};
-    if(!canReadServiceDossier(req.bpd,report.dept)||
+    if((!canReadServiceDossier(req.bpd,report.dept)&&
+        !isVerifiedReportCorpsReader(req.bpd))||
       !mayReadFortnightReport(req.bpd,report.dept,snap.data))
       return {status:403,error:'Geen toegang tot deze dienstgebonden rapportage'};
     // A removed report must not be accessible via a guessed direct URL or export.
