@@ -160,6 +160,30 @@ export function orderedPoliceMiddle(rows){
   (numeric(a.call)??9999)-(numeric(b.call)??9999)||
   clean(a.name).localeCompare(clean(b.name),'nl'));
 }
+// The three workflow columns are the OFFICIAL personnel REEKS assignments,
+// not numerical 600/700 callsign lanes. No inferred series, no access grants.
+export function policeWorkflowSeriesNumber(value){
+ const text=String(value??'').trim();
+ const hit=/^(?:(?:reeks|serie|series)\\s*0?([1-3])|r0?([1-3])|0?([1-3]))$/i.exec(text);
+ return hit?Number(hit[1]||hit[2]||hit[3]):null;
+}
+export function policeWorkflowGroups(leadership){
+ const tiers=['Middenkader','Basiskader','Agentenkader'];
+ const empty=()=>({Middenkader:[],Basiskader:[],Agentenkader:[]});
+ const groups={'1':empty(),'2':empty(),'3':empty(),unassigned:empty()};
+ for(const entry of leadership||[]){
+  if(!tiers.includes(entry?.label))continue;
+  for(const person of entry.members||[]){
+   if(person?.dept!=='politie')continue;
+   // Verified roster assignment first. Reekshoofd information is a
+   // presentation-only fallback for a head without a stored member REEKS.
+   const series=policeWorkflowSeriesNumber(person.series)||
+     policeWorkflowSeriesNumber(person.reekshoofdReeks);
+   groups[series===null?'unassigned':String(series)][entry.label].push(person);
+  }
+ }
+ return groups;
+}
 export function policeMiddleColumns(rows){
  const columns={'600':[],'700':[],'800':[],other:[]};
  for(const person of rows){
