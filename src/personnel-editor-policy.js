@@ -78,6 +78,15 @@ export function canViewPersonnel(actor,dept){
   if(!SERVICES.has(dept))return false;
   if(actor?.boardPersonnelAdmin===true)return true;
   if(!actor?.departments?.includes(dept))return false;
+  if(dept==='brandweer'){
+    // Middenkader werkt uitsluitend via beperkte dossiers in Dossiercentrum,
+    // nooit via het algemene Beheer > Personeelsfiches.
+    return Boolean(actor.fireZoneChief===true||
+      actor.fireAccessLevel==='leadership'&&
+      actor.dossierNativeDepartments?.includes('brandweer')||
+      actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&
+      actor.uid==='discord:'+actor.discordId);
+  }
   const scoped=roleForDepartment(actor,dept);
   return ['middenkader','officierenkader','korpsleiding'].includes(scoped)||
     (actor.role==='beheerder'&&scoped==='beheerder');
@@ -101,6 +110,10 @@ export function canEditPersonnel(actor,person){
      !actor.dossierNativeDepartments.includes(person.dept))return false;
   const scoped=roleForDepartment(actor,person.dept);
   if(person.dept==='brandweer'&&actor.fireZoneChief===true)return true;
+  if(person.dept==='brandweer'&&actor.fireAccessLevel==='leadership'&&
+     actor.departments?.includes('brandweer')&&
+     actor.dossierAllowedDepartments?.includes('brandweer')&&
+     actor.dossierNativeDepartments?.includes('brandweer'))return true;
   if(actor.portalTechnicalMode===true||actor.role==='beheerder'&&scoped==='beheerder')return true;
   // De goedgekeurde dienstrol bepaalt de bevoegdheid, niet het Bestuur-label
   // en niet uitsluitend de globale (mogelijk anders weergegeven) accountrol.
@@ -124,7 +137,8 @@ export function canEditGeneralPersonnelInfo(actor,person){
   // ZONE is the Fire equivalent of operational Korpsleiding, provided that
   // the Fire role, allowed department and native staff scope are server-verified.
   // This does not grant ZONE any authority in Police, Ambulance or Depannage.
-  if(person.dept==='brandweer'&&actor?.fireZoneChief===true&&
+  if(person.dept==='brandweer'&&
+     (actor?.fireZoneChief===true||actor?.fireAccessLevel==='leadership')&&
      actor?.departments?.includes('brandweer')&&
      actor?.dossierNativeDepartments?.includes('brandweer')&&
      actor?.dossierAllowedDepartments?.includes('brandweer'))return true;
