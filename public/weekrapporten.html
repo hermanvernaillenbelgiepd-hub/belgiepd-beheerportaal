@@ -68,7 +68,7 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 @media(max-width:750px){.case-ledger{grid-template-columns:1fr}.case-group.wide{grid-column:auto}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
 </head><body>
-<header><div class="head"><div><div class="brand">BelgiëPD Beheerportaal</div><div class="subtitle">Weekrapporten · Rapportregistraties · Archief</div></div><a href="/" class="ghost" style="padding:9px 12px;border-radius:9px">← Startpagina</a><div class="head-right"><a href="/discord-status.html" style="color:#adc9ff;font-size:12px">Mijn profiel</a><span id="authStatus">Aanmelding controleren…</span><button class="secondary" id="authBtn" type="button">Google aanmelden</button></div></div></header>
+<header><div class="head"><div><div class="brand">BelgiëPD Beheerportaal</div><div class="subtitle">Weekrapporten · Historische inzage · Archief</div></div><a href="/" class="ghost" style="padding:9px 12px;border-radius:9px">← Startpagina</a><div class="head-right"><a href="/discord-status.html" style="color:#adc9ff;font-size:12px">Mijn profiel</a><span id="authStatus">Aanmelding controleren…</span><button class="secondary" id="authBtn" type="button">Google aanmelden</button></div></div></header>
 <main><div class="intro"><div><h1>Weekrapportcentrum</h1><p>Automatische tweewekelijkse rapporten en het bestaande rapportregistratieregister. Personeelsdossiers beheer je in het Dossiercentrum. <a href="/voltooide-opleidingen.html">Overzicht voltooide opleidingen</a>.</p></div></div>
 <div class="info">Dit scherm is voor <strong>weekrapporten</strong> en de bijbehorende registraties. Voor de actuele personeelsfiche, observaties en sancties gebruik je het <a id="returnToServiceDossiers" href="/dossiercentrum.html">Dossiercentrum</a>. Bestaande rapportregistraties en hun audit blijven ongewijzigd. De rapportinhoud wordt voorlopig dynamisch samengesteld.</div>
 <div id="status" role="status" aria-live="polite"></div>
@@ -79,12 +79,20 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:9px"><h2>Automatische tweewekelijkse rapporten</h2><button class="secondary" id="reloadReports" type="button">Verversen</button></div><div class="report-dept-filter"><label class="field-label" for="reportDept">Weekrapporten van hulpdienst</label><select id="reportDept" aria-label="Selecteer hulpdienst voor weekrapporten"></select></div><p class="muted">Elke rapportperiode loopt 14 kalenderdagen, van maandag tot en met de tweede zondag. De lopende rapporten staan hieronder. Afgesloten periodes blijven raadpleegbaar via het archief.</p><div id="reportList"></div><details id="reportArchive" class="report-archive"><summary>Archief weekrapporten (<span id="archiveCount">0</span>)</summary><p class="muted">Oude rapportperiodes blijven raadpleegbaar. De inhoud wordt voorlopig nog dynamisch uit de huidige dossierregistraties samengesteld; dit zijn geen onveranderlijke archiefkopieën.</p><div id="reportArchiveList">Geen oudere rapporten.</div></details></div></div>
 <div><div class="card"><div class="report-heading"><h2>Rapportinhoud</h2><div class="report-actions hidden" id="reportExportActions"><button class="secondary" id="exportDocx" type="button" disabled>Word downloaden</button><button class="secondary" id="exportPrint" type="button" disabled>PDF opslaan / afdrukken</button></div></div><p class="muted hidden" id="exportReadOnlyNote">Je kunt deze rapporten alleen inzien binnen jouw geverifieerde dienstbevoegdheden.</p><p class="muted">Automatisch samengesteld uit bestaande Firestore-dossiers; Word-documenten en oude Google-dossierbladen zijn nog niet geïmporteerd.</p><div id="reportContents" class="report-preview">Selecteer links een weekrapport.</div></div></div></div></section>
 <details id="reportRegistrations" class="report-archive" aria-label="Historische rapportregistraties">
- <summary>Historische rapportregistraties en aanvullende invoer</summary>
- <p class="muted">Alleen nodig om bestaande rapportregistraties te raadplegen of aan te vullen. Dit is geen tweede personeelsdossier.</p>
- <section id="casesView"><div class="info">Dit is het bestaande <strong>rapportregistratieregister</strong> en geen tweede personeelsdossier. Historische registraties blijven raadpleegbaar en tellen volgens hun ingestelde regels mee in de weekrapporten. Nieuwe dossiergegevens beheer je in het <a href="/dossiercentrum.html">Dossiercentrum</a>.</div><div class="layout"><div>
-<div class="card"><h2>Aanvullende rapportregistratie</h2><p id="actorLabel">Identiteit laden...</p><form id="caseForm"><div class="form-grid">
+ <summary>Historische dossierregistraties (raadplegen)</summary>
+ <p class="muted">Dit is de historische inzage, niet een tweede invoerformulier. Nieuwe registraties maak je uitsluitend in het bevoegde personeelsdossier. Bestaande gegevens en audit blijven behouden.</p>
+ <section id="casesView"><div class="info">Hier raadpleeg je historische registraties. Het <a href="/dossiercentrum.html">Dossiercentrum</a> is de centrale invoerweg; de weekrapporten worden samengesteld uit dossier- en opleidingsregistraties.</div><div class="layout"><div>
+<div class="card"><h2>Oudere registraties opzoeken</h2>
+<p class="muted">Selecteer hulpdienst en medewerker. Voor nieuwe gegevens gebruik je het <a href="/dossiercentrum.html">Dossiercentrum</a>.</p>
+<div class="form-grid">
 <div><label class="field-label" for="caseDept">Hulpdienst</label><select id="caseDept" required></select></div>
 <div><label class="field-label" for="casePerson">Betrokken personeelslid</label><select id="casePerson" required></select></div>
+</div>
+<!-- Tijdelijk verborgen compatibiliteitsscherm; geen tweede actieve invoer.
+     Servermachtigingen en oude dossierregistraties blijven intact. -->
+<section id="legacyReportEntry" hidden inert aria-hidden="true">
+<p id="actorLabel">Oudere invoer is via het Weekrapportcentrum niet meer beschikbaar.</p>
+<form id="caseForm"><div class="form-grid">
 <div><label class="field-label" for="entryType">Categorie</label><select id="entryType" required></select></div>
 <div><label class="field-label" for="entryDate">Datum gebeurtenis</label><input type="date" id="entryDate" required></div>
 <div id="endDateWrap" class="hidden"><label class="field-label" for="endDate">Einddatum verlof</label><input type="date" id="endDate"></div>
@@ -94,14 +102,14 @@ main{max-width:1250px;margin:26px auto;padding:0 20px 48px}.intro{display:flex;j
 <div id="movementWrap" class="hidden"><label class="field-label" for="movement">Soort personeelsbeweging</label><input id="movement" maxlength="150"></div>
 <div class="full"><label class="field-label" for="details">Omschrijving / motivering</label><textarea id="details" maxlength="4000" required placeholder="Omschrijf de feiten en de relevante beslissing of opvolging"></textarea></div>
 <div class="full"><label class="field-label" for="referenceUrl">Bewijs- of documentlink (optioneel, https)</label><input id="referenceUrl" type="url" maxlength="800" placeholder="https://..."></div>
-</div><div class="buttons"><button class="primary" id="saveCase" type="submit">Registratie opslaan</button></div></form><p class="muted">De werkelijke auteur wordt automatisch vastgelegd via Google-login en gekoppelde Discord ID. Personeelsbewegingen worden hier alleen gelogd, niet naar Google Sheets gesynchroniseerd.</p></div></div>
+</div><div class="buttons"><button class="primary" id="saveCase" type="submit">Registratie opslaan</button></div></form></section></div></div>
 <div><div class="card"><div class="case-head">
-  <h2>Bestaande dossierregistraties voor rapporten</h2>
+  <h2>Historische dossierregistraties</h2>
   <div class="buttons"><button class="secondary" id="reloadCases" type="button">Verversen</button></div>
- </div><p class="muted">Deze rubrieken tonen het bewaarde registratieregister dat weekrapporten voedt. De primaire personeelsdossiers worden afzonderlijk beheerd. Er worden hier geen bestaande registraties verwijderd.</p>
+ </div><p class="muted">Deze registraties blijven bewaard en tellen, volgens hun geldende regels, mee in de weekrapporten. Alleen daartoe bevoegde beheerders kunnen historische testmarkeringen corrigeren.</p>
  <div id="caseList">Selecteer een personeelslid.</div></div></div></div></section>
 </details></div>
-</main><footer>BelgiëPD Beheerportaal · Weekrapporten en rapportregistraties · Toegang volgens dienstbevoegdheid</footer>
+</main><footer>BelgiëPD Beheerportaal · Weekrapporten en historische inzage · Toegang volgens dienstbevoegdheid</footer>
 <script type="module">
 const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={observatie:'Observatie',sanctie:'Sanctie',functiewijziging:'Functiewijziging',verlof:'Verlof',notitie:'Personeelsnotitie',opleiding:'Gedane opleiding',naamswijziging:'Naamswijziging',promotievoorstel:'Promotievoorstel',personeelsbeweging:'Personeelsbeweging'};

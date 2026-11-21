@@ -3,16 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
-test('dossiercentrum only offers report links for openable service dossiers',()=>{
+test('dossiercentrum offers only the authorized dossier route',()=>{
  const page=read('public/dossiercentrum.html');
  assert.match(page,/if\(r\.canOpen===true\)\{/);
  const i=page.indexOf('if(r.canOpen===true)'),j=page.indexOf('}else{\n      const locked=',i);
  assert.ok(j>i);
  const section=page.slice(i,j);
- assert.match(section,/\['politie','brandweer','ambulance','depannage'\]\.includes\(r\.dept\)/);
- assert.match(section,/link\.href='\/weekrapporten\.html\?'\+new URLSearchParams\(\{/);
- assert.match(section,/dept:r\.dept,discordId:r\.discordId/);
- assert.match(section,/\+'#registraties'/);
+ assert.match(section,/cell\.append\(button\)/);
+ assert.doesNotMatch(section,/Rapportregistraties|weekrapporten\.html/);
  assert.match(page,/const permittedDeepLink=applyInitialDossierLink&&/);
  assert.match(page,/some\(o=>o\.value===requestedDossierDept\)/);
  assert.match(page,/\$\('query'\)\.value=requestedDossierSearch/);
