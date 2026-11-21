@@ -814,7 +814,7 @@ function syncNotificationJump(){
    if(panel.hidden)continue;
    const summary=panel.querySelector('.notification-fold > summary');
    if(!summary)continue;
-   const title=summary.textContent.replace(/\\s+/g,' ').trim();
+   const title=summary.textContent.replace(/\s+/g,' ').trim();
    if(!title)continue;
    const option=document.createElement('option');
    option.value=panel.id;option.textContent=title;optgroup.append(option);visibleCount++;
