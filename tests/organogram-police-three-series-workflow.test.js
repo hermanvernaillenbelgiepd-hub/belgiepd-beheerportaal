@@ -107,7 +107,7 @@ test('MAIN document remains role-protected and routes only detailed police view'
  assert.match(page,/else for\(const level of item\.leadership\)/);
  assert.match(page,/if\(solo&&settings\.id!=='politie'\)/);
  assert.match(page,/authFetch\('\/api\/organogram\/hierarchie'\)/);
- assert.match(page,/state\.loaded&&!state\.demo/);
+ assert.match(page,/if\(!state\.loaded&&!state\.demo\)/);
  assert.doesNotMatch(js,/fetch\(|authFetch\(|fetch\s*\(/);
  assert.doesNotMatch(js,/\bPOST\b|\bDELETE\b|\bPATCH\b/);
  assert.match(js,/managerReady&&!state\.demo/);
