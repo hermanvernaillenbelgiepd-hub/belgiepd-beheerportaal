@@ -39,7 +39,7 @@ test('Lifecycle, modern grade change and legacy promotion all write a dated immu
  assert.match(lifecycle,/source:'honorable-inp-reentry'/);
  assert.match(lifecycle,/source:'personnel-lifecycle-'\+action/);
  assert.match(lifecycle,/dossierCaseLogged:true,eventDate/);
- assert.match(report,/const snap=await getSnapshot\(\{includeArchived:true\}\)/);
+ assert.match(report,/sourceSnapshot\|\|await getSnapshot\(\{includeArchived:true\}\)/);
  assert.match(report,/change\.dossierCaseLogged===true/);
 });
 test('Training completion appears in dossier and fortnight report on scheduled event date, without duplicate register',()=>{
