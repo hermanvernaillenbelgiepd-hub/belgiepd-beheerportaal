@@ -132,3 +132,41 @@ test('both JavaScript modules and original inline UI remain valid ES modules',()
   assert.equal(result.status,0,result.stderr);
  }
 });
+
+test('police REEKS cards fill the complete column and keep legible text',()=>{
+ // Legacy cards have width:218px; specific workflow selectors MUST override it.
+ assert.match(css,/#services \.police-workflow \.police-workflow-people\.personnel-card-grid > \.person \{/);
+ assert.match(css,/display:grid;\s*grid-template-columns:28px 58px minmax\(0,1fr\)/);
+ assert.match(css,/width:100%;\s*max-width:none;\s*min-width:0;/);
+ assert.match(css,/> \.person > \.identity \{/);
+ assert.match(css,/word-break:normal;\s*overflow-wrap:break-word/);
+ assert.match(css,/\.person-role-flags \.flag \{[\s\S]*?white-space:nowrap/);
+ assert.match(css,/\.police-workflow-head-tag \{[\s\S]*?white-space:nowrap/);
+ assert.match(css,/@container \(max-width:280px\)/);
+});
+test('REEKSHOOFD label stays inside the name/rank column, not an extra grid child',()=>{
+ const source=js.replace(/^import \{[\s\S]*?\} from '\/assets\/organogram-hierarchie-model\.js';/m,'')
+  .replace('export function buildPoliceWorkflow','function buildPoliceWorkflow');
+ const sandbox={el:fakeNode,policeWorkflowGroups,policeWorkflowSeriesNumber,
+  policeMiddleColumns,orderedPoliceMiddle:arr=>[...arr],
+  orderedSpecialtyMembers:arr=>[...arr]};
+ runInNewContext(source+';this.builder=buildPoliceWorkflow',sandbox);
+ const deps={el:fakeNode,person:person=>{
+  const card=fakeNode('button','person',person.call);
+  const identity=fakeNode('span','identity',person.name);
+  card.append(identity);
+  card.querySelector=selector=>selector==='.identity'?identity:null;
+  return card;
+ },cadrePeopleList:members=>fakeNode('div','personnel',String(members.length)),
+  policeInterventions:()=>fakeNode('details','police-intervention-group'),
+  middleCadreLayout:()=>fakeNode('div','middle-cadre'),
+  state:{cadreOpen:{},serviceOpen:{},demo:false},managerReady:false,
+  syncCadreToggle(){}};
+ const flow=sandbox.builder(roster,deps);
+ const cards=flatten(flow).filter(n=>n.tag==='button'&&n.cls==='person');
+ const head=cards.find(n=>n.text==='700');
+ assert.ok(head);
+ assert.equal(head.children.length,1,'head tag must not be an extra card grid child');
+ assert.deepEqual(head.children[0].children.map(n=>n.text),['REEKSHOOFD']);
+ assert.match(js,/card\.querySelector\?\.\('\.identity'\)/);
+});
