@@ -32,7 +32,9 @@ export function installDossierCenterRoutes(app,{requireUser,getSnapshot}){
     try{
       const snap=await getSnapshot();
       const personnel=snap.data.filter(p=>scopes.personnelDepartments.includes(p.dept));
-      const rows=dossierOverviewRows(personnel,[],scopes).map(row=>({
+      const rows=dossierOverviewRows(personnel,[],scopes)
+        .filter(row=>row.dept!=='brandweer'||row.canOpen===true)
+        .map(row=>({
         ...row,
         verifiedFunction:row.dept==='depannage'&&row.discordId?
           req.bpd.depannageSubjectFunctions?.[row.discordId]||null:null
