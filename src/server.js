@@ -998,7 +998,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
 installRegistrationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installSanctionOverviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installBasicObservationRoutes(app,{requireUser:requireDossierUser,getSnapshot});
-installManagementRoutes(app,{requireUser:requireDossierUser,requireMemberUser:requireUser,getSnapshot});
+const weekreportArchiver=installManagementRoutes(app,{requireUser:requireDossierUser,requireMemberUser:requireUser,getSnapshot});
 installPolicePromotionRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache.expires=0;dossierCache.expires=0;}});
 installCallsignBotRoutes(app);
@@ -1161,4 +1161,5 @@ app.listen(Number(process.env.PORT)||8080,()=>{
   scheduleSivTrainingRestrictions();
   // Independent, reversible 30-day retention for submitted Police observations.
   scheduleBasicObservationAutoArchive();
+  weekreportArchiver.scheduleAutomaticWeekReportArchives();
 });
