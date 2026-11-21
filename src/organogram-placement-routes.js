@@ -43,7 +43,7 @@ const respond=(res,e)=>{
 const safeName=x=>String(x||'').trim().slice(0,90);
 const DEFAULT_PLACEMENT=Object.freeze({boardRole:'none',leadershipTier:'none',
  displayOrder:0,teachingRoles:[],displayLabels:[],specialties:[],
- instructorSpecialties:[],teacherSpecialties:[]});
+ instructorSpecialties:[],teacherSpecialties:[],functionOverrides:{}});
 const rawDisplay=snap=>snap?.exists?{
  boardRole:snap.get('boardRole')||'none',
  leadershipTier:snap.get('leadershipTier')||'none',
@@ -52,7 +52,8 @@ const rawDisplay=snap=>snap?.exists?{
  displayLabels:snap.get('displayLabels')||[],
  specialties:snap.get('specialties')||[],
  instructorSpecialties:snap.get('instructorSpecialties')||[],
- teacherSpecialties:snap.get('teacherSpecialties')||[]
+ teacherSpecialties:snap.get('teacherSpecialties')||[],
+ functionOverrides:snap.get('functionOverrides')||{}
 }:{...DEFAULT_PLACEMENT};
 const hasUndo=data=>Boolean(data&&data.status==='active'&&
  data.undo&&typeof data.undo==='object');
@@ -81,7 +82,8 @@ const manualMap=docs=>new Map(docs.map(d=>[d.id,d.data()]));
 const safePublic=p=>({
  dept:p.dept,name:p.name,call:p.call,rank:p.rank,specialties:p.specialties,
  teachingRoles:p.teachingRoles,displayLabels:p.displayLabels||[],instructorSpecialties:p.instructorSpecialties,
- teacherSpecialties:p.teacherSpecialties,k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',
+ teacherSpecialties:p.teacherSpecialties,groupLeaderSpecialties:p.groupLeaderSpecialties||[],
+ functionOverrides:p.functionOverrides||{},k9Role:p.k9Role||'',motardRole:p.motardRole||'',dispRole:p.dispRole||'',
  aeRole:p.aeRole||'',aeManual:p.aeManual||'',aeRoles:Array.isArray(p.aeRoles)?p.aeRoles:[],
  aeTeamleader:p.aeTeamleader===true,boardRole:p.boardRole,leadershipTier:p.leadershipTier,displayOrder:p.displayOrder,source:p.source
 });
@@ -762,6 +764,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       specialties:v?.specialties||[],
       instructorSpecialties:v?.instructorSpecialties||[],
       teacherSpecialties:v?.teacherSpecialties||[],
+      functionOverrides:v?.functionOverrides||{},
       k9Manual:km.get(p.personId)?.role||'',
       k9Automatic:verifiedK9DisplayRole(identities.entries.get(p.personId),
        process.env.DISCORD_GUILD_ID),
@@ -799,21 +802,22 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
     const next=validatePlacement({...preserve,
      specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
-     teacherSpecialties:values.teacherSpecialties,reason:values.reason},'politie');
+     teacherSpecialties:values.teacherSpecialties,functionOverrides:values.functionOverrides,
+     reason:values.reason},'politie');
     tx.set(ref,{...(old.data()||{}),dept:'politie',personId,status:'active',
      boardRole:next.boardRole,leadershipTier:next.leadershipTier,
      displayOrder:next.displayOrder,teachingRoles:next.teachingRoles,
      displayLabels:next.displayLabels,specialties:next.specialties,
      instructorSpecialties:next.instructorSpecialties,
-     teacherSpecialties:next.teacherSpecialties,undo:previous,
+     teacherSpecialties:next.teacherSpecialties,functionOverrides:next.functionOverrides,undo:previous,
      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true});
     tx.create(ref.collection('audit').doc(),{action:'police_specialty_display',
      previous:{specialties:previous.specialties,
       instructorSpecialties:previous.instructorSpecialties,
-      teacherSpecialties:previous.teacherSpecialties},
+      teacherSpecialties:previous.teacherSpecialties,functionOverrides:previous.functionOverrides},
      next:{specialties:values.specialties,
       instructorSpecialties:values.instructorSpecialties,
-      teacherSpecialties:values.teacherSpecialties},
+      teacherSpecialties:values.teacherSpecialties,functionOverrides:values.functionOverrides},
      reason:values.reason,actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
     const oldRole=oldK9.exists?oldK9.get('role')||'':'';
     if(oldRole!==values.k9Role){
@@ -902,6 +906,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      undo:rawDisplay(before),
      teachingRoles:values.teachingRoles,displayLabels:values.displayLabels,specialties:values.specialties,
      instructorSpecialties:values.instructorSpecialties,teacherSpecialties:values.teacherSpecialties,
+     functionOverrides:values.functionOverrides,
      updatedAt:FieldValue.serverTimestamp(),updatedBy:req.bpd.uid,displayOnly:true};
     tx.set(ref,saved);
     tx.create(ref.collection('audit').doc(),{
@@ -913,10 +918,12 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
       displayLabels:before.get('displayLabels')||[],
       specialties:before.get('specialties')||[],
       instructorSpecialties:before.get('instructorSpecialties')||[],
-      teacherSpecialties:before.get('teacherSpecialties')||[]
+      teacherSpecialties:before.get('teacherSpecialties')||[],
+      functionOverrides:before.get('functionOverrides')||{}
      }:null,next:{boardRole:values.boardRole,teachingRoles:values.teachingRoles,
       displayLabels:values.displayLabels,specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
-      teacherSpecialties:values.teacherSpecialties,leadershipTier:values.leadershipTier,
+      teacherSpecialties:values.teacherSpecialties,functionOverrides:values.functionOverrides,
+      leadershipTier:values.leadershipTier,
       displayOrder:values.displayOrder},reason:values.reason,
      actorUid:req.bpd.uid,at:FieldValue.serverTimestamp()});
    });
@@ -950,6 +957,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      leadershipTier:restored.leadershipTier,displayOrder:restored.displayOrder,
      teachingRoles:restored.teachingRoles,displayLabels:restored.displayLabels,specialties:restored.specialties,
      instructorSpecialties:restored.instructorSpecialties,teacherSpecialties:restored.teacherSpecialties,
+     functionOverrides:restored.functionOverrides,
      undo:current,updatedAt:FieldValue.serverTimestamp(),
      updatedBy:req.bpd.uid,displayOnly:true
     });
@@ -958,7 +966,7 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
      next:{boardRole:restored.boardRole,leadershipTier:restored.leadershipTier,
       displayOrder:restored.displayOrder,teachingRoles:restored.teachingRoles,
       displayLabels:restored.displayLabels,specialties:restored.specialties,instructorSpecialties:restored.instructorSpecialties,
-      teacherSpecialties:restored.teacherSpecialties},reason,actorUid:req.bpd.uid,
+      teacherSpecialties:restored.teacherSpecialties,functionOverrides:restored.functionOverrides},reason,actorUid:req.bpd.uid,
      at:FieldValue.serverTimestamp()
     });
    });

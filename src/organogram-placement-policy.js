@@ -1,3 +1,4 @@
+import {validateFunctionOverrides,resolveFunctionOverrides} from './specialty-function-overrides.js';
 // MAIN organogram display only. Manual metadata NEVER changes authorization, user
 // grants, operational rank, board appointments or the personnel master.
 export const COLLECTION='bpd_organogram_display_placements';
@@ -45,7 +46,7 @@ const strip=v=>String(v??'').trim();
 export const personKey=(dept,id)=>DISPLAY_DEPTS.includes(dept)&&ID.test(String(id||''))?dept+'_'+id:null;
 export function validatePlacement(body,dept){
  if(!DISPLAY_DEPTS.includes(dept)||!body||typeof body!=='object'||Array.isArray(body)||
-    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','displayLabels','specialties','instructorSpecialties','teacherSpecialties','displayOrder','reason'].includes(k)))
+    Object.keys(body).some(k=>!['boardRole','leadershipTier','teachingRoles','displayLabels','specialties','instructorSpecialties','teacherSpecialties','functionOverrides','displayOrder','reason'].includes(k)))
    throw Error('Ongeldige organograminstelling');
  const boardRole=body.boardRole;
  const leadershipTier=body.leadershipTier;
@@ -84,16 +85,20 @@ export function validatePlacement(body,dept){
     specialties.some(x=>typeof x!=='string'||!SPECIALTIES[dept].includes(x))||
     new Set(specialties).size!==specialties.length)
    throw Error('Kies uitsluitend specialisaties van deze dienst');
+ const functionOverrides=validateFunctionOverrides(body.functionOverrides,
+  dept==='politie'?SPECIALTIES.politie:[],['SIV/WPR','SIGNALISATIE','RADIO/BM','SEMI ANONIEM','RAGO-IO']);
+ if(Object.keys(functionOverrides).some(name=>!specialties.includes(name)))
+  throw Error('Kies eerst het specialisatielidmaatschap voor de functie');
  const reason=strip(body.reason);
  if(reason.length<8||reason.length>300)throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {boardRole,leadershipTier,displayOrder,teachingRoles:[...teachingRoles],displayLabels:[...displayLabels],specialties:[...specialties],
-  instructorSpecialties:[...instructorSpecialties],teacherSpecialties:[...teacherSpecialties],reason};
+  instructorSpecialties:[...instructorSpecialties],teacherSpecialties:[...teacherSpecialties],functionOverrides,reason};
 }
 // OFF/KL may maintain police specialization *display* only. Other manual
 // placement properties (board, tier, global labels and order) are not editable.
 export function validatePoliceSpecialtyEdit(body){
  if(!body||typeof body!=='object'||Array.isArray(body)||
-  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','k9Role','motardRole','dispRole','aeRole','reason'].includes(k)))
+  Object.keys(body).some(k=>!['specialties','instructorSpecialties','teacherSpecialties','functionOverrides','k9Role','motardRole','dispRole','aeRole','reason'].includes(k)))
   throw Error('Ongeldige specialisatiewijziging');
  const specialties=body.specialties,ins=body.instructorSpecialties,teachers=body.teacherSpecialties;
  const allowed=SPECIALTIES.politie;
@@ -107,6 +112,9 @@ export function validatePoliceSpecialtyEdit(body){
   throw Error('Deze specialisatie heeft geen instructeur- of docentfunctie');
  if([...ins,...teachers].some(x=>!specialties.includes(x)))
   throw Error('Een instructeur of docent moet ook lid zijn van de specialisatie');
+ const functionOverrides=validateFunctionOverrides(body.functionOverrides,allowed,[...withoutInstruction]);
+ if(Object.keys(functionOverrides).some(name=>!specialties.includes(name)))
+  throw Error('Selecteer eerst de specialisatie voor deze functie');
  const k9Role=String(body.k9Role??'');
  if(!['','instructeur','geleider','geleider_in_stage'].includes(k9Role))
   throw Error('Ongeldige K9-functie');
@@ -141,7 +149,7 @@ export function validatePoliceSpecialtyEdit(body){
  if(reason.length<8||reason.length>300)
   throw Error('Motivering van 8 tot 300 tekens verplicht');
  return {specialties:[...specialties],instructorSpecialties:[...ins],
-  teacherSpecialties:[...teachers],k9Role,motardRole,dispRole,aeRole,reason};
+  teacherSpecialties:[...teachers],functionOverrides,k9Role,motardRole,dispRole,aeRole,reason};
 }
 export function manualDisplay(raw,dept){
  if(!raw||raw.status!=='active'||raw.dept!==dept)return null;
@@ -158,7 +166,11 @@ export function manualDisplay(raw,dept){
   .map(x=>normalizedStoredSpecialty(dept,x)))].slice(0,SPECIALTIES[dept].length):[];
  return {boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
   instructorSpecialties:selected(raw.instructorSpecialties),
-  teacherSpecialties:selected(raw.teacherSpecialties)};
+  teacherSpecialties:selected(raw.teacherSpecialties),
+  functionOverrides:dept==='politie'&&raw.functionOverrides&&typeof raw.functionOverrides==='object'&&
+   !Array.isArray(raw.functionOverrides)?Object.fromEntries(Object.entries(raw.functionOverrides)
+    .filter(([name,role])=>SPECIALTIES.politie.includes(name)&&
+     ['lid','groepsleider','instructeur','beide'].includes(role))):{}};
 }
 const INSTRUCTORS=Object.freeze({
  politie:Object.freeze({
@@ -290,17 +302,29 @@ export function mergePlacement(person,manual,auto,additional=[]){
     label:normalizedStoredSpecialty(person.dept,x.label),
     role:strip(x.value).toLowerCase()
    })):[];
+ const functionOverrides=person.dept==='politie'?(manual?.functionOverrides||{}):{};
+ const originalInstructors=[...new Set([...(manual?.instructorSpecialties||[]),
+  ...(auto?.instructorSpecialties||[]),
+  ...registeredTeaching.filter(x=>x.role==='instructeur').map(x=>x.label)]
+  .map(label=>normalizedStoredSpecialty(person.dept,label)))];
+ const functions=resolveFunctionOverrides(originalInstructors,functionOverrides);
+ const originalTeaching=[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])];
+ const teachingRoles=person.dept==='politie'&&Object.keys(functionOverrides).length&&
+   !functions.instructors.length&&!(manual?.teachingRoles||[]).includes('instructeur')?
+   originalTeaching.filter(role=>role!=='instructeur'):originalTeaching;
+ if(functions.instructors.length&&person.dept==='politie'&&!teachingRoles.includes('instructeur'))
+  teachingRoles.push('instructeur');
  const boardRole=manual?.boardRole&&manual.boardRole!=='none'?
   manual.boardRole:auto?.boardRole||'none';
  return {dept:person.dept,name:strip(person.name).slice(0,90),
   call:strip(person.call).slice(0,24),rank:strip(person.rank).slice(0,95),
   boardRole,leadershipTier:manual?.leadershipTier||'none',displayOrder:manual?.displayOrder||0,
-  teachingRoles:[...new Set([...(manual?.teachingRoles||[]),...(auto?.teachingRoles||[])])],
+  teachingRoles,
   displayLabels:[...(manual?.displayLabels||[])],
   aeRole:auto?.aeRole||'',aeRoles:auto?.aeRoles||[],aeTeamleader:auto?.aeTeamleader===true,
-  instructorSpecialties:[...new Set([...(manual?.instructorSpecialties||[]),
-   ...(auto?.instructorSpecialties||[]),
-   ...registeredTeaching.filter(x=>x.role==='instructeur').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,(SPECIALTIES[person.dept]?.length||12)+additional.length),
+  instructorSpecialties:functions.instructors.slice(0,(SPECIALTIES[person.dept]?.length||12)+additional.length),
+  groupLeaderSpecialties:functions.groupLeaders,
+  functionOverrides,
   teacherSpecialties:[...new Set([...(manual?.teacherSpecialties||[]),
    ...(auto?.teacherSpecialties||[]),
    ...registeredTeaching.filter(x=>x.role==='docent').map(x=>x.label)].map(label=>normalizedStoredSpecialty(person.dept,label)))].slice(0,(SPECIALTIES[person.dept]?.length||12)+additional.length),
