@@ -81,6 +81,11 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
 .scroller table tbody button.alt{min-height:26px;padding:4px 9px;font-size:11px;line-height:1.1;border-radius:6px}
 .scroller table tbody td:last-child{white-space:nowrap}
 .scroller{max-height:560px;overflow-y:auto;overflow-x:auto;scrollbar-width:thin}
+.dossier-entry-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dossier-report-link{display:inline-flex;align-items:center;padding:5px 8px;font-size:11px;
+ min-height:27px;background:#1b3755;border:1px solid #6688ae;border-radius:6px;
+ color:#cce4ff;text-decoration:none}
+.dossier-report-link:hover,.dossier-report-link:focus-visible{background:#2b527b;color:#fff}
 .scroller thead th{position:sticky;top:0;z-index:3;background:#193656}
 .scroller table tbody tr.dossier-cadre-group{height:29px}
 .scroller table tbody tr.dossier-cadre-group td{background:#203c5e;color:#d5e8ff;font-size:11px;font-weight:800;letter-spacing:.045em;text-transform:uppercase;padding:7px 9px;border-top:1px solid #53749c;border-bottom:1px solid #53749c}
@@ -118,6 +123,7 @@ th{font-size:11px;color:#a9c0dc;text-transform:uppercase}
  .scroller table tbody tr.dossier-empty{display:block;height:auto}
  .scroller table tbody tr.dossier-empty td{display:block;white-space:normal}
  .scroller table tbody button.alt{min-height:38px}
+ .scroller table tbody .dossier-report-link{display:inline-flex;align-items:center;min-height:38px}
 }
 @media(max-width:440px){
  .scroller table tbody tr:not(.dossier-cadre-group):not(.dossier-empty){
@@ -186,6 +192,12 @@ const actions={create:'Fiche aangemaakt',entry_rank:'Instaprang',
   exceptional_entry_rank:'Uitzonderlijke instaprang',promotion:'Promotie',
   link_discord:'Discord gekoppeld',edit:'Personeelswijziging'};
 const historyKinds={personeel:'Personeelswijziging',loopbaan:'Loopbaan'};
+// Parameters filter an overview only after the server has returned the
+// current user's authorized services. They never bypass dossier access.
+const dossierDeepLink=new URLSearchParams(location.search);
+const requestedDossierDept=dossierDeepLink.get('dept')||'';
+const requestedDossierSearch=(dossierDeepLink.get('zoek')||'').slice(0,110);
+let applyInitialDossierLink=true;
 let auth,authModule,rows=[],portalSetup,shown=null,page=1,timelineEntries=[];
 function message(text,bad=false){$('message').textContent=text;$('message').classList.toggle('error',bad)}
 function node(tag,text,cls){const x=document.createElement(tag);if(text!==undefined)x.textContent=String(text??'');if(cls)x.className=cls;return x}
@@ -319,7 +331,19 @@ function render(){
           ?'/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId,from:'dossiercentrum'}).toString()
           :'/personeelsbeheer.html?'+new URLSearchParams({fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'}).toString());
       };
-      cell.append(button);
+      const controls=node('div',undefined,'dossier-entry-actions');
+      controls.append(button);
+      // This link is only presented with a visible/openable dossier and a
+      // service supported by weekreports. The target verifies its OWN rights.
+      if(r.discordId&&['politie','brandweer','ambulance','depannage'].includes(r.dept)){
+        const link=node('a','Rapportregistraties','dossier-report-link');
+        link.href='/weekrapporten.html?'+new URLSearchParams({
+          dept:r.dept,discordId:r.discordId
+        }).toString()+'#registraties';
+        link.title='Historische rapportregistraties; afzonderlijke rapportrechten zijn vereist';
+        controls.append(link);
+      }
+      cell.append(controls);
     }else{
       const locked=node('span','🔒 Afgeschermd','muted');
       locked.title='Je hebt geen inzagerecht voor dit personeelsdossier';
@@ -410,7 +434,14 @@ async function load(){
     for(const d of allowed){
       const op=node('option',departments[d]||d);op.value=d;$('department').append(op);
     }
-    $('department').value=[...$('department').options].some(o=>o.value===selected)?selected:'all';
+    const permittedDeepLink=applyInitialDossierLink&&
+      [...$('department').options].some(o=>o.value===requestedDossierDept);
+    $('department').value=permittedDeepLink?requestedDossierDept:
+      [...$('department').options].some(o=>o.value===selected)?selected:'all';
+    if(applyInitialDossierLink){
+      $('query').value=requestedDossierSearch;
+      applyInitialDossierLink=false;
+    }
     synchronizeDossierSort($('department').value);
     closeDossier();render();
     message(rows.length+' personeelsleden in het overzicht. Dossierrechten worden per persoon gecontroleerd.'+
