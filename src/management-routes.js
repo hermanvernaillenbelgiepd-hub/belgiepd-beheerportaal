@@ -8,6 +8,10 @@ import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
  historicalMigrationSettings,historicalMigrationAllowed,validateHistoricalActorSelection}
  from './historical-observation-import-policy.js';
 import {createWeekReportDocx} from './report-export.js';
+import {
+  WEEKREPORT_ARCHIVE_COLLECTION,brusselsReportDay,
+  saveAutomaticWeekReportSnapshot,readAutomaticWeekReportSnapshot
+} from './weekreport-archive-store.js';
 import {PERSONNEL_DECORATIONS_COLLECTION,PERSONNEL_DECORATION_CATALOG_COLLECTION,
  CATALOG_BY_ID,decorationCatalogExtras,expirationDate} from './personnel-decoration-policy.js';
 import {isArchivedTraining} from './training-maintenance.js';
@@ -789,7 +793,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   });
   // Eén server-side rapportbouwer voor zowel de beveiligde JSON-weergave als DOCX-export.
   // De rechten worden voor elke aanvraag opnieuw gecontroleerd, ook voor downloaden.
-  async function assembleReport(req,id){
+  async function assembleReport(req,id,{archiveCapture=false,sourceSnapshot=null}={}){
     const automatic=parseAutomaticReportId(id);
     if(!automatic&&!safeReportId(id))return {status:400,error:'Ongeldige rapportverwijzing'};
     const doc=automatic?null:await db().collection('bpd_weekreports').doc(id).get();
@@ -798,20 +802,29 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     // Include departed members in the *report scope only*. Their original
     // dossier events must remain visible in the fortnight of occurrence.
     // This does NOT reactivate them in the regular personnel roster.
-    const snap=await getSnapshot({includeArchived:true});
-    if(snap.stale)return {status:503,error:'Personeelsbron niet actueel'};
-    if((!canReadServiceDossier(req.bpd,report.dept)&&
+    const snap=sourceSnapshot||await getSnapshot({includeArchived:true});
+    if(snap.stale||!Array.isArray(snap.data))
+      return {status:503,error:'Personeelsbron niet actueel'};
+    if(!archiveCapture&&((!canReadServiceDossier(req.bpd,report.dept)&&
         !isVerifiedReportCorpsReader(req.bpd))||
-      !mayReadFortnightReport(req.bpd,report.dept,snap.data))
+      !mayReadFortnightReport(req.bpd,report.dept,snap.data)))
       return {status:403,error:'Geen toegang tot deze dienstgebonden rapportage'};
     // A removed report must not be accessible via a guessed direct URL or export.
     const removal=await db().collection('bpd_weekreport_removals').doc(id).get();
     const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
       year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    if(removal.exists&&!isCurrentAutomaticReport(report,today))
-      return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
-    if(!mayReadFortnightPeriod(req.bpd,report,today,snap.data))
-      return {status:403,error:'Geen inzagerecht voor deze rapportperiode'};
+    if(!archiveCapture){
+      if(removal.exists&&!isCurrentAutomaticReport(report,today))
+        return {status:404,error:'Dit weekrapport is uit het overzicht verwijderd'};
+      if(!mayReadFortnightPeriod(req.bpd,report,today,snap.data))
+        return {status:403,error:'Geen inzagerecht voor deze rapportperiode'};
+      // Frozen copies win over current dossiers, also for Word/PDF exports.
+      if(automatic&&report.periodEnd<today){
+        const frozen=await readAutomaticWeekReportSnapshot({db:db(),id});
+        if(frozen)return {...frozen,
+          canExport:mayExportFortnightReport(req.bpd,report.dept,snap.data)};
+      }
+    }
     const restart=automatic?await db().collection('bpd_weekreport_restarts').doc(id).get():null;
     const resetAt=restart?.exists?restart.get('restartedAt'):null;
     const allSubjects=snap.data.filter(p=>p.dept===report.dept && validDiscord(p.personId));
@@ -994,9 +1007,71 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         item.trainingRequestId&&item.reportCategory==='opleiding').length
     };
     const excludedTestCount=result.filter(e=>isTestRecord(e) && e.eventDate>=report.periodStart && e.eventDate<=report.periodEnd).length;
-    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,completionSummary,canExport:mayExportFortnightReport(req.bpd,report.dept,snap.data),
-      recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties en registraties van vóór een rapportherstart zijn uitgesloten. Originele dossiergegevens blijven bestaan. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
+    return {report:{id:automatic?.id||doc.id,title:report.title,dept:report.dept,periodStart:report.periodStart,periodEnd:report.periodEnd,status:report.status,createdBy:report.createdBy,source:report.source||'manual',restartedAt:resetAt?toIso(resetAt):null},sections,completionSummary,canExport:!archiveCapture&&mayExportFortnightReport(req.bpd,report.dept,snap.data),
+      recordCount:sections.reduce((total,section)=>total+section.entries.length,0),excludedTestCount,truncated,disclaimer:automatic&&report.periodEnd<today?
+        'HISTORISCHE RECONSTRUCTIE, NOG NIET VASTGEZET: de inhoud komt uit huidige Firestore-dossiers en kan veranderen. Zodra de archiefkopie veilig is opgeslagen, blijft die onveranderlijk.':
+        'Conceptweergave uit huidige Firestore-dossiers; als test gemarkeerde registraties en registraties van vóór een rapportherstart zijn uitgesloten. Originele dossiergegevens blijven bestaan. Dit is nog geen afgesloten of juridisch gearchiveerd rapport. Externe Word- en Google-dossiers zijn niet geïmporteerd.'};
   }
+
+  // Hourly + startup fallback: an append-only snapshot is attempted AFTER the
+  // second Sunday. Idempotent Firestore create prevents duplicate commits
+  // across restarts and multiple instances. NEVER modify any dossier record.
+  async function archiveClosedReports({now=new Date(),maxAttempts=20}={}){
+    const today=brusselsReportDay(now);
+    const snapshot=await getSnapshot({includeArchived:true});
+    if(snapshot.stale||!Array.isArray(snapshot.data))
+      return {created:0,failed:0,skipped:'stale_roster'};
+    let created=0,existing=0,failed=0,incomplete=0,attempted=0;
+    for(const dept of ['politie','brandweer','ambulance','depannage']){
+      const closed=automaticFortnightReports(dept,today,52)
+        .filter(r=>r.periodEnd<today);
+      for(const item of closed){
+        if(attempted>=maxAttempts)
+          return {created,existing,failed,incomplete,attempted,limited:true};
+        // This inexpensive manifest check does not read or change old archives.
+        const marker=await db().collection(WEEKREPORT_ARCHIVE_COLLECTION)
+          .doc(item.id).get();
+        if(marker.exists){existing++;continue}
+        attempted++;
+        try{
+          // Internal capture mode cannot be enabled by an HTTP request.
+          const payload=await assembleReport(null,item.id,
+            {archiveCapture:true,sourceSnapshot:snapshot});
+          if(payload.status||payload.truncated){incomplete++;continue}
+          const saved=await saveAutomaticWeekReportSnapshot({
+            db:db(),payload,now});
+          if(saved.created)created++;else existing++;
+        }catch(error){
+          failed++;
+          console.warn('Weekrapport-archief niet vastgezet:',item.dept,item.periodStart,
+            typeof error?.code==='string'?error.code:'controle_mislukt');
+        }
+      }
+    }
+    return {created,existing,failed,incomplete,attempted,limited:false};
+  }
+  function scheduleAutomaticWeekReportArchives(){
+    if(process.env.BPD_DISABLE_AUTOMATIC_WEEKREPORT_ARCHIVE==='true')
+      return null;
+    let running=false;
+    const tick=async()=>{
+      if(running)return;
+      running=true;
+      try{
+        const result=await archiveClosedReports();
+        console.info('Automatisch weekrapportarchief:',JSON.stringify(result));
+      }catch(error){
+        console.warn('Automatisch weekrapportarchief niet bereikbaar:',
+          typeof error?.code==='string'?error.code:'controle_mislukt');
+      }finally{running=false}
+    };
+    const initial=setTimeout(()=>void tick(),60000);
+    initial.unref?.();
+    const hourly=setInterval(()=>void tick(),60*60*1000);
+    hourly.unref?.();
+    return {stop:()=>{clearTimeout(initial);clearInterval(hourly)}};
+  }
+
   app.get('/api/management/reports/:id',requireUser,async(req,res)=>{
     try{
       const report=await assembleReport(req,req.params.id);
@@ -1020,5 +1095,5 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       res.set('X-Content-Type-Options','nosniff');
       return res.send(file);
     }catch(e){errorResponse(res,e)}
-  });
+  });  return {archiveClosedReports,scheduleAutomaticWeekReportArchives};
 }
