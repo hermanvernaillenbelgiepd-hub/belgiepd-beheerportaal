@@ -499,7 +499,6 @@ header{background:#12243b;border-bottom:1px solid #395675;padding:12px clamp(12p
 .manager .manage-links a{color:#d6ecff;font-size:12px;text-decoration:underline;text-underline-offset:3px}
 .manager .manage-links a:focus-visible{outline:2px solid #b1d6ff;outline-offset:3px}
 .person-role-flags .flag.stage{color:#ffe6ad;border:1px solid #bb985a;background:#564325}
-.person-role-flags .flag.member{color:#e0f5ff;border:1px solid #608eb4;background:#26496b}
 .manager .checks input{accent-color:#8abdf7}
 .manager #manage-specialties{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:6px}
 .manage-specialty-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;border:1px solid #3d5e81;border-radius:7px;padding:4px 7px;background:#0b2138}
@@ -2049,10 +2048,8 @@ html.roster-card-embed .person-profile-dialog.operational-profile
   <div id="manage-roles" class="checks">
    <label><input id="manage-instructor" type="checkbox"> Instructeur</label>
    <label><input id="manage-teacher" type="checkbox"> Docent</label>
-   <label><input id="manage-stage" type="checkbox"> STAGE</label>
-   <label><input id="manage-member" type="checkbox"> LID</label>
   </div>
-  <p class="manager-note">STAGE en LID zijn exclusieve, handmatige weergavelabels. Ze wijzigen geen aanstelling, opleidingsstatus, specialisatielidmaatschap of rechten.</p>
+  <p class="manager-note">STAGE volgt automatisch uit de officiële personeelsstatus. Het label LID wordt niet getoond.</p>
   <label>Specialisaties (lidmaatschap en, bij politie, de instructeur-/docentfunctie per specialisatie)</label>
   <div class="manage-specialty-layout">
    <div id="manage-specialties" class="checks"></div>
@@ -2091,6 +2088,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script src="/assets/organogram-decorations.js?v=award-preview-20261104"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
+import {isOfficialStageStatus} from '/organogram-official-stage.js';
 import '/uniform-assignment-display.js?v=depannage-awvrank-20261106';
 import {serviceProfileRank,depannagePatchCode,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103c';
 const $=id=>document.getElementById(id);
@@ -2631,8 +2629,6 @@ function openPersonProfile(p){
   fact('Reeksfunctie',p.reekshoofdReeks==='VLINDER'?'VLINDER':
    'Reekshoofd – '+p.reekshoofdReeks);
  fact('Personeelsstatus',p.status||'Niet vermeld');
- if(Array.isArray(p.displayLabels)&&p.displayLabels.length)
-  fact('Extra weergavelabel',p.displayLabels.map(x=>x.toUpperCase()).join(' · '));
  primary.append(grid);
  // De server stuurt deze link alleen voor een bevoegde officier/korpsleider
  // met rechten op het specifieke personeelsdossier.
@@ -2981,9 +2977,8 @@ function person(p,compact=false,specialtyLabel=null){
    if(AE_LEVEL_LABELS[level])flags.append(el('span','flag ae-level',AE_LEVEL_LABELS[level]));
   }
  }
- const displayLabels=Array.isArray(p.displayLabels)?p.displayLabels:[];
- if(displayLabels.includes('stage'))flags.append(el('span','flag stage','STAGE'));
- if(displayLabels.includes('lid'))flags.append(el('span','flag member','LID'));
+ // The stage badge follows only the official personnel status.
+ if(isOfficialStageStatus(p.status))flags.append(el('span','flag stage','STAGE'));
  // The data source remains auditable server-side; no 'Handmatig' badge on personnel cards.
  if(flags.childElementCount)label.append(flags);
  b.append(label);
@@ -3449,7 +3444,6 @@ async function loadPublic(){
     burgerGroups:p.dept==='burger'&&Array.isArray(p.burgerGroups)?
      p.burgerGroups.filter(x=>['Burgerraad','Burger','Burger IO'].includes(x)):[],
     teachingRoles:Array.isArray(p.teachingRoles)?p.teachingRoles.filter(x=>['docent','instructeur'].includes(x)):[],
-    displayLabels:Array.isArray(p.displayLabels)?p.displayLabels.filter(x=>['stage','lid'].includes(x)).slice(0,1):[],
     k9Role:['instructeur','geleider','geleider_in_stage'].includes(p.k9Role)?p.k9Role:'',
     motardRole:['in_opleiding','volwaardig','instructeur'].includes(p.motardRole)?p.motardRole:'',
     dispRole:['in_opleiding','volwaardig','instructeur'].includes(p.dispRole)?p.dispRole:'',
@@ -3733,12 +3727,8 @@ function fillAdminPerson(){
  $('manage-undo').disabled=!p.undoAvailable;
  $('manage-instructor').checked=(values.teachingRoles||[]).includes('instructeur');
  $('manage-teacher').checked=(values.teachingRoles||[]).includes('docent');
- $('manage-stage').checked=(values.displayLabels||[]).includes('stage');
- $('manage-member').checked=(values.displayLabels||[]).includes('lid');
  $('manage-instructor').disabled=p.dept==='bestuur';
  $('manage-teacher').disabled=p.dept==='bestuur';
- $('manage-stage').disabled=p.dept==='bestuur';
- $('manage-member').disabled=p.dept==='bestuur';
  for(const specialty of adminSpecialties[p.dept]||[]){
   const entry=el('div','manage-specialty-row');
   const label=el('label');const input=el('input');input.type='checkbox';
@@ -4220,13 +4210,6 @@ $('manage-toggle').addEventListener('click',async()=>{
  }catch(e){$('manage-status').textContent='Beheer alleen na geldige technische aanmelding: '+e.message;}
 });
 $('manage-person').addEventListener('change',fillAdminPerson);
-// STAGE en LID sluiten elkaar uit; personeel-/specialisatierechten blijven gelijk.
-$('manage-stage').addEventListener('change',()=>{
- if($('manage-stage').checked)$('manage-member').checked=false;
-});
-$('manage-member').addEventListener('change',()=>{
- if($('manage-member').checked)$('manage-stage').checked=false;
-});
 $('manage-save').addEventListener('click',async()=>{
  const p=activeAdminPerson;
  if(!p){$('manage-status').textContent='Selecteer eerst een personeelslid.';return}
@@ -4239,10 +4222,8 @@ $('manage-save').addEventListener('click',async()=>{
    ...($('manage-instructor').checked?['instructeur']:[]),
    ...($('manage-teacher').checked?['docent']:[])
   ];
-  const displayLabels=[
-   ...($('manage-stage').checked?['stage']:[]),
-   ...($('manage-member').checked?['lid']:[])
-  ];
+  // Clear obsolete manual badge flags on the next audited edit.
+  const displayLabels=[];
   const instructorSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="instructor"]:checked')].map(x=>x.value);
   const teacherSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="teacher"]:checked')].map(x=>x.value);
   const selected=[...$('manage-specialties').querySelectorAll('input[data-role="member"]:checked')].map(x=>x.value);
