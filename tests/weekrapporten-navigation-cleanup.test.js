@@ -12,7 +12,7 @@ test('single weekrapport page has no former three navigation buttons',()=>{
 });
 test('report registrations remain available through native closed details, not duplicate dossier view',()=>{
  assert.match(html,/<details id="reportRegistrations" class="report-archive"/);
- assert.match(html,/<summary>Historische rapportregistraties en aanvullende invoer<\/summary>/);
+ assert.match(html,/<summary>Historische dossierregistraties \(raadplegen\)<\/summary>/);
  assert.match(html,/<section id="casesView">/);
  assert.doesNotMatch(html,/<details id="reportRegistrations"[^>]* open[ >]/);
  assert.match(html,/openReportRegistrations\(\)/);

@@ -331,19 +331,9 @@ function render(){
           ?'/brandweerdossier.html?'+new URLSearchParams({discordId:r.discordId,from:'dossiercentrum'}).toString()
           :'/personeelsbeheer.html?'+new URLSearchParams({fiche:'1',dept:r.dept,discordId:r.discordId,from:'dossiercentrum'}).toString());
       };
-      const controls=node('div',undefined,'dossier-entry-actions');
-      controls.append(button);
-      // This link is only presented with a visible/openable dossier and a
-      // service supported by weekreports. The target verifies its OWN rights.
-      if(r.discordId&&['politie','brandweer','ambulance','depannage'].includes(r.dept)){
-        const link=node('a','Rapportregistraties','dossier-report-link');
-        link.href='/weekrapporten.html?'+new URLSearchParams({
-          dept:r.dept,discordId:r.discordId
-        }).toString()+'#registraties';
-        link.title='Historische rapportregistraties; afzonderlijke rapportrechten zijn vereist';
-        controls.append(link);
-      }
-      cell.append(controls);
+      // Eén normale invoerweg: het bevoegde personeelsdossier.
+      // Weekrapporten vormen een afzonderlijk dienstoverzicht.
+      cell.append(button);
     }else{
       const locked=node('span','🔒 Afgeschermd','muted');
       locked.title='Je hebt geen inzagerecht voor dit personeelsdossier';
