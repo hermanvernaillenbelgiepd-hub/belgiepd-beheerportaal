@@ -16,6 +16,12 @@ table{border-collapse:collapse;width:100%;min-width:760px}th,td{text-align:left;
 .scroller{overflow-x:auto}fieldset{border:1px solid #405572;border-radius:9px;padding:14px;margin:12px 0}legend{padding:0 6px}
 .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.controls button{white-space:nowrap}.name{font-weight:750}.muted{font-size:12px;color:#8fa8ca}
 .status{display:inline-block;border-radius:999px;padding:3px 9px;background:#334862;font-size:12px}.status.approved{background:#20684d}.status.blocked{background:#703444}
+.admin-quicklinks{margin:9px 0 14px;border:1px solid #365477;border-radius:9px;background:#102641;padding:0 12px;color:#dcecff}
+.admin-quicklinks summary{cursor:pointer;font-size:12px;font-weight:750;padding:10px 0}
+.admin-quicklinks summary:focus-visible{outline:2px solid #a7cfff}
+.admin-quicklinks .controls{padding:4px 0 9px;gap:8px}
+.admin-quicklinks a{display:inline-flex;align-items:center;border:1px solid #54799a;border-radius:7px;padding:8px 10px;color:#d6ecff;background:#163655;font-size:12px;font-weight:650}
+.admin-quicklinks .muted{font-size:11px;margin:0 0 10px}
 .manage-tabs{position:sticky;top:0;z-index:25;display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 14px;padding:7px 9px;border:1px solid #365477;border-radius:9px;background:#0c1c33;box-shadow:0 6px 18px #030a17b5}
 .manage-tabs button{background:transparent;border:1px solid transparent;color:#b6cce7;border-radius:6px;padding:6px 9px;font-size:12px;font-weight:600;min-height:32px}
 .manage-tabs button:hover{background:#1b3757;color:#fff}
@@ -355,13 +361,15 @@ header button{padding:7px 10px;font-size:12px}
 <main><h1>Centraal gebruikersbeheer</h1>
 <p>Personeelsleden vragen toegang aan met hun eigen Discord-account. Bevoegde leidinggevenden controleren hun hulpdienst en kaderfunctie. Beslissingen worden bewaard in Firestore, niet in Render.</p>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmelding controleren…</div>
-<div class="controls" style="margin:12px 0 14px;gap:8px;flex-wrap:wrap">
- <a href="/gebruikersbeheer.html#uniformbeheer" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🧥 Uniformatelier</a>
- <a href="/beeldbibliotheek.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">📁 Beeldbibliotheek per dienst</a>
- <a href="/rollenbeheer.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🛡️ Rollen & specialisaties toekennen</a>
- <a href="/dc-id-overdracht.html" style="display:inline-block;padding:9px 13px;border:1px solid #54799a;border-radius:7px;color:#d6ecff;text-decoration:none;background:#163655">🔐 DC-ID-overdracht (bevoegd kader)</a>
- <small>Beheer uniformfoto’s en hun plaatsing via Uniformatelier; koppel bestaande afbeeldingen aan rangen, uniformen of specialisaties via de Beeldbibliotheek.</small>
-</div>
+<details id="managementQuickLinks" class="admin-quicklinks">
+ <summary>Gerelateerd beheer · bibliotheek, specialisaties en DC-ID</summary>
+ <div class="controls">
+  <a href="/beeldbibliotheek.html">📁 Beeldbibliotheek per dienst</a>
+  <a href="/rollenbeheer.html">🛡️ Rollen en specialisaties toekennen</a>
+  <a href="/dc-id-overdracht.html">🔐 DC-ID-overdracht (bevoegd kader)</a>
+ </div>
+ <p class="muted">Uniformen beheer je rechtstreeks in het tabblad Uniformbeheer. De bevoegdheden van deze aanvullende modules worden afzonderlijk op de server gecontroleerd.</p>
+</details>
 <nav id="manageTabs" class="manage-tabs" aria-label="Tabbladen gebruikersbeheer" hidden>
 <button type="button" data-tab="accounts" hidden>👥 Personeelsaccounts</button>
 <button type="button" data-tab="manual" hidden>🔐 Handmatig rolherstel</button>
@@ -432,6 +440,7 @@ header button{padding:7px 10px;font-size:12px}
 <h2>🛡️ Beheertoegang hulpdiensten</h2>
 <p>Bestuur en technisch beheer kunnen rechten per hulpdienst toekennen. Korpsleiding mag dit alleen voor de eigen hulpdienst (Brandweer: geverifieerde ZONE-chef). Elke wijziging vereist een motivering en wordt gelogd.</p>
 <div class="grant-info"><strong>Wat houdt dit in?</strong><p class="muted"><strong>Bekijken</strong>: uitsluitend inzage. <strong>Beperkte toegang</strong>: dossiers bekijken en gewone notities toevoegen. <strong>Volledige toegang</strong>: daarnaast observaties, sancties en opleidingen registreren en corrigeren binnen de gekozen hulpdienst. Dit geeft geen bevoegdheid om rangen, Discord- of portaalrollen te wijzigen.</p></div>
+<p id="dossierGrantScope" class="muted" role="status">Selecteer een hulpdienst en een rechtenniveau. Machtigingen gelden uitsluitend voor die dienst, na controle op de server.</p>
 <form id="dossierGrantForm">
 <div class="grid">
 <div><label for="dossierGrantId">Discord-ID</label><input type="text" id="dossierGrantId" inputmode="numeric" pattern="[0-9]{15,22}" maxlength="22" required placeholder="Goedgekeurd Discord-account"></div>
@@ -930,15 +939,34 @@ const uniformAssignments=setupUniformAssignmentUI({api,$,notice});
 const uniformQuick=setupUniformQuickUI({api,$,notice});
 const uniformComposer=setupUniformComposer({api,$,notice});
 const uniformLibrary=setupUniformLibraryUI({api,$,notice});
-let tabChoice=window.location.hash==='#dienstbeheer'?'services':
-  window.location.hash==='#verlofmachtigingen'?'leave':
-  window.location.hash==='#uniformbeheer'?'uniform':'accounts';
+const managementTabHashes=Object.freeze({
+ accounts:'accounts',manual:'rolherstel',services:'dienstbeheer',
+ artwork:'rolbadges',uniform:'uniformbeheer',to:'to-rechten',
+ board:'bestuur',leave:'verlofmachtigingen'
+});
+function tabFromHash(){
+ const current=decodeURIComponent(location.hash.replace(/^#/,''));
+ return Object.keys(managementTabHashes).find(tab=>managementTabHashes[tab]===current)||'accounts';
+}
+let tabChoice=tabFromHash();
+function updateDossierGrantScope(){
+ const dept=$('dossierGrantDept'),level=$('dossierGrantLevel'),scope=$('dossierGrantScope');
+ const chosen=dept.options[dept.selectedIndex]?.textContent?.trim();
+ const rights={read:'alleen lezen',manage:'lezen en gewone notities',
+  full:'lezen en registreren/corrigeren van notities, observaties, sancties en opleidingen'};
+ scope.textContent=chosen?'Geselecteerde hulpdienst: '+chosen+' · '+(rights[level.value]||'controle vereist')+
+  '. Dit verleent uitsluitend de aangevraagde dienstbevoegdheid; de server beoordeelt elke actie.':
+  'Selecteer een toegestane hulpdienst. De server bepaalt welke diensten je mag beheren.';
+}
+$('dossierGrantDept').addEventListener('change',updateDossierGrantScope);
+$('dossierGrantLevel').addEventListener('change',updateDossierGrantScope);
 function showManageTabs(){
   const mapping={accounts:'admin',manual:'manualRoleSection',services:'dossierGrantSection',to:'toSection',
     board:'boardSection',leave:'leaveGrantSection',artwork:'roleArtworkSection',uniform:'uniformSection'};
   const active=Object.keys(mapping).filter(k=>$(mapping[k]).dataset.authorized==='yes');
   $('manageTabs').hidden=!active.length;
   if(!active.includes(tabChoice))tabChoice=active[0]||'accounts';
+  updateDossierGrantScope();
   for(const btn of $('manageTabs').querySelectorAll('button[data-tab]')){
     btn.hidden=!active.includes(btn.dataset.tab);
     btn.setAttribute('aria-pressed',String(btn.dataset.tab===tabChoice));
@@ -949,12 +977,15 @@ function showManageTabs(){
 for(const b of $('manageTabs').querySelectorAll('button[data-tab]'))
   b.onclick=()=>{
     tabChoice=b.dataset.tab;
-    if(tabChoice==='services')window.history.replaceState(null,'','#dienstbeheer');
-    else if(tabChoice==='leave')window.history.replaceState(null,'','#verlofmachtigingen');
-    else if(tabChoice==='uniform')window.history.replaceState(null,'','#uniformbeheer');
-    else window.history.replaceState(null,'',window.location.pathname);
+    const target=managementTabHashes[tabChoice];
+    window.history.replaceState(null,'',window.location.pathname+window.location.search+
+      (target===''?'':'#'+target));
     showManageTabs();
   };
+window.addEventListener('hashchange',()=>{
+ tabChoice=tabFromHash();
+ showManageTabs(); // Alleen reeds server-geautoriseerde tabbladen zijn beschikbaar.
+});
 
 function render(){
   const list=$('list');list.replaceChildren();

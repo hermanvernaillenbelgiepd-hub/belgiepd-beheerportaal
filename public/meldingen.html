@@ -288,6 +288,25 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
 @media(prefers-reduced-motion:reduce){
   .notification-page .notification-fold > summary::before{transition:none}
 }
+/* Eén springkeuze, in plaats van door iedere meldingskaart te scrollen.
+   Alleen de door het servergestuurde laadproces zichtbare kaarten komen erin. */
+.notification-page .notification-jump-toolbar{
+ display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+ padding:10px 13px;margin:11px 0 0;
+ border:1px solid var(--noti-border);border-radius:10px;
+ background:var(--noti-surface);color:var(--noti-text)
+}
+.notification-page .notification-jump-toolbar[hidden]{display:none!important}
+.notification-page .notification-jump-toolbar label{
+ font-size:12px;font-weight:750;white-space:nowrap
+}
+.notification-page .notification-jump-toolbar select{
+ flex:1 1 260px;min-width:0;max-width:100%;padding:8px 12px;
+ border:1px solid var(--noti-border);border-radius:8px;
+ background:var(--noti-soft);color:var(--noti-text);font:inherit;font-size:12px
+}
+.notification-page .notification-tile{scroll-margin-top:94px}
+.notification-page .notification-fold>summary:focus-visible{outline:3px solid #7eacff;outline-offset:2px}
 </style>
 </head><body>
 <header><strong>🛡️ BelgiëPD / Meldingen</strong><nav><a href="/">Dashboard</a> · <a href="/verlofbeheer.html">Mijn verlof</a><button id="login" type="button">Aanmelden</button></nav></header>
@@ -304,6 +323,12 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
   </div>
  </div>
  <div class="message" id="feedback" role="status" aria-live="polite">Toegangsrechten controleren…</div>
+ <nav id="notificationJumpBar" class="notification-jump-toolbar" aria-label="Spring naar meldingsrubriek" hidden>
+  <label for="notificationJump">Rechtstreeks naar</label>
+  <select id="notificationJump" aria-label="Kies een zichtbare meldingsrubriek">
+   <option value="">Kies een melding of opvolging…</option>
+  </select>
+ </nav>
  <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards">
 <section id="policePromotionPanel" class="panel notification-tile notification-tile--action" hidden>
  <details class="notification-fold" id="policePromotionFold" open>
@@ -774,6 +799,41 @@ async function loadSivTrainingRestrictions(){
   panel.hidden=true;
  }
 }
+// De server bepaalt welke rubrieken zichtbaar zijn. Deze selector leest
+// uitsluitend reeds zichtbare panels en opent nooit een afgeschermd onderdeel.
+function syncNotificationJump(){
+ const bar=$('notificationJumpBar'),select=$('notificationJump');
+ const previous=select.value;
+ select.replaceChildren(new Option('Kies een melding of opvolging…',''));
+ const groups=document.querySelectorAll('.notification-group');
+ let visibleCount=0;
+ for(const group of groups){
+  const label=group.querySelector('.notification-group-heading h2')?.textContent?.trim()||'Meldingen';
+  const optgroup=document.createElement('optgroup');optgroup.label=label;
+  for(const panel of group.querySelectorAll('.notification-tile[id]')){
+   if(panel.hidden)continue;
+   const summary=panel.querySelector('.notification-fold > summary');
+   if(!summary)continue;
+   const title=summary.textContent.replace(/\\s+/g,' ').trim();
+   if(!title)continue;
+   const option=document.createElement('option');
+   option.value=panel.id;option.textContent=title;optgroup.append(option);visibleCount++;
+  }
+  if(optgroup.children.length)select.append(optgroup);
+ }
+ bar.hidden=!visibleCount;
+ if([...select.options].some(option=>option.value===previous))select.value=previous;
+}
+$('notificationJump').addEventListener('change',event=>{
+ const id=event.target.value;
+ if(!id)return;
+ const panel=document.getElementById(id);
+ if(!panel?.classList.contains('notification-tile')||panel.hidden)return;
+ const details=panel.querySelector('details.notification-fold');
+ if(details)details.open=true;
+ panel.scrollIntoView({behavior:'smooth',block:'start'});
+ (details?.querySelector('summary')||panel).focus({preventScroll:true});
+});
 let refreshInFlight=null,refreshRequestedAgain=false;
 async function load(){
  if(refreshInFlight){
@@ -789,6 +849,7 @@ async function load(){
      loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave];
    loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));
+   syncNotificationJump();
   }while(refreshRequestedAgain);
  };
  refreshInFlight=refresh().finally(()=>{
