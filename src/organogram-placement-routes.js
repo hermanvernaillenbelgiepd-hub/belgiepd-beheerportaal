@@ -803,7 +803,9 @@ export function installOrganogramPlacementRoutes(app,{requireUser,getSnapshot}){
     const preserve=manualDisplay(old.data(),'politie')||DEFAULT_PLACEMENT;
     // Legacy Rollenbeheer omits this field; resolve against CURRENT Firestore
     // data inside the same transaction, not against a potentially stale UI.
-    const resolvedOverrides=retainPoliceFunctionOverrides(req.body,preserve.functionOverrides,values.specialties);
+    let resolvedOverrides;
+    try{resolvedOverrides=retainPoliceFunctionOverrides(req.body,preserve.functionOverrides,values.specialties)}
+    catch(e){throw fault(409,e.message)}
     const next=validatePlacement({...preserve,
      specialties:values.specialties,instructorSpecialties:values.instructorSpecialties,
      teacherSpecialties:values.teacherSpecialties,functionOverrides:resolvedOverrides,
