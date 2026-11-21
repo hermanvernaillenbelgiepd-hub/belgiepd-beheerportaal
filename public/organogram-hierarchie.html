@@ -1933,6 +1933,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 <link rel="stylesheet" href="/organogram-hybrid.css?v=service-profile-display-20261105e">
+<link rel="stylesheet" href="/police-organogram-workflow.css?v=20261121">
 </head>
 <body>
 <header>
@@ -2091,6 +2092,7 @@ html.roster-card-embed .person-profile-dialog.operational-profile
 <script src="/assets/organogram-decorations.js?v=award-preview-20261104"></script>
 <script type="module">
 import {SERVICES,getTier,hierarchy,orderedMembers,orderedSpecialtyMembers,policeMiddleColumns,policeMiddleSeries,orderedPoliceMiddle,isTeacher,isSpecialtyInstructor,specialtyInstructorRoles,specialtyNames,policeSpecialtyName,POLICE_BRANCH_ORDER} from '/assets/organogram-hierarchie-model.js';
+import {buildPoliceWorkflow} from '/police-organogram-workflow.js';
 import '/uniform-assignment-display.js?v=depannage-awvrank-20261106';
 import {serviceProfileRank,depannagePatchCode,depannageProfilePatch} from '/service-profile-presentation.js?v=20261103c';
 const $=id=>document.getElementById(id);
@@ -3217,6 +3219,7 @@ function middleCadreLayout(rows){
 }
 function serviceCard(item,settings,solo){
  const box=el('details','service');box.dataset.dept=settings.id;
+ if(solo&&settings.id==='politie')box.classList.add('police-workflow-service');
  box.open=state.serviceOpen[settings.id]??true;
  if(solo)box.addEventListener('toggle',()=>{state.serviceOpen[settings.id]=box.open;});
  const summary=el('summary');summary.append(el('span','icon',settings.icon));
@@ -3242,7 +3245,11 @@ function serviceCard(item,settings,solo){
  if(solo&&settings.id==='ambulance'){
   body.append(el('div','azls-ranks-heading','RANGSTRUCTUUR · AZLS'));
  }
- for(const level of item.leadership){
+ if(solo&&settings.id==='politie'){
+  body.append(buildPoliceWorkflow(item,{el,person,cadrePeopleList,
+   policeInterventions,middleCadreLayout,state,managerReady,syncCadreToggle}));
+ }
+ else for(const level of item.leadership){
   const key=settings.id+':'+level.label;
   const block=el('details','level');
   block.dataset.cadreKey=key;
@@ -3393,7 +3400,8 @@ function render(){
   if(solo&&SERVICES[i].id!==state.view)continue;
   $('services').append(serviceCard(dataset[i],SERVICES[i],solo));
  }
- $('services').style.gridTemplateColumns=solo?'minmax(0,1450px)':'';
+ $('services').style.gridTemplateColumns=solo?
+  (state.view==='politie'?'minmax(0,1fr)':'minmax(0,1450px)'):'';
  syncCadreToggle();
 }
 document.querySelector('.toolbar').addEventListener('click',event=>{
@@ -3465,6 +3473,7 @@ async function loadPublic(){
     aeManual:['ae_i','ae_t','teamleader','instructeur'].includes(p.aeManual)?p.aeManual:'',
     aeRoles:Array.isArray(p.aeRoles)?p.aeRoles.filter(x=>['ae_i','ae_t','teamleader','instructeur'].includes(x)):[],
     aeTeamleader:p.aeTeamleader===true,
+    series:p.dept==='politie'?String(p.series||'').slice(0,36):'',
     reekshoofdReeks:typeof p.reekshoofdReeks==='string'?p.reekshoofdReeks.slice(0,20):'',
     dossierUrl:typeof p.dossierUrl==='string'?p.dossierUrl.slice(0,270):'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
