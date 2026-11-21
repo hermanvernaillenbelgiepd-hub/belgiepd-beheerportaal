@@ -2970,12 +2970,15 @@ function person(p,compact=false,specialtyLabel=null){
   (Array.isArray(p.teachingRoles)?p.teachingRoles.map(x=>String(x).toLowerCase()):[]);
  const flags=el('span','person-role-flags');
  if(roles.includes('instructeur'))flags.append(el('span','flag instructor','INSTRUCTEUR'));
+ if(compact&&specialtyLabel&&p.groupLeaderSpecialties?.includes(policeSpecialtyName(specialtyLabel)))
+  flags.append(el('span','flag ae-lead','GROEPSLEIDER'));
  if(roles.includes('docent'))flags.append(el('span','flag teacher','DOCENT'));
  if(compact&&p.dept==='politie'&&policeSpecialtyName(specialtyLabel)==='AE'){
-  if(p.aeTeamleader)flags.append(el('span','flag ae-lead','TEAMLEADER / LEIDING'));
+  if(p.aeTeamleader&&!['lid','instructeur','groepsleider','beide'].includes(p.functionOverrides?.AE))
+   flags.append(el('span','flag ae-lead','TEAMLEADER / LEIDING'));
   for(const level of p.aeRoles||[]){
    if(level==='teamleader')continue;
-   if(level==='instructeur'&&roles.includes('instructeur'))continue;
+   if(level==='instructeur')continue; // manual classification prevents false instructional labels
    if(AE_LEVEL_LABELS[level])flags.append(el('span','flag ae-level',AE_LEVEL_LABELS[level]));
   }
  }
@@ -3312,7 +3315,11 @@ function specialtyBranch(branch,isPolice,nested=false,department=''){
  if(isPolice&&branch.note)content.append(el('p','specialty-note',branch.note));
  const hasInstructorSection=!isPolice||supportsSpecialtyInstructors(branch.label);
  const aeBranch=isPolice&&policeSpecialtyName(branch.label)==='AE';
- const teamleaders=aeBranch?(branch.members||[]).filter(p=>p.aeTeamleader===true):[];
+ const teamleaders=(branch.members||[]).filter(p=>
+  (aeBranch&&p.aeTeamleader===true&&
+    !['lid','instructeur'].includes(p.functionOverrides?.AE))||
+  (isPolice&&Array.isArray(p.groupLeaderSpecialties)&&
+    p.groupLeaderSpecialties.includes(policeSpecialtyName(branch.label))));
  const tutors=(branch.members||[]).filter(p=>!teamleaders.includes(p)&&
   hasInstructorSection&&(isPolice?isSpecialtyInstructor(p,branch.label):isTeacher(p)));
  // Signalisatie, RADIO/BM en Semi-anoniem: alleen leden in rangvolgorde.
@@ -3323,7 +3330,7 @@ function specialtyBranch(branch,isPolice,nested=false,department=''){
   const columns=el('div','police-specialty-role-grid');
   if(teamleaders.length){
    const leadership=el('section','police-specialty-role-column police-teamleader-panel');
-   leadership.append(el('div','group-title ae-leadership','TEAMLEADERS / LEIDING'));
+   leadership.append(el('div','group-title ae-leadership','GROEPSLEIDERS / LEIDING'));
    leadership.append(specialtyPeopleList(teamleaders,false,branch.label));
    columns.append(leadership);
   }
@@ -3472,6 +3479,10 @@ async function loadPublic(){
     dossierUrl:typeof p.dossierUrl==='string'?p.dossierUrl.slice(0,270):'',
     instructorSpecialties:Array.isArray(p.instructorSpecialties)?p.instructorSpecialties.slice(0,12):[],
     teacherSpecialties:Array.isArray(p.teacherSpecialties)?p.teacherSpecialties.slice(0,12):[],
+    groupLeaderSpecialties:Array.isArray(p.groupLeaderSpecialties)?p.groupLeaderSpecialties.slice(0,12):[],
+    functionOverrides:p.functionOverrides&&typeof p.functionOverrides==='object'&&!Array.isArray(p.functionOverrides)?
+     Object.fromEntries(Object.entries(p.functionOverrides).filter(([n,r])=>
+      ['lid','groepsleider','instructeur','beide'].includes(r)&&typeof n==='string')):{},
     boardRole:p.boardRole||'none',leadershipTier:p.leadershipTier||'none',displayOrder:Number(p.displayOrder)||0,
     personId:/^\d{15,22}$/.test(String(p.personId||''))?String(p.personId):null,
     source:String(p.source||'personeelslijst').slice(0,35)}));
@@ -3962,6 +3973,7 @@ function fillPoliceSpecialtyPerson(){
  const active=new Set(person.specialties||[]),
   instructor=new Set(person.instructorSpecialties||[]),
   teacher=new Set(person.teacherSpecialties||[]);
+ const functionOverrides=person.functionOverrides||{};
  if(person.k9Manual)active.add('K9');
  if(person.motardManual)active.add('MOTARD');
  if(person.dispManual)active.add('DISP');
@@ -3979,6 +3991,13 @@ function fillPoliceSpecialtyPerson(){
     box.checked=(kind==='instructor'?instructor:teacher).has(specialty);
     box.addEventListener('change',()=>{
      if(box.checked)member.checked=true;
+     if(kind==='instructor'){
+      const chooser=row.querySelector('select[data-role="functionOverride"]');
+      if(chooser?.value){
+       if(box.checked)chooser.value=chooser.value==='groepsleider'?'beide':'instructeur';
+       else chooser.value=chooser.value==='beide'?'groepsleider':'lid';
+      }
+     }
      if(specialty==='K9'&&kind==='instructor'){
       if(box.checked)$('police-k9-role').value='instructeur';
       else if($('police-k9-role').value==='instructeur')$('police-k9-role').value='';
@@ -3996,6 +4015,28 @@ function fillPoliceSpecialtyPerson(){
     });
     flag.append(box,document.createTextNode(' '+display));row.append(flag);
    }
+  }
+  // Choose a function independently from ambiguous Discord group membership.
+  if(specialty!=='RAGO-IO'){
+   const wrap=el('label','manage-specialty-role');
+   wrap.append(document.createTextNode('Groepsfunctie '));
+   const choice=el('select');choice.dataset.role='functionOverride';choice.dataset.specialty=specialty;
+   for(const [value,title] of [['','Volgens Discord'],['lid','Gewoon lid'],
+     ['groepsleider','Groepsleider'],
+     ...(supportsSpecialtyInstructors(specialty)?[['instructeur','Instructeur'],
+      ['beide','Groepsleider én instructeur']]:[])]){
+    const option=el('option','',title);option.value=value;choice.append(option);
+   }
+   choice.value=functionOverrides[specialty]||'';
+   choice.addEventListener('change',()=>{
+    if(choice.value)member.checked=true;
+    const instructorChoice=row.querySelector('input[data-role="instructor"]');
+    if(instructorChoice&&choice.value)
+     instructorChoice.checked=['instructeur','beide'].includes(choice.value);
+    if(specialty==='AE'&&choice.value==='groepsleider')$('police-ae-role').value='teamleader';
+    previewPoliceSpecialty(specialty);
+   });
+   wrap.append(choice);row.append(wrap);
   }
   member.addEventListener('change',()=>{
    if(!member.checked){
@@ -4162,6 +4203,8 @@ $('police-specialty-save').addEventListener('click',async()=>{
  const area=$('police-specialty-choices'),pick=role=>[
   ...area.querySelectorAll('input[data-role="'+role+'"]:checked')].map(x=>x.value);
  const specialtySet=new Set([...pick('member'),...pick('instructor'),...pick('teacher')]);
+ const functionOverrides=Object.fromEntries([...area.querySelectorAll('select[data-role="functionOverride"]')]
+  .filter(x=>x.value).map(x=>[x.dataset.specialty,x.value]));
  const specialties=[...specialtySet],instructorSpecialties=pick('instructor'),
   teacherSpecialties=pick('teacher');
  // An instructor checkbox is itself a deliberate K9 role selection.
@@ -4185,10 +4228,10 @@ $('police-specialty-save').addEventListener('click',async()=>{
  try{
   await authFetch('/api/organogram/police-specialties/'+encodeURIComponent(person.personId),{
    method:'PUT',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,k9Role,motardRole,dispRole,aeRole,reason})
+   body:JSON.stringify({specialties,instructorSpecialties,teacherSpecialties,functionOverrides,k9Role,motardRole,dispRole,aeRole,reason})
   });
   person.specialties=specialties;person.instructorSpecialties=instructorSpecialties;
-  person.teacherSpecialties=teacherSpecialties;person.k9Manual=k9Role;
+  person.teacherSpecialties=teacherSpecialties;person.functionOverrides=functionOverrides;person.k9Manual=k9Role;
   person.motardManual=motardRole;person.dispManual=dispRole;person.aeManual=aeRole;
   $('police-specialty-reason').value='';
   $('police-specialty-status').textContent='Specialisaties opgeslagen en gelogd.';
@@ -4233,6 +4276,7 @@ $('manage-save').addEventListener('click',async()=>{
   ];
   // Clear obsolete manual badge flags on the next audited edit.
   const displayLabels=[];
+  const functionOverrides=p.placement?.functionOverrides||{};
   const instructorSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="instructor"]:checked')].map(x=>x.value);
   const teacherSpecialties=[...$('manage-specialties').querySelectorAll('input[data-role="teacher"]:checked')].map(x=>x.value);
   const selected=[...$('manage-specialties').querySelectorAll('input[data-role="member"]:checked')].map(x=>x.value);
@@ -4240,9 +4284,9 @@ $('manage-save').addEventListener('click',async()=>{
   const reason=$('manage-reason').value.trim();
   await authFetch('/api/organogram/placements/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.personId),
    {method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
+    body:JSON.stringify({boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,functionOverrides,
      instructorSpecialties,teacherSpecialties,reason})});
-  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,
+  p.placement={boardRole,leadershipTier,displayOrder,teachingRoles,displayLabels,specialties,functionOverrides,
    instructorSpecialties,teacherSpecialties};
   p.undoAvailable=true;
   $('manage-undo').disabled=false;
