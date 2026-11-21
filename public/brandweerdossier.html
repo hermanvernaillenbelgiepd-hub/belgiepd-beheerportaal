@@ -474,6 +474,8 @@ function setAvailableTabs(data){
  if(data.visibility==='leadership'||data.visibility==='full')
   for(const tab of ['specialisaties','observaties','basisnotities','notities','sancties','opleidingen','historiek'])
    allowedTabs.add(tab);
+ if(data.visibility==='identity')
+  for(const tab of ['observaties','basisnotities','notities'])allowedTabs.add(tab);
  if(Array.isArray(data.canWrite)&&data.canWrite.length)allowedTabs.add('nieuw');
  for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
   button.hidden=!allowedTabs.has(button.dataset.tab);
@@ -518,11 +520,12 @@ async function load(){
   $('fireManualLeaveForm').hidden=data.canLogManualLeave!==true;
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
+  const middleView=data.visibility==='identity',canSeeNotes=advanced||middleView;
   document.querySelector('[data-sheet-tile="promotions"]').hidden=
    !(data.canProposePromotion===true||data.canAdvisePromotion===true||
       (data.promotionProposals||[]).length);
   const scopes={
-   identity:'Brandweer Middenkader: basisgegevens, goedgekeurde verlofperiodes en observaties. Vertrouwelijke registraties zijn niet beschikbaar.',
+   identity:'Brandweer Middenkader: basisgegevens, observaties, notities en promotievoorstellen voor Basiskader en stagiairs.',
    leadership:'Brandweerleiding: uitgebreide dossierinzage bij de toegelaten personeelsleden.',
    full:'ZONE of afzonderlijk gemachtigd beheer: uitgebreide dossierinzage.'};
   $('access').textContent=scopes[data.visibility]||'';
@@ -534,17 +537,17 @@ async function load(){
   // Basic notes can be summarized only from the server-authorized response.
   const basicEntries=(data.entries||[]).filter(x=>x.type==='notitie'&&x.noteKind==='basis');
   const oldBasicNotes=(data.olderNotes||[]).filter(x=>x.type==='begeleiding'||x.type==='evaluatie');
-  $('overviewBasicNotes').textContent=advanced?
+  $('overviewBasicNotes').textContent=canSeeNotes?
     [...basicEntries.map(x=>({title:'Basisnotitie',details:x.details})),...oldBasicNotes]
       .slice(0,5).map(x=>(x.title||x.type)+': '+(x.details||'').slice(0,90))
       .join(' | ')||'Geen basisnotities geregistreerd'
     :'Afgeschermd voor jouw Brandweerfunctie.';
-  rows($('profile'),[...identity,...(advanced?[
+  rows($('profile'),[...identity,...(canSeeNotes?[
    ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
    ['Functie of opdracht',profile.functionTitle]
   ]:[])]);
   $('fireProfileEditor').hidden=false;
-  rows($('fireProfileSummary'),[...identity,...(advanced?[
+  rows($('fireProfileSummary'),[...identity,...(canSeeNotes?[
     ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
     ['Functie of opdracht',profile.functionTitle]
   ]:[])]);
@@ -564,10 +567,19 @@ async function load(){
 
   $('overviewQuals').hidden=!advanced;
   $('overviewActivity').hidden=!advanced;
-  for(const tile of ['overviewObservationTile','overviewNotesTile',
-    'overviewSanctionsTile','overviewTrainingTile','overviewHistoryTile'])
+  for(const tile of ['overviewObservationTile','overviewNotesTile'])
+    $(tile).hidden=!canSeeNotes;
+  for(const tile of ['overviewSanctionsTile','overviewTrainingTile','overviewHistoryTile'])
     $(tile).hidden=!advanced;
-  if(advanced){
+  for(const [tile,visible] of [
+    ['notes',canSeeNotes],['observations',canSeeNotes],
+    ['specialisaties',advanced],['movements',advanced],
+    ['training',advanced],['sanctions',advanced]
+  ]){
+    const redacted=document.querySelector('[data-sheet-tile="'+tile+'"] .fire-redacted');
+    if(redacted)redacted.hidden=visible;
+  }
+  if(canSeeNotes){
    const qualifiers=data.specialties||[];
    renderFireSpecialties($('specialties'),qualifiers);
    renderFireSpecialties($('overviewSpecialties'),qualifiers,{compact:true});
@@ -597,7 +609,7 @@ async function load(){
    const score=threeMonthObservationScore(entries,{limited:entries.length>=120});
    const scoreDisplay=$('fireScoreSummary');
    scoreDisplay.replaceChildren();
-   if(advanced){
+   if(canSeeNotes){
      const value=document.createElement('strong');
      value.textContent='Gem. observatiescore · 3 maanden: '+
        (score.average===null?'Geen scores':
@@ -613,7 +625,7 @@ async function load(){
      scoreDisplay.title='Trend vergelijkt de eerdere met de recentere score binnen drie maanden. '+
        'RP wordt meegerekend via de bestaande observatiescore, niet apart gescoord.';
    }
-   scoreDisplay.hidden=!advanced;
+   scoreDisplay.hidden=!canSeeNotes;
    const notes=entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis');
    cards($('basicNotes'),[...basicEntries,...oldBasicNotes],
      x=>x.title||'Basisnotitie',x=>x.details,
@@ -642,7 +654,7 @@ async function load(){
      x=>x.eventDate||((x.at||'').slice(0,16)+' · '+(x.byDiscordId||'')));
    $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+
      encodeURIComponent(id);
-   void loadFireCheckrides();
+   if(advanced)void loadFireCheckrides();
   }
   $('specialtyEdit').hidden=true;
   if(data.canEditSpecialties){
