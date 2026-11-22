@@ -160,3 +160,15 @@ html[data-bpd-theme="light"] body.dossier-onepage .dossier-header-specialties .l
   color:#1c3554!important;
 }
 html[data-bpd-theme="light"] body.dossier-onepage .dossier-entry-byline {color:#486680;}
+
+/* Hidden is a security/usability invariant, not a design preference.
+   Do not unhide a service-protected tile because of a layout rule. */
+body.dossier-onepage #panel>.sheet-identity[hidden],
+body.dossier-fire-sheet #panel>.sheet-identity[hidden],
+body.dossier-onepage .dossier-three-column .landscape-cell[hidden],
+body.dossier-onepage .dossier-training-footer .landscape-cell[hidden],
+body.dossier-onepage .dossier-header-specialties .landscape-cell[hidden],
+body.dossier-onepage .dossier-three-column .overview-preview[hidden],
+body.dossier-onepage .dossier-training-footer .overview-preview[hidden] {
+  display:none!important;
+}
