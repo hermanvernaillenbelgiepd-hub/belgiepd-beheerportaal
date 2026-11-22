@@ -102,3 +102,15 @@ test('registraties blijven bereikbaar binnen Dossiercentrum',()=>{
   assert.match(page,/frame\.src=r\.dept==='brandweer'\?/);
   assert.match(page,/embed:'1',dept:r\.dept,discordId:r\.discordId/);
 });
+
+test('Dossiercentrum biedt deelbare dossierlinks met servergecontroleerde opening',()=>{
+ const page=read('public/dossiercentrum.html');
+ assert.match(page,/id="dossierQuickSwitch"/);
+ assert.match(page,/id="copyDossierLink"/);
+ assert.match(page,/link\.searchParams\.set\('discordId',r\.discordId\)/);
+ assert.match(page,/p\.personnel===true&&p\.canOpen===true/);
+ assert.match(page,/p\.dept===targetDept&&p\.discordId===targetId/);
+ assert.match(page,/openDossier\(record,\{syncUrl:false\}\)/);
+ assert.match(page,/history\.replaceState\(null,'',link\.pathname\+link\.search\)/);
+ assert.match(page,/De ontvanger heeft eigen dossierrechten nodig/);
+});
