@@ -2013,7 +2013,13 @@ function setupDossierTabs(){
       <div><small>Naam</small><strong id="sheetName">—</strong></div>
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
-      <div><small>Discord-ID</small><strong id="sheetDiscordId">—</strong></div>
+      <div class="dossier-dcid-cell"><small>DC-ID</small><strong id="sheetDiscordId">—</strong>
+        <div class="dossier-id-buttons">
+          <button type="button" id="sheetCopyDcId" aria-label="DC-ID kopiëren">Kopieer DC-ID</button>
+          <button type="button" id="sheetCopyDiscordPing" aria-label="Discord-ping kopiëren">Kopieer @ ping</button>
+        </div>
+        <span id="sheetCopyFeedback" class="subtle" role="status" aria-live="polite"></span>
+      </div>
     </div>
     <details class="fiche-editor" id="ficheEditor" hidden><summary>Algemene personeelsgegevens aanpassen</summary></details>
     <p class="sheet-intro">Dossiergegevens uit de actuele personeels- en kaderregistraties. Wijzigingen worden afzonderlijk geaudit.</p>
@@ -2120,6 +2126,22 @@ function setupDossierTabs(){
   summaryGrid.replaceChildren(upper,lower);
   $('registerImportantNoteQuick').onclick=()=>choosePersonnelRegistration('case:notitie',true);
   $('registerActivityPingQuick').onclick=()=>choosePersonnelRegistration('case:inactiviteitsping',true);
+  const copyHeaderValue=async mode=>{
+    const id=$('sheetDiscordId').textContent.trim();
+    const feedback=$('sheetCopyFeedback');
+    if(!/^[0-9]{15,22}$/.test(id)){feedback.textContent='Geen geldig DC-ID';return}
+    const value=mode==='ping'?'<@'+id+'>':id;
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Klembord niet beschikbaar');
+      await navigator.clipboard.writeText(value);
+      feedback.textContent=mode==='ping'?'Discord-vermelding gekopieerd':'DC-ID gekopieerd';
+    }catch{
+      window.prompt('Kopieer de waarde:',value);
+      feedback.textContent='Handmatig kopiëren uit venster';
+    }
+  };
+  $('sheetCopyDcId').onclick=()=>void copyHeaderValue('id');
+  $('sheetCopyDiscordPing').onclick=()=>void copyHeaderValue('ping');
   const trainingHeader=sheet.querySelector('[data-sheet-tile="training"]>h3');
   const trainingAdd=document.createElement('button');
   trainingAdd.type='button';trainingAdd.id='registerTrainingQuick';

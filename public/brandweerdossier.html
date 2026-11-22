@@ -61,7 +61,11 @@ html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-insufficient{color:#60
 <div><small>NAAM</small><strong id="name">—</strong></div>
 <div><small>REEKS</small><strong id="series">—</strong></div>
 <div><small>VERLOF-/PERSONEELSSTATUS</small><strong id="status">—</strong></div>
-<div><small>DISCORD-ID</small><strong id="discord">—</strong></div>
+<div class="dossier-dcid-cell"><small>DC-ID</small><strong id="discord">—</strong>
+<div class="dossier-id-buttons">
+<button id="fireCopyDcId" type="button" aria-label="DC-ID kopiëren">Kopieer DC-ID</button>
+<button id="fireCopyDiscordPing" type="button" aria-label="Discord-ping kopiëren">Kopieer @ ping</button>
+</div><span id="fireCopyFeedback" role="status" aria-live="polite" class="muted"></span></div>
 </div><p class="muted" id="access"></p>
 <details id="fireProfileEditor" class="fiche-editor" hidden><summary>Algemene personeelsgegevens bekijken</summary><div id="fireProfileSummary" class="sheet-rows"></div></details>
 <nav id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van Brandweerdossier" hidden>
@@ -242,6 +246,22 @@ import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-previ
 import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {threeMonthObservationScore,observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 const $=id=>document.getElementById(id);
+const copyFireHeader=async mode=>{
+ const id=String($('discord').textContent||'').trim();
+ const state=$('fireCopyFeedback');
+ if(!/^[0-9]{15,22}$/.test(id)){state.textContent='Geen geldig DC-ID';return}
+ const value=mode==='ping'?'<@'+id+'>':id;
+ try{
+  if(!navigator.clipboard?.writeText)throw Error('Klembord niet beschikbaar');
+  await navigator.clipboard.writeText(value);
+  state.textContent=mode==='ping'?'Discord-vermelding gekopieerd':'DC-ID gekopieerd';
+ }catch{
+  window.prompt('Kopieer de waarde:',value);
+  state.textContent='Handmatig kopiëren uit venster';
+ }
+};
+$('fireCopyDcId').onclick=()=>void copyFireHeader('id');
+$('fireCopyDiscordPing').onclick=()=>void copyFireHeader('ping');
 enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
 displayServiceBadge($('dossierServiceBanner'),'brandweer');
 displayServiceBadge($('registrationServiceBanner'),'brandweer',{registration:true});
