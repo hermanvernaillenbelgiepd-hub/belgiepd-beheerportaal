@@ -119,10 +119,11 @@ import {PERSONNEL_EDITS_COLLECTION,mergePersonnelEdits,canReadPersonnelSubject,i
 import {isPolice9xx,verifiedOfficerCadre,verifiedCorpsSelfDossier} from './verified-police-cadre.js';
 import {CREATED_PERSONNEL_COLLECTION,asCreatedPersonnel,personnelDataEnabled} from './personnel-create.js';
 import {publicStaticCacheControl} from './static-cache-policy.js';
+import {applyPortalSecurityHeaders} from './security-headers-policy.js';
 const dir=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 app.disable('x-powered-by');
-app.use((_req,res,next)=>{res.set('X-Content-Type-Options','nosniff');res.set('Referrer-Policy','no-referrer');res.set('Cache-Control','no-store');next();});
+app.use((_req,res,next)=>{applyPortalSecurityHeaders(res);next();});
 // Applicant intake has been retired from this deployment. Keep historical
 // Firestore data intact for audit; the retired public HTML cannot be served.
 app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
