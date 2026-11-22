@@ -217,6 +217,49 @@ html.mr-dragging,html.mr-dragging *{cursor:col-resize!important;user-select:none
  overflow-wrap:normal!important;overflow:hidden;text-overflow:ellipsis;
  text-align:center;padding:4px 1px 5px;font-size:9px;line-height:1.15
 }
+
+/* Desktop blijft één volledige matrix vanaf 1451px.
+   Geconserveerde handmatige pixelbreedtes blijven gelden op brede beeldschermen;
+   op middelbrede beeldschermen schalen de identiteits- en specialisatiekolommen
+   zonder een tweede horizontale scroll. Op <=1450px is de compacte lijst actief. */
+@media(min-width:1451px) and (max-width:1900px){
+ body.roster-personnel-page .mr-table,
+ body.roster-personnel-page .mr-table.mr-direct-columns{
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  table-layout:fixed!important;
+ }
+ body.roster-personnel-page .mr-table colgroup col{
+  width:auto!important;min-width:0!important;
+ }
+ body.roster-personnel-page .mr-table th{
+  min-width:0!important;width:auto!important;max-width:none;
+ }
+ body.roster-personnel-page .mr-table th:nth-child(1){width:4%!important}
+ body.roster-personnel-page .mr-table th:nth-child(2){width:7%!important}
+ body.roster-personnel-page .mr-table th:nth-child(3){width:17%!important}
+ body.roster-personnel-page .mr-table th:nth-child(4){width:6%!important}
+ body.roster-personnel-page .mr-table th:nth-child(5){width:7%!important}
+ body.roster-personnel-page .mr-table th.mr-specialty-head{
+  width:auto!important;min-width:0!important;
+ }
+ body.roster-personnel-page .mr-table td{
+  min-width:0!important;overflow-wrap:anywhere;
+ }
+ body.roster-personnel-page .mr-scroll{
+  max-width:100%!important;overflow-x:clip!important;
+  overflow-y:visible!important;
+ }
+ body.roster-personnel-page .mr-col-toolbar,
+ body.roster-personnel-page .mr-col-handle{
+  display:none!important;
+ }
+}
+@media(max-width:1450px){
+ body.roster-personnel-page .mr-col-toolbar,
+ body.roster-personnel-page .mr-col-handle{
+  display:none!important;
+ }
+}
 </style><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body class="roster-personnel-page">
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Algemene personeelslijst</h1>

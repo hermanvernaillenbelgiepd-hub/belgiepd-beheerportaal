@@ -368,7 +368,7 @@ html:not([data-bpd-theme="dark"]) .roster-personnel-page .mr-mention-action{
 /* Medium-width roster: replace sideways-scrolling specialization matrix with
    an accessible compact list and on-demand complete specialization details.
    The original home-dashboard roster keeps its own 1024px breakpoint. */
-@media(min-width:1025px) and (max-width:1800px){
+@media(min-width:1025px) and (max-width:1450px){
 body.roster-personnel-page .mr-scroll:has(>.mr-mobile-roster),
 body.roster-personnel-page .mr-scroll:has(>.mr-mobile-roster){
     max-height:none!important;overflow:visible!important;max-width:100%;width:100%;
