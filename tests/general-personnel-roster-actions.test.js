@@ -15,7 +15,7 @@ test('general member roster remains private; officer-only identity projection is
  ];
  const publicRows=publicPoliceRoster(rows);
  assert.ok(publicRows.every(x=>!Object.hasOwn(x,'discordId')));
- const secured=restrictedRosterMentionEntries(rows);
+ const secured=restrictedRosterMentionEntries(rows,{all:true,departments:[]});
  assert.deepEqual(secured.map(x=>[x.call,x.name,x.discordId]),[
   ['930','Eerste','111111111111111111'],
   ['—','Tweede','222222222222222222'],

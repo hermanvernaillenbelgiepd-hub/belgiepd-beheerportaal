@@ -146,6 +146,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <div id="content" hidden>
 <section><div class="controls">
 <label>Dienst<select id="department"><option value="">Alle bevoegde diensten</option></select></label>
+<label id="activitySeriesLabel" hidden>Reeks<select id="activitySeries" aria-label="Politiereeks filteren"><option value="">Alle reeksen</option></select></label>
 <label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">15+ dagen</option><option value="checking">CHECKING na verlof</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
 <label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
 <button id="refresh" type="button">↻ Vernieuwen</button></div></section>
@@ -189,6 +190,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 </main>
 <script type="module">
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel} from '/activity-roster-order.js';
+import {matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-police-series-filter.js';
 const $=id=>document.getElementById(id);
 let auth,authSdk,records=[],asOf='',sources=null;
 let cadreConfig=null,cadreData=null;
@@ -196,8 +198,10 @@ function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
 function render(){
- const dept=$('department').value,kind=$('filter').value,query=$('search').value.trim().toLocaleLowerCase('nl');
- const visible=sortActivityLikePersonnel(records.filter(p=>(!dept||p.department===dept)&&(!kind||p.kind===kind)&&
+ const dept=$('department').value,kind=$('filter').value,series=$('activitySeries').value;
+ const query=$('search').value.trim().toLocaleLowerCase('nl');
+ const visible=sortActivityLikePersonnel(records.filter(p=>(!dept||p.department===dept)&&
+  matchesActivityPoliceSeries(p,series)&&(!kind||p.kind===kind)&&
   (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query)))));
  $('counts').replaceChildren();
  for(const key of ['ok','checking','50/50','inactief','beoordelen','verlof_nazien','verouderd','geen_data']){
@@ -280,6 +284,7 @@ async function load(){
   const select=$('department'),last=select.value;select.replaceChildren(new Option('Alle bevoegde diensten',''));
   for(const d of result.departments||[])select.add(new Option(d[0].toUpperCase()+d.slice(1),d));
   if([...select.options].some(o=>o.value===last))select.value=last;
+  updateActivitySeries();
   $('content').hidden=false;$('feedback').textContent='Alleen-lezen · '+records.length+' dossiers binnen jouw toegangsrechten. Geen acties uitgevoerd.';
   render();await loadReturnChecks();
  }catch(err){$('content').hidden=true;$('feedback').textContent=err.message}
@@ -466,7 +471,16 @@ $('cadreRefresh').onclick=loadCadre;
 document.addEventListener('visibilitychange',()=>{
  if(!document.hidden&&auth?.currentUser)void loadCadreConfig();
 });
-for(const control of ['department','filter','search'])$(control).addEventListener('input',render);
+function updateActivitySeries(){
+ const field=$('activitySeries'),last=field.value;
+ const series=availableActivityPoliceSeries(records,$('department').value);
+ field.replaceChildren(new Option('Alle reeksen',''));
+ for(const value of series)field.add(new Option('Reeks '+value,value));
+ if(series.includes(last))field.value=last;
+ $('activitySeriesLabel').hidden=series.length===0;
+}
+$('department').addEventListener('input',()=>{updateActivitySeries();render()});
+for(const control of ['activitySeries','filter','search'])$(control).addEventListener('input',render);
 $('refresh').addEventListener('click',load);
 (async()=>{
  try{
