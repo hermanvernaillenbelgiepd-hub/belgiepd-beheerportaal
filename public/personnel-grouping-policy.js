@@ -156,6 +156,25 @@ export function groupPoliceSpecialties(records){
  });
 }
 
+// A DEPANNAGE Sheets row alone is not proof that the displayed function
+// belongs to towing. Legacy rows can contain an AZLS, Fire or Police rank,
+// sometimes accompanied by a shared specialty patch. Only show a recognized
+// Depannage function, callsign or independently verified function membership.
+// This is a read-only view filter; no roster, role or dossier data is changed.
+export function isDepannagePersonnelProfile(person){
+ if(person?.dept!=='depannage')return false;
+ const rank=String(person.rank||'').trim().toUpperCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[-_/]/g,' ');
+ const call=String(person.call||'').trim().toUpperCase();
+ const foreign=/\b(?:AMBULANCIER|VERPLEEGKUNDIGE|ARTS|HOOFDARTS|HOOFDAMBULANCIER|HOOFDVERPLEEGKUNDIGE|MEDISCH|PARAMEDICUS|DIRMED|AZLS|MUG|HARTS|HVPK|HAMB|VPK|BRANDWEERMAN|BRANDWEERVROUW|BRANDWEER|ZONECHEF|KOLONEL|MAJOOR|KAPITEIN|LUITENANT|SERGEANT|KORPORAAL|INSPECTEUR|COMMISSARIS|POLITIEAGENT|BURGER|BURGERAAD)\b/;
+ if(foreign.test(rank))return false;
+ if(/\b(?:DEPANNAGE\w*|TAKEL\w*|BERGING\w*|TECHNICUS|CHAUFFEUR|MONTEUR|OPERATOR|KRAANOPERATOR|AWV|FAST|LSRA|LRSA|DIRECTEUR|DIENSTLEIDING|WEGENWACHT|WEGENWERKEN)\b/.test(rank))
+  return true;
+ if(/^(?:AWV|LSRA|LRSA|FAST|DEPK|DEP)(?:[-\s]|\d)/.test(call))return true;
+ return Array.isArray(person.depannageGroups)&&
+  person.depannageGroups.some(group=>['awv','lsra','fast'].includes(group));
+}
+
 // Other services reuse the same verified organogram projection as Police.
 // Unknown qualifications never appear until registered on that source.
 export function groupServiceSpecialties(records,dept){
@@ -164,7 +183,8 @@ export function groupServiceSpecialties(records,dept){
  const raw=x=>String(x||'').trim();
  const code=x=>raw(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .toUpperCase().replace(/[.]/g,' ').replace(/\s+/g,' ').slice(0,64);
- for(const p of list(records).filter(x=>x?.dept===dept)){
+ for(const p of list(records).filter(x=>x?.dept===dept&&
+  (dept!=='depannage'||isDepannagePersonnelProfile(x)))){
   const active=new Set(list(p.specialties).map(code).filter(Boolean));
   const instructor=new Set(list(p.instructorSpecialties).map(code));
   const teacher=new Set(list(p.teacherSpecialties).map(code));

@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {defaultGroupSettings,readGroupSettings,validateGroupSettings,
  applyGroupSettings,GROUP_DEPARTMENTS} from '../public/personnel-group-settings-policy.js';
 import {canEditPersonnelGroupSettings} from '../src/personnel-group-settings-routes.js';
-import {groupServiceSpecialties,groupPoliceSeries} from '../public/personnel-grouping-policy.js';
+import {groupServiceSpecialties,groupPoliceSeries,isDepannagePersonnelProfile} from '../public/personnel-grouping-policy.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const reason='Opmaak van de personeelsindeling aanpassen';
 test('alle vijf hulpdiensten hebben losse instellingen; alleen Politie heeft reeksen',()=>{
@@ -61,6 +61,40 @@ test('andere diensten gebruiken bestaande geverifieerde specialisaties',()=>{
  assert.equal(groups[0].groups.instructors[0].name,'B');
  assert.equal(groups[0].groups.members[0].name,'A');
  assert.equal(groupServiceSpecialties(records,'burger').length,0);
+});
+test('Depannage-specialisaties verbergen medische en andere dienstfuncties, ook met een FAST-patch',()=>{
+ const people=[
+  {dept:'depannage',name:'Echte takelaar',call:'LSRA-10',rank:'Depannagetechnicus',
+   specialties:['CRANE','F.A.S.T']},
+  {dept:'depannage',name:'Diensthoofd',call:'—',rank:'Directeur',
+   specialties:['F.A.S.T']},
+  {dept:'depannage',name:'Geverifieerde FAST',call:'—',rank:'Lid',
+   depannageGroups:['fast'],specialties:['F.A.S.T']},
+  {dept:'depannage',name:'Medewerker ambulance',call:'—',rank:'Hoofd-Ambulancier',
+   depannageGroups:['fast'],specialties:['CRANE','F.A.S.T']},
+  {dept:'depannage',name:'Medewerker verpleegkunde',call:'—',
+   rank:'Hoofd-Verpleegkundige',specialties:['CRANE']},
+  {dept:'depannage',name:'Medewerker brandweer',call:'—',
+   rank:'Brandweerman',specialties:['CRANE']},
+  {dept:'depannage',name:'Zonder dienstbewijs',call:'—',
+   rank:'Onbekend',specialties:['CRANE']},
+  {dept:'ambulance',name:'Andere afdeling',call:'—',
+   rank:'Ambulancier',specialties:['F.A.S.T']}
+ ];
+ assert.equal(isDepannagePersonnelProfile(people[0]),true);
+ assert.equal(isDepannagePersonnelProfile(people[1]),true);
+ assert.equal(isDepannagePersonnelProfile(people[2]),true);
+ for(const p of people.slice(3))
+  assert.equal(isDepannagePersonnelProfile(p),false,p.name);
+ const groups=groupServiceSpecialties(people,'depannage');
+ assert.deepEqual(groups.map(group=>[group.label,group.total]),
+  [['CRANE',1],['F A S T',3]]);
+ const displayed=groups.flatMap(g=>Object.values(g.groups).flat().map(p=>p.name));
+ assert.ok(!displayed.includes('Medewerker ambulance'));
+ assert.ok(!displayed.includes('Medewerker verpleegkunde'));
+ assert.ok(!displayed.includes('Medewerker brandweer'));
+ const viewer=read('public/personnel-grouped-ui.js');
+ assert.match(viewer,/scoped!=='depannage'\|\|isDepannagePersonnelProfile\(p\)/);
 });
 test('dienstspecifieke schrijfrechten: geen cliëntvelden, Burgerraad noch ongeverifieerde kaderclaims',()=>{
  const tech={uid:'discord:123456789012345678',discordId:'123456789012345678',
