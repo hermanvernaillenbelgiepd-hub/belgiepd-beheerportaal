@@ -1,4 +1,4 @@
-import {canonicalPoliceSpecialty,groupPoliceSeries,groupPoliceSpecialties,groupServiceSpecialties} from './personnel-grouping-policy.js';
+import {canonicalPoliceSpecialty,groupPoliceSeries,groupPoliceSpecialties,groupServiceSpecialties,isDepannagePersonnelProfile} from './personnel-grouping-policy.js';
 import {applyGroupSettings,specialtyGroupKey,GROUP_TIER_DEFAULTS} from './personnel-group-settings-policy.js';
 // One read-only presentation over the existing, permission-checked organogram.
 // All user-supplied names are textContent; no identifier or role is sent back.
@@ -66,6 +66,7 @@ export function mountPersonnelGroupedViews({root,status,title,search,departmentS
   const q=String(search.value||'').trim().toLocaleLowerCase('nl-BE');
   const scoped=mode==='reeksen'?'politie':dept;
   const filtered=(records||[]).filter(p=>p.dept===scoped&&
+   (scoped!=='depannage'||isDepannagePersonnelProfile(p))&&
    [p.name,p.call,p.rank,p.series,...(Array.isArray(p.specialties)?p.specialties:[])]
    .some(x=>String(x??'').toLocaleLowerCase('nl-BE').includes(q)));
   // Only operational Reeks 1, Reeks 2 and Reeks 3 appear in personnel
