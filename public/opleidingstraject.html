@@ -51,6 +51,13 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .review small{color:var(--muted)}
 .hint{font-size:12px;background:var(--soft);border-radius:8px;padding:10px;margin-top:12px}
 [hidden]{display:none!important}
+.pathway-main-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.pathway-main-nav a{display:flex;justify-content:center;align-items:center;padding:10px 12px;min-height:42px;
+  color:var(--ink);text-decoration:none;background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;font-size:13px;font-weight:750;text-align:center}
+.pathway-main-nav a[aria-current="page"]{background:var(--soft);border-color:var(--accent)}
+.pathway-main-nav a:hover,.pathway-main-nav a:focus-visible{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+@media(max-width:650px){.pathway-main-nav{grid-template-columns:1fr}}
 @media(max-width:760px){main{padding:15px 10px 40px}.hero{padding:18px}.hero .icon{display:none}
 .stats,.course-grid,.form-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:540px){.stats,.course-grid,.form-grid{grid-template-columns:1fr}header nav{margin-left:0}}
@@ -61,6 +68,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
 <main>
 <div class="hero"><div><div class="eyebrow">OPLEIDINGSCENTRUM / VOORTGANG</div><h1>Mijn opleidingstraject</h1>
 <p>Bekijk beschikbare opleidingen per hulpdienst, wat je gevolgd hebt en welke officieel verplicht zijn. Behaalde resultaten worden rechtstreeks uit het opleidingsregister gelezen.</p></div><span class="icon" aria-hidden="true">🎓</span></div>
+<nav class="pathway-main-nav" aria-label="Opleidingscentrum">
+ <a href="/opleidingstraject.html" aria-current="page">Mijn opleidingstraject</a>
+ <a href="/opleidingscentrum.html?pane=request">Opleiding aanvragen</a>
+ <a id="pathwayManageLink" href="/opleidingscentrum.html?pane=register" hidden>Beheer &amp; planning</a>
+</nav>
 <div id="feedback" role="status" aria-live="polite">Aanmelding controleren…</div>
 <section id="personalArea" hidden>
 <div class="stats"><div class="stat"><strong id="allTotal">0</strong><small>Beschikbaar</small></div>
@@ -181,6 +193,7 @@ function renderPersonal(){
 }
 function renderManager(){
  $('manageArea').hidden=true;$('reviewArea').hidden=true;
+ $('pathwayManageLink').hidden=!(managed?.manageable?.length);
  if(!managed)return;
  const depts=managed.manageable||[];
  $('manageArea').hidden=!depts.length;
