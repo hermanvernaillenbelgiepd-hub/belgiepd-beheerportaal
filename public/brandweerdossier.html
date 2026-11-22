@@ -61,7 +61,11 @@ html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-insufficient{color:#60
 <div><small>NAAM</small><strong id="name">—</strong></div>
 <div><small>REEKS</small><strong id="series">—</strong></div>
 <div><small>VERLOF-/PERSONEELSSTATUS</small><strong id="status">—</strong></div>
-<div><small>DISCORD-ID</small><strong id="discord">—</strong></div>
+<div class="dossier-dcid-cell"><small>DC-ID</small><strong id="discord">—</strong>
+<div class="dossier-id-buttons"><button id="fireCopyDcId" type="button">Kopiëren</button>
+<button id="fireCopyDiscordPing" type="button">Ping kopiëren</button></div>
+<span id="fireCopyFeedback" role="status" class="muted"></span></div>
+<div id="fireHeaderSpecialties" class="dossier-header-specialties"></div>
 </div><p class="muted" id="access"></p>
 <details id="fireProfileEditor" class="fiche-editor" hidden><summary>Algemene personeelsgegevens bekijken</summary><div id="fireProfileSummary" class="sheet-rows"></div></details>
 <nav id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van Brandweerdossier" hidden>
@@ -238,10 +242,40 @@ import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
-import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {attachDossierRecordPreview,dossierAuthorLine,dossierRecordByline,dossierPreviewText} from '/dossier-entry-preview.js';
 import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {threeMonthObservationScore,observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 const $=id=>document.getElementById(id);
+(function arrangeFireOverview(){
+ const sheet=$('overviewSection').querySelector('.landscape-grid');
+ const tile=key=>sheet.querySelector('[data-sheet-tile="'+key+'"]');
+ $('fireHeaderSpecialties').append(tile('specialisaties'));
+ const overview=document.createElement('div');overview.className='dossier-three-column';
+ const column=(key,names)=>{
+   const el=document.createElement('div');el.className='dossier-column dossier-column--'+key;
+   for(const name of names)el.append(tile(name));
+   return el;
+ };
+ overview.append(column('left',['leave','basisNotes']),column('middle',['notes','observations']),
+   column('right',['movements','sanctions','promotions']));
+ const extra=document.createElement('div');extra.className='dossier-training-footer';
+ extra.append(tile('training'));sheet.replaceChildren(overview,extra);
+})();
+const copyFireHeader=async mode=>{
+ const id=String($('discord').textContent||'').trim();
+ const state=$('fireCopyFeedback');
+ if(!/^[0-9]{15,22}$/.test(id)){state.textContent='Geen geldig DC-ID';return}
+ const value=mode==='ping'?'<@'+id+'>':id;
+ try{
+  if(!navigator.clipboard?.writeText)throw Error('Klembord niet beschikbaar');
+  await navigator.clipboard.writeText(value);
+  state.textContent=mode==='ping'?'Discord-vermelding gekopieerd':'DC-ID gekopieerd';
+ }catch{
+  window.prompt('Kopieer de waarde:',value);state.textContent='Handmatig kopiëren uit venster';
+ }
+};
+$('fireCopyDcId').onclick=()=>void copyFireHeader('id');
+$('fireCopyDiscordPing').onclick=()=>void copyFireHeader('ping');
 enhanceBelgianDateInputs(['fireLeaveFrom','fireLeaveUntil','date','endDate']);
 displayServiceBadge($('dossierServiceBanner'),'brandweer');
 displayServiceBadge($('registrationServiceBanner'),'brandweer',{registration:true});
@@ -382,9 +416,7 @@ function cards(root,items,heading,text,metadata){
       title:heading(item),
       score:item.score,
       details:text(item)||'—',
-      attribution:dossierAuthorLine(item)+
-        (item.registeredRank?' · '+item.registeredRank:'')+
-        (item.createdAt?' · geregistreerd '+item.createdAt:'')
+      attribution:dossierRecordByline(item)||dossierAuthorLine(item)
     });
     addFireRetireControl(disclosure.content,item,root.id);
     mount.append(disclosure.element);
@@ -393,7 +425,8 @@ function cards(root,items,heading,text,metadata){
   const card=document.createElement('div');card.className='record';
   const title=document.createElement('h3');title.textContent=heading(item);
   const details=document.createElement('p');details.textContent=text(item)||'—';
-  const meta=document.createElement('small');meta.textContent=metadata(item)||'';
+  const meta=document.createElement('small');
+  meta.textContent=[dossierRecordByline(item),metadata(item)||''].filter(Boolean).join(' · ');
   card.append(title,details,meta);
   // The original service-verified metadata remains the sole source of detail.
   attachExpandableDossierText(card,meta,meta.textContent,{label:'Lees volledige gegevens'});
