@@ -4072,15 +4072,15 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
     const fullMeta=cells.slice(2).filter(value=>value&&value!=='—').join(' · ');
     meta.textContent=fullMeta;
     const byline=dossierRecordByline(row);
-    if(byline){
-      const logged=document.createElement('small');
-      logged.className='dossier-entry-byline';logged.textContent=byline;
-      item.append(logged);
-    }
+    const logged=document.createElement('small');
+    logged.className='dossier-entry-byline';
+    logged.textContent=byline;
+    logged.hidden=!byline;
     const score=['formal','observations'].includes(group)&&row.type==='observatie'?
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    if(byline)item.append(logged);
     if(!['formal','sanctions','movements'].includes(group))
       attachExpandableDossierText(item,meta,fullMeta,{label:'Lees volledige registratie'});
     if(['formal','sanctions','movements'].includes(group)){
