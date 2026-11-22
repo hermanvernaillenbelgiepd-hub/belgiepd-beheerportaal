@@ -212,3 +212,14 @@ test('Groepsverplichtingen staan in transacties en moeten tweemaal beoordeeld wo
  assert.match(page,/group-requirements\/'\+encodeURIComponent/);
  assert.match(notices,/data\.groupRequirements/);
 });
+
+test('Mijn opleidingstraject blijft bruikbaar bij ontbrekende koppeling en heeft directe aanvraaglink',()=>{
+ const html=readFileSync(new URL('../public/opleidingstraject.html',import.meta.url),'utf8');
+ const center=readFileSync(new URL('../public/opleidingscentrum.html',import.meta.url),'utf8');
+ assert.match(html,/class="pathway-main-nav"/);
+ assert.match(html,/href="\/opleidingscentrum\.html\?pane=request"/);
+ assert.match(html,/id="pathwayManageLink"[^>]*hidden/);
+ assert.match(html,/pathwayManageLink'\)\.hidden=!\(managed\?\.manageable\?\.length\)/);
+ assert.match(center,/id="requestTab"/);
+ assert.match(center,/currentPane=/);
+});
