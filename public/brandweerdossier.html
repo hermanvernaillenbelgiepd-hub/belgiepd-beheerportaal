@@ -444,6 +444,22 @@ function cards(root,items,heading,text,metadata){
  },{empty:'Geen registraties beschikbaar.',
    noun:root.id==='leavePeriods'?'verlofperiodes':'registraties'});
 }
+function fireOverviewRows(targetId,records,title,description,empty='Geen registraties'){
+ const target=$(targetId);
+ if(!target)return;
+ renderRecentDossierEntries(target,records,(mount,row)=>{
+   const item=document.createElement('div');item.className='overview-preview';
+   const heading=document.createElement('strong');heading.textContent=String(title(row)||'Registratie');
+   const body=document.createElement('p');body.textContent=String(description(row)||'—');
+   const meta=document.createElement('small');meta.className='dossier-entry-byline';
+   meta.textContent=dossierRecordByline(row);
+   item.append(heading,body,meta);
+   attachDossierRecordPreview(item,{row,title:heading.textContent,
+     text:body.textContent,bodyNode:body,metaNode:meta,
+     authorText:dossierRecordByline(row)||dossierAuthorLine(row)});
+   mount.append(item);
+ },{empty,noun:'registraties'});
+}
 function displayFirePromotionProposals(data){
  const root=$('promotionRecords');
  const proposals=data.promotionProposals||[];
@@ -587,6 +603,10 @@ async function load(){
     ?data.leave.slice(0,5).map(x=>formatBelgianLeaveDate(x.startDate)+' t/m '+
       formatBelgianLeaveDate(x.endDate)).join(' | ')
     :shownStatus;
+  fireOverviewRows('overviewLeave',data.leave||[],
+    x=>'Verlof · '+formatBelgianLeaveDate(x.startDate)+' – '+formatBelgianLeaveDate(x.endDate),
+    x=>formatBelgianLeaveDate(x.startDate)+' t/m '+formatBelgianLeaveDate(x.endDate),
+    'Geen geregistreerde verlofperiodes');
   // Alle Brandweerleden met dossierleesrecht zien de verlofperiode;
   // enkel volledig bevoegde dossierraadplegers krijgen de motivering.
   cards($('leavePeriods'),data.leave||[],
@@ -622,6 +642,27 @@ async function load(){
    $('overviewRecent').textContent=entries.slice(0,5)
      .map(x=>(label[x.type]||x.type)+' · '+(x.eventDate||'—')).join(' | ')
      ||'Geen recente registraties';
+   // Bestaande server-bevoegde registraties: vijf recentste en oudere openklapbaar.
+   fireOverviewRows('overviewBasicNotes',[...basicEntries,...oldBasicNotes],
+      x=>x.title||'Algemene notitie',x=>x.details||'—','Geen algemene notities');
+   fireOverviewRows('overviewNotesCount',[
+      ...entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis'),
+      ...(data.olderNotes||[]).filter(x=>!['begeleiding','evaluatie'].includes(x.type))
+    ],x=>x.title||'Belangrijke notitie',x=>x.details||'—','Geen belangrijke notities');
+   fireOverviewRows('overviewObservationCount',entries.filter(x=>x.type==='observatie'),
+      x=>'Observatie · '+(x.eventDate||'—'),x=>x.details||'—','Geen observaties');
+   fireOverviewRows('overviewSanctionsCount',entries.filter(x=>x.type==='sanctie'),
+      x=>x.sanctionType||'Sanctie',x=>x.details||'—','Geen sancties');
+   fireOverviewRows('overviewTrainingCount',data.trainings||[],
+      x=>x.courseName||'Opleiding',x=>x.result||'—','Geen opleidingen');
+   fireOverviewRows('overviewRecent',entries.filter(x=>x.type==='personeelsbeweging'),
+      x=>x.movement||'Personeelsbeweging',x=>x.details||'—','Geen personeelsbewegingen');
+   fireOverviewRows('overviewHistoryCount',data.dossierHistory||[],
+      x=>x.action||'Administratieve wijziging',x=>x.details||x.reason||'—',
+      'Geen administratieve wijzigingen');
+   fireOverviewRows('overviewPromotionCount',data.promotionProposals||[],
+      x=>'Promotievoorstel · '+(x.proposedRank||''),x=>x.reason||x.details||'—',
+      'Geen promotievoorstellen');
    const meta=x=>(x.eventDate||'—')+' · '+(x.registeredBy||'')+
      (x.registeredRank?' · '+x.registeredRank:'')+
      (x.registeredCall?' ('+x.registeredCall+')':'');
