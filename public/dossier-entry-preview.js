@@ -47,12 +47,17 @@ export function dossierRecordByline(row={}){
       }).format(date).replace(',','');
   }
   const eventTime=/^\d{2}:\d{2}/.test(facts.time)?facts.time.slice(0,5):'';
-  const stamp=logged||[facts.date,eventTime].filter(Boolean).join(' ');
-  const loggedBy=facts.imported&&actualName?
+  const eventDate=/^\d{4}-\d{2}-\d{2}$/.test(facts.date)?
+    facts.date.slice(8,10)+'/'+facts.date.slice(5,7)+'/'+facts.date.slice(0,4):facts.date;
+  const stamp=logged?'Gelogd '+logged:
+    eventDate?'Gebeurtenis '+[eventDate,eventTime].filter(Boolean).join(' '):'';
+  const represented=facts.imported||Boolean(actualName&&
+    (actualName!==facts.name||actualCall&&facts.call&&actualCall!==facts.call));
+  const loggedBy=represented&&actualName?
     actualName+(actualCall?' · '+actualCall:''):facts.name+
       (facts.call?' · '+facts.call:'');
-  const parts=[stamp?'Gelogd '+stamp:'',loggedBy?'Door '+loggedBy:''];
-  if(facts.imported)
+  const parts=[stamp,loggedBy?'Door '+loggedBy:''];
+  if(represented)
     parts.push('Namens '+facts.name+(facts.call?' · '+facts.call:''));
   return parts.filter(Boolean).join(' · ');
 }
