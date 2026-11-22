@@ -29,6 +29,33 @@ export function dossierAuthorLine(row={}){
   return (x.imported?'Oorspronkelijke invoerder: ':'Door ')+x.name+
     (x.rank?' · '+x.rank:'')+(x.call?' · '+x.call:'');
 }
+// Read-only byline for dossier overviews. No client-side authority assumptions.
+// The actual registrator is never replaced by the historical/represented author.
+export function dossierRecordByline(row={}){
+  const facts=dossierAuthorFacts(row);
+  const actual=row?.submittedByActor||row?.importedBy||null;
+  const actor=actual&&typeof actual==='object'?actual:{};
+  const actualName=str(actor.name||'',130);
+  const actualCall=str(actor.call||'',32);
+  let logged='';
+  if(facts.savedAt){
+    const date=new Date(facts.savedAt);
+    if(Number.isFinite(date.valueOf()))
+      logged=new Intl.DateTimeFormat('nl-BE',{
+        timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',
+        hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+      }).format(date).replace(',','');
+  }
+  const eventTime=/^\d{2}:\d{2}/.test(facts.time)?facts.time.slice(0,5):'';
+  const stamp=logged||[facts.date,eventTime].filter(Boolean).join(' ');
+  const loggedBy=facts.imported&&actualName?
+    actualName+(actualCall?' · '+actualCall:''):facts.name+
+      (facts.call?' · '+facts.call:'');
+  const parts=[stamp?'Gelogd '+stamp:'',loggedBy?'Door '+loggedBy:''];
+  if(facts.imported)
+    parts.push('Namens '+facts.name+(facts.call?' · '+facts.call:''));
+  return parts.filter(Boolean).join(' · ');
+}
 function field(content,label,value){
  if(!value)return;
  const row=document.createElement('div');row.className='bpd-record-fact';
