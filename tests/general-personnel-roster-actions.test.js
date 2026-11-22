@@ -23,12 +23,12 @@ test('general member roster remains private; officer-only identity projection is
  ]);
  assert.ok(secured.every(x=>Object.keys(x).sort().join(',')==='call,discordId,name'));
 });
-test('copy-only identity route is independently role-gated by verified Discord officer rank',()=>{
+test('copy-only identity route uses authenticated and server-verified service roles',()=>{
  const src=read('src/member-dashboard-routes.js');
- assert.match(src,/app\.get\('\/api\/member\/personnel-copy-ids',memberIdentity/);
- assert.match(src,/if\(req\.memberPortal\.canEditRosterLayout!==true\)/);
+ assert.match(src,/app\.get\('\/api\/member\/personnel-copy-ids',requireUser/);
+ assert.match(src,/personnelPingScopes\(actor,identity\?\.data\(\)/);
  assert.match(src,/return res\.status\(403\)\.json/);
- assert.match(src,/restrictedRosterMentionEntries\(snapshot\.data\)/);
+ assert.match(src,/restrictedRosterMentionEntries\(snapshot\.data,scopes\)/);
  assert.match(src,/if\(snapshot\.stale\)/);
  const roster=read('public/member-police-roster.js');
  assert.match(roster,/person\.rosterCopyAvailable===true&&typeof onCopyMention==='function'/);
