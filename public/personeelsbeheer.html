@@ -1466,7 +1466,7 @@ import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol} from '/observation-score-trend.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
-import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {attachDossierRecordPreview,dossierAuthorLine,dossierRecordByline} from '/dossier-entry-preview.js';
 import {newestDossierEntries} from '/dossier-entry-order.js';
 import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {effectiveTemporarySanctionStatus} from '/temporary-sanction-state.js';
@@ -2014,7 +2014,14 @@ function setupDossierTabs(){
       <div><small>Naam</small><strong id="sheetName">—</strong></div>
       <div><small>Reeks</small><strong id="sheetSeries">—</strong></div>
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
-      <div><small>Discord-ID</small><strong id="sheetDiscordId">—</strong></div>
+      <div class="dossier-dcid-cell"><small>DC-ID</small><strong id="sheetDiscordId">—</strong>
+        <div class="dossier-id-buttons">
+          <button type="button" id="sheetCopyDcId">Kopiëren</button>
+          <button type="button" id="sheetCopyDiscordPing">Ping kopiëren</button>
+        </div>
+        <span id="sheetCopyFeedback" class="subtle" role="status" aria-live="polite"></span>
+      </div>
+      <div id="sheetHeaderSpecialties" class="dossier-header-specialties"></div>
     </div>
     <details class="fiche-editor" id="ficheEditor" hidden><summary>Algemene personeelsgegevens aanpassen</summary></details>
     <p class="sheet-intro">Dossiergegevens uit de actuele personeels- en kaderregistraties. Wijzigingen worden afzonderlijk geaudit.</p>
@@ -2104,19 +2111,44 @@ function setupDossierTabs(){
   // ook bereikbaar wanneer de gebruiker verlof registreert.
   $('formalInlineArea').querySelector('.registration-hub-heading')
     .after($('historicalMigrationManage'));
-  // Drie kolommen met twee rijen; rechts drie compacte samenvattingen.
+  // Bestaande, server-bevoegde dossierpanelen herschikken: geen nieuwe logs.
   const summaryGrid=sheet.querySelector('.landscape-grid');
   const makeTile=key=>summaryGrid.querySelector('[data-sheet-tile="'+key+'"]');
   $('ficheEditor').append(makeTile('gegevens'));
-  const upper=document.createElement('div');upper.className='dossier-main-row';
-  const right=document.createElement('div');right.className='dossier-right-column';
-  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'),makeTile('activityPings'));
-  upper.append(makeTile('leave'),makeTile('notes'),right);
-  const lower=document.createElement('div');lower.className='dossier-lower-row';
-  lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'));
-  summaryGrid.replaceChildren(upper,lower);
+  $('sheetHeaderSpecialties').append(makeTile('specialisaties'));
+  const overview=document.createElement('div');overview.className='dossier-three-column';
+  const makeColumn=(name,keys)=>{
+    const col=document.createElement('div');
+    col.className='dossier-column dossier-column--'+name;
+    for(const key of keys)col.append(makeTile(key));
+    return col;
+  };
+  overview.append(
+    makeColumn('left',['leave','basisNotes']),
+    makeColumn('middle',['notes','observations']),
+    makeColumn('right',['movements','activityPings','sanctions'])
+  );
+  const extra=document.createElement('div');extra.className='dossier-training-footer';
+  extra.append(makeTile('training'));
+  summaryGrid.replaceChildren(overview,extra);
   $('registerImportantNoteQuick').onclick=()=>choosePersonnelRegistration('case:notitie',true);
   $('registerActivityPingQuick').onclick=()=>choosePersonnelRegistration('case:inactiviteitsping',true);
+  const copyHeaderValue=async mode=>{
+    const id=$('sheetDiscordId').textContent.trim();
+    const feedback=$('sheetCopyFeedback');
+    if(!/^[0-9]{15,22}$/.test(id)){feedback.textContent='Ongeldig DC-ID';return}
+    const value=mode==='ping'?'<@'+id+'>':id;
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Klembord niet beschikbaar');
+      await navigator.clipboard.writeText(value);
+      feedback.textContent=mode==='ping'?'Discord-vermelding gekopieerd':'DC-ID gekopieerd';
+    }catch{
+      window.prompt('Kopieer de waarde:',value);
+      feedback.textContent='Handmatig kopiëren uit venster';
+    }
+  };
+  $('sheetCopyDcId').onclick=()=>void copyHeaderValue('id');
+  $('sheetCopyDiscordPing').onclick=()=>void copyHeaderValue('ping');
   const trainingHeader=sheet.querySelector('[data-sheet-tile="training"]>h3');
   const trainingAdd=document.createElement('button');
   trainingAdd.type='button';trainingAdd.id='registerTrainingQuick';
@@ -3966,10 +3998,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
         score:row.score,
         details:row.details??row.description??'Geen omschrijving',
-        attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
-          dossierAuthorLine(row).replace(/^(Oorspronkelijke invoerder: |Door )/,'')+
-          (row.historicalImport&&row.submittedByActor?.name?
-          ' · Overgenomen door '+row.submittedByActor.name:'')
+        attribution:dossierRecordByline(row)||dossierAuthorLine(row)
       });
       attachObservationEditButton(content,row);
       attachAdministrativeCaseCorrection(content,row);
@@ -3987,7 +4016,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       body.className='general-note-body';
       body.textContent=String(row.details||'—');
       const author=document.createElement('span');author.className='subtle';
-      author.textContent='Door '+sheetWho(row);
+      author.textContent=dossierRecordByline(row)||'Door '+sheetWho(row);
       item.append(heading,body,author);
       attachDossierRecordPreview(item,{row,title:heading.textContent,
         text:row.details||'—',bodyNode:body,metaNode:author,
@@ -4025,7 +4054,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       const body=document.createElement('p');body.className='general-note-body';
       body.textContent=row.details||'—';
       const meta=document.createElement('span');
-      meta.textContent='Door '+(row._noteAuthor||'Onbekend');
+      meta.textContent=dossierRecordByline(row)||'Door '+(row._noteAuthor||'Onbekend');
       item.append(heading,body,meta);
       attachDossierRecordPreview(item,{row,title:heading.textContent,
         text:row.details||'—',bodyNode:body,metaNode:meta,
@@ -4042,6 +4071,12 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
     const meta=document.createElement('span');
     const fullMeta=cells.slice(2).filter(value=>value&&value!=='—').join(' · ');
     meta.textContent=fullMeta;
+    const byline=dossierRecordByline(row);
+    if(byline){
+      const logged=document.createElement('small');
+      logged.className='dossier-entry-byline';logged.textContent=byline;
+      item.append(logged);
+    }
     const score=['formal','observations'].includes(group)&&row.type==='observatie'?
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
@@ -4326,7 +4361,7 @@ function renderDossierImportantNotes(){
     const body=document.createElement('p');body.className='general-note-body';
     body.textContent=String(row.details||'—');
     const author=document.createElement('span');author.className='subtle';
-    author.textContent='Door '+sheetWho(row);
+    author.textContent=dossierRecordByline(row)||'Door '+sheetWho(row);
     item.append(title,body,author);
     attachDossierRecordPreview(item,{row,title:title.textContent,
       text:row.details||'—',bodyNode:body,metaNode:author,
