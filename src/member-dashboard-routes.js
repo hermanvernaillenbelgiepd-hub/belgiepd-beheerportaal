@@ -5,6 +5,7 @@ import {ROSTER_COLUMN_COLLECTION,rosterConfig} from './roster-column-config.js';
 import {AE_DISCORD_ROLES,verifiedSyncRoles} from './organogram-placement-policy.js';
 import {approvedManagedEntry,verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {verifiedOfficerCadre} from './verified-police-cadre.js';
+import {personnelPingScopes} from './personnel-ping-scope-policy.js';
 import {policeOfficialRankLabel} from './personnel-rank-policy.js';
 import {readVerifiedPoliceLrd,LRD_SPECIALTY_LABEL} from './police-lrd-policy.js';
 import {PERSONNEL_ROSTER_DEFAULT,validatePersonnelRosterLayout,
@@ -138,11 +139,18 @@ export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=n
 /* A copy-only ID lookup for verified Police leadership. Unlike the ordinary
    roster, this response may contain Discord IDs, never dossier contents.
    Keep each member once and skip ambiguous identical call/name pairs. */
-export function restrictedRosterMentionEntries(rows){
+export function restrictedRosterMentionEntries(rows,scope={all:false,departments:[]}){
+ if(scope?.all!==true&&(!Array.isArray(scope?.departments)||!scope.departments.length))return [];
+ const source=Array.isArray(rows)?rows:[];
+ const scopedIds=new Set(source.filter(person=>scope?.all===true||
+   scope.departments.includes(person?.dept))
+   .filter(person=>discordId.test(String(person?.personId||'')))
+   .map(person=>String(person.personId)));
  const known=new Map();
  const allowed=new Set(['politie','brandweer','ambulance','depannage']);
  for(const p of Array.isArray(rows)?rows:[]){
-  if(!p||!allowed.has(p.dept)||!discordId.test(strip(p.personId))||
+  if(!p||!allowed.has(p.dept)||!scopedIds.has(strip(p.personId))||
+     !discordId.test(strip(p.personId))||
      !strip(p.name))continue;
   const id=strip(p.personId),current=known.get(id);
   if(!current||current.dept!=='politie'&&p.dept==='politie')known.set(id,p);
@@ -195,7 +203,7 @@ export function publicOrganogramRoster(rows,decorations=new Map(),customCatalog=
   return visible.slice(0,1200);
 }
 
-export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
+export function installMemberDashboardRoutes(app,{getSnapshot,accessList,requireUser}){
   async function memberIdentity(req,res,next){
     res.set('Cache-Control','private, no-store');
     const token=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
@@ -329,13 +337,22 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
       return res.status(503).json({error:'De afmetingen konden niet worden opgeslagen'});
     }
   });
-  app.get('/api/member/personnel-copy-ids',memberIdentity,async(req,res)=>{
-    if(req.memberPortal.canEditRosterLayout!==true)
-      return res.status(403).json({error:'DC-ID kopiëren is alleen voor geverifieerd Officierenkader en Korpsleiding'});
+  app.get('/api/member/personnel-copy-ids',requireUser,async(req,res)=>{
     try{
+      // Re-evaluate actual approved portal service grants AND recent guild
+      // proof. A user's search field, client flags or stored callsign grant nothing.
+      const actor=req.bpd;
+      const identity=actor?.uid==='discord:'+actor?.discordId&&
+         discordId.test(String(actor.discordId||''))?
+         await getFirestore().collection('bpd_discord_auth').doc(actor.discordId).get():null;
+      const scopes=personnelPingScopes(actor,identity?.data(),
+        process.env.DISCORD_GUILD_ID);
+      if(scopes.all!==true&&!scopes.departments.length)
+        return res.status(403).json({error:'Geen geverifieerde bevoegdheid om DC-ID’s te kopiëren'});
       const snapshot=await getSnapshot();
       if(snapshot.stale)return res.status(503).json({error:'Personeelsidentiteiten niet actueel'});
-      return res.json({records:restrictedRosterMentionEntries(snapshot.data)});
+      res.set('Cache-Control','private, no-store');
+      return res.json({records:restrictedRosterMentionEntries(snapshot.data,scopes)});
     }catch(error){
       console.warn('Personeels-ID kopieercontrole:',error?.code||'bron niet beschikbaar');
       return res.status(503).json({error:'DC-ID kopieerfunctie tijdelijk niet beschikbaar'});

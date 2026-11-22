@@ -1006,7 +1006,7 @@ installCallsignRoutes(app,{requireUser,getSnapshot,onPersonnelChanged:()=>{cache
 installCallsignBotRoutes(app);
 installActivityTelemetryRoutes(app);
 installCallsignSelfServiceRoutes(app,{getSnapshot});
-installMemberDashboardRoutes(app,{getSnapshot,accessList});
+installMemberDashboardRoutes(app,{getSnapshot,accessList,requireUser});
 installRosterColumnRoutes(app,{requireUser});
 installPersonnelGroupSettingsRoutes(app,{requireUser,requireDossierUser,getSnapshot});
 installTrainingRequestRoutes(app,{getSnapshot,accessList});

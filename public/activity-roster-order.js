@@ -53,3 +53,5 @@ export function sortActivityLikePersonnel(records){
   return compareText(a.name,b.name)||compareText(a.discordId,b.discordId);
  });
 }
+
+export {matchesActivityPoliceSeries,availableActivityPoliceSeries} from './activity-police-series-filter.js';
