@@ -364,3 +364,111 @@
 html:not([data-bpd-theme="dark"]) .roster-personnel-page .mr-mention-action{
  background:#e4f0fd;color:#143c64;border-color:#97b3d0;
 }
+
+/* Medium-width roster: replace sideways-scrolling specialization matrix with
+   an accessible compact list and on-demand complete specialization details.
+   The original home-dashboard roster keeps its own 1024px breakpoint. */
+@media(min-width:1025px) and (max-width:1800px){
+body.roster-personnel-page .mr-scroll:has(>.mr-mobile-roster),
+body.roster-personnel-page .mr-scroll:has(>.mr-mobile-roster){
+    max-height:none!important;overflow:visible!important;max-width:100%;width:100%;
+  }
+body.roster-personnel-page .mr-scroll > .mr-table{display:none!important}
+body.roster-personnel-page .mr-scroll > .mr-mobile-roster{
+    display:table!important;width:100%!important;min-width:0!important;
+    max-width:100%!important;table-layout:fixed;border-collapse:collapse;
+    background:#0f2440;color:#ecf4ff;
+  }
+body.roster-personnel-page .mr-mobile-roster thead{display:table-header-group!important}
+body.roster-personnel-page .mr-mobile-roster tbody{display:table-row-group!important}
+body.roster-personnel-page .mr-mobile-roster thead th{
+    background:#1e3b5e;color:#d3e6ff;font-size:9px;font-weight:800;
+    padding:8px 2px;text-align:left;line-height:1.2;
+    border-bottom:2px solid #5879a6;white-space:normal;
+  }
+body.roster-personnel-page .mr-mobile-roster thead th:nth-child(1){width:12%}
+body.roster-personnel-page .mr-mobile-roster thead th:nth-child(2){width:12%}
+body.roster-personnel-page .mr-mobile-roster thead th:nth-child(3){width:34%}
+body.roster-personnel-page .mr-mobile-roster thead th:nth-child(4){width:12%}
+body.roster-personnel-page .mr-mobile-roster thead th:nth-child(5){width:21%}
+body.roster-personnel-page .mr-mobile-roster thead th:nth-child(6){width:9%;text-align:center}
+body.roster-personnel-page .mr-mobile-roster tbody > tr.mr-mobile-person{display:table-row!important}
+body.roster-personnel-page .mr-mobile-roster tbody > tr.mr-mobile-person:nth-child(4n+3){background:#142d4c}
+body.roster-personnel-page .mr-mobile-roster td{
+    min-width:0;max-width:100%;padding:6px 2px;
+    border-bottom:1px solid #355272;vertical-align:middle;
+    font-size:11px;line-height:1.25;overflow-wrap:anywhere;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-call{font-weight:850;font-variant-numeric:tabular-nums}
+body.roster-personnel-page .mr-mobile-roster .mr-rank{
+    display:flex;flex-direction:column;gap:2px;
+    align-items:center;justify-content:center;min-width:0;
+    font-size:9px;line-height:1.1;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-rank strong{max-width:100%;font-size:9px}
+body.roster-personnel-page .mr-mobile-roster .mr-insignia{
+    width:100%;max-width:41px;max-height:23px;object-fit:contain;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-person-name-wrap{
+    display:flex;flex-direction:column;align-items:flex-start;
+    gap:3px;min-width:0;overflow-wrap:anywhere;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-person-open{
+    display:inline-flex;align-items:center;padding:0;min-width:0;
+    max-width:100%;min-height:36px;border:0;background:transparent;
+    color:#f1f7ff;font-size:12px;font-weight:750;text-align:left;
+    white-space:normal;overflow-wrap:anywhere;cursor:pointer;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-person-open:focus-visible,
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-detail-toggle:focus-visible{
+    outline:2px solid #a7ceff;outline-offset:2px;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-person-affiliations{font-size:9px;line-height:1.1}
+body.roster-personnel-page .mr-mobile-roster .mr-series{gap:2px;justify-content:flex-start}
+body.roster-personnel-page .mr-mobile-roster .mr-series-badge{
+    min-width:0;max-width:100%;padding:3px 2px;
+    font-size:9px;white-space:normal;overflow-wrap:anywhere;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-status{
+    display:inline-block;max-width:100%;min-width:0;width:auto;
+    height:auto;min-height:25px;padding:5px 2px;text-align:center;
+    font-size:9px;line-height:1.15;white-space:normal;overflow-wrap:anywhere;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-status--actief{background:#1d6847;border-color:#3ca873;color:#ebfff2}
+body.roster-personnel-page .mr-mobile-roster .mr-status--verlof{background:#21588c;border-color:#5a9ada;color:#f0f8ff}
+body.roster-personnel-page .mr-mobile-roster .mr-status--inactief{background:#88323b;border-color:#d36a70;color:#fff0f2}
+body.roster-personnel-page .mr-mobile-roster .mr-status--fifty-fifty{background:#995c1e;border-color:#dfa24d;color:#fff4e2}
+body.roster-personnel-page .mr-mobile-roster .mr-status--non-actief{background:#633f86;border-color:#aa83d8;color:#f8f1ff}
+body.roster-personnel-page .mr-mobile-roster .mr-status--verwijderd{background:#505a67;border-color:#919ba8;color:#f5f6f7}
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-info{text-align:center}
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-detail-toggle{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:27px;width:27px;min-height:38px;height:38px;
+    padding:0;border:1px solid #628ab2;border-radius:7px;
+    background:#244e78;color:#fff;font-size:18px;font-weight:700;
+    cursor:pointer;touch-action:manipulation;
+  }
+body.roster-personnel-page .mr-mobile-roster tbody > tr.mr-mobile-divider{display:table-row!important}
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-divider td{
+    background:#25466e;color:white;font-weight:800;font-size:11px;
+    padding:7px 9px;border-top:2px solid #7095bf;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-divider .mr-count{margin-left:6px;font-size:10px;color:#bad3ef}
+body.roster-personnel-page .mr-mobile-roster tbody > tr.mr-mobile-detail{display:none!important}
+body.roster-personnel-page .mr-mobile-roster tbody > tr.mr-mobile-detail:not([hidden]){display:table-row!important}
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-detail td{padding:9px!important;background:#10243c}
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-specialties{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 10px;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-specialty{
+    display:flex;align-items:center;justify-content:space-between;
+    min-width:0;gap:6px;border-bottom:1px solid #294766;padding:5px 2px;
+    font-size:10px;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-specialty strong{
+    min-width:0;overflow-wrap:anywhere;color:#bfd9f6;
+  }
+body.roster-personnel-page .mr-mobile-roster .mr-mobile-specialty .mr-specialty{
+    flex:0 0 auto;font-size:10px;padding:4px 5px;
+  }
+}
