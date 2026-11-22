@@ -345,3 +345,22 @@
   .mr-mobile-roster .mr-person-open{font-size:11px}
   .mr-mobile-roster .mr-mobile-specialties{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Officer-only copy controls in the general directory; never shown when the
+   restricted API does not grant a matching ID. Also work in mobile view. */
+.roster-personnel-page .mr-mention-tools{
+ display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:3px;
+}
+.roster-personnel-page .mr-mention-action{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:23px;padding:2px 6px;border:1px solid #5c84ad;
+ border-radius:5px;background:#204a73;color:#eaf5ff;font-size:10px;
+ font-weight:700;line-height:1.2;white-space:nowrap;
+}
+.roster-personnel-page .mr-mention-action:hover,
+.roster-personnel-page .mr-mention-action:focus-visible{
+ background:#2a608d;outline-offset:2px;
+}
+html:not([data-bpd-theme="dark"]) .roster-personnel-page .mr-mention-action{
+ background:#e4f0fd;color:#143c64;border-color:#97b3d0;
+}

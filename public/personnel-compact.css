@@ -247,3 +247,12 @@ body.personnel-ui-redesign #personnelOriginalDirectory #personnelDirectoryFrame{
  }
  body.personnel-ui-redesign .personnel-roster-heading span{font-size:10px}
 }
+
+/* Let the parent page scroll naturally; the embedded directory reports its
+   true table height. Keep horizontal scrolling for wide specializations. */
+body.personnel-ui-redesign #personnelOriginalDirectory{
+ border:0!important;border-radius:0!important;overflow:visible!important;
+}
+body.personnel-ui-redesign #personnelOriginalDirectory #personnelDirectoryFrame{
+ display:block;width:100%;min-height:620px;border:0;border-radius:0;
+}

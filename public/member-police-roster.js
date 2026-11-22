@@ -180,6 +180,17 @@ function renderMobilePoliceRoster(thead,tbody){
    }
    const services=sourceCells[2]?.querySelector('.mr-person-affiliations');
    if(services)nameWrap.append(services.cloneNode(true));
+   const originalActions=sourceCells[2]?.querySelector('.mr-mention-tools');
+   if(originalActions){
+     const actions=element('span',undefined,'mr-mention-tools');
+     for(const original of originalActions.querySelectorAll('button')){
+       const copy=element('button',original.textContent,'mr-mention-action');
+       copy.type='button';copy.setAttribute('aria-label',original.getAttribute('aria-label')||'Kopiëren');
+       copy.addEventListener('click',()=>original.click());
+       actions.append(copy);
+     }
+     nameWrap.append(actions);
+   }
    name.append(nameWrap);
    const series=element('td',undefined,'mr-mobile-series');
    if(sourceCells[3])series.append(...[...sourceCells[3].childNodes].map(node=>node.cloneNode(true)));
@@ -222,7 +233,7 @@ function renderMobilePoliceRoster(thead,tbody){
  desktop.after(table);
 }
 
-export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonClick=null){
+export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonClick=null,onCopyMention=null){
  dismissRosterNamePreview();
  const q=String(query).trim().toLocaleLowerCase('nl-BE');
  const people=(Array.isArray(records)?records:[])
@@ -264,6 +275,19 @@ export function renderMemberPoliceRoster(thead,tbody,records,query='',onPersonCl
      if(affiliations.length>1||person.hasPoliceEntry===false)
        nameWrapper.append(element('small','Diensten: '+affiliations.join(' · '),
          'mr-person-affiliations'));
+     if(person.rosterCopyAvailable===true&&typeof onCopyMention==='function'){
+       const tools=element('span',undefined,'mr-mention-tools');
+       const makeCopy=(text,mode,label)=>{
+         const button=element('button',text,'mr-mention-action');
+         button.type='button';
+         button.setAttribute('aria-label',label+' van '+(person.name||'personeelslid'));
+         button.addEventListener('click',()=>onCopyMention(person,mode,button));
+         return button;
+       };
+       tools.append(makeCopy('DC-ID','id','Kopieer DC-ID'),
+         makeCopy('@ ping','ping','Kopieer Discord-vermelding'));
+       nameWrapper.append(tools);
+     }
      addCell(tr,nameWrapper,'mr-name-cell');
      addCell(tr,seriesCell(person));
      const status=String(person.status||'Onbekend').trim()||'Onbekend';

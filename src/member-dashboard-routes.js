@@ -134,6 +134,31 @@ export function publicPoliceRoster(rows,extraPublicLabels=[],verifiedAeMembers=n
  });
  return visible.slice(0,1200);
 }
+
+/* A copy-only ID lookup for verified Police leadership. Unlike the ordinary
+   roster, this response may contain Discord IDs, never dossier contents.
+   Keep each member once and skip ambiguous identical call/name pairs. */
+export function restrictedRosterMentionEntries(rows){
+ const known=new Map();
+ const allowed=new Set(['politie','brandweer','ambulance','depannage']);
+ for(const p of Array.isArray(rows)?rows:[]){
+  if(!p||!allowed.has(p.dept)||!discordId.test(strip(p.personId))||
+     !strip(p.name))continue;
+  const id=strip(p.personId),current=known.get(id);
+  if(!current||current.dept!=='politie'&&p.dept==='politie')known.set(id,p);
+ }
+ const values=[],seen=new Set(),ambiguous=new Set();
+ for(const [id,p] of known){
+  const call=p.dept==='politie'?strip(p.call).slice(0,18):'—';
+  const name=strip(p.name).slice(0,90),key=JSON.stringify([call,name]);
+  if(seen.has(key)){ambiguous.add(key);continue}
+  seen.add(key);
+  values.push({call,name,discordId:id,key});
+ }
+ return values.filter(x=>!ambiguous.has(x.key)).slice(0,1200)
+  .map(({call,name,discordId})=>({call,name,discordId}));
+}
+
 // Directory for authenticated and guild-verified members; display fields only.
 // A directory entry never authorizes service dossier access or modifications.
 const ORGANOGRAM_DEPARTMENTS=new Set(['politie','brandweer','ambulance','depannage']);
@@ -302,6 +327,18 @@ export function installMemberDashboardRoutes(app,{getSnapshot,accessList}){
     }catch(error){
       console.error('Personeelslijstafmetingen opslaan:',error?.code||'niet beschikbaar');
       return res.status(503).json({error:'De afmetingen konden niet worden opgeslagen'});
+    }
+  });
+  app.get('/api/member/personnel-copy-ids',memberIdentity,async(req,res)=>{
+    if(req.memberPortal.canEditRosterLayout!==true)
+      return res.status(403).json({error:'DC-ID kopiëren is alleen voor geverifieerd Officierenkader en Korpsleiding'});
+    try{
+      const snapshot=await getSnapshot();
+      if(snapshot.stale)return res.status(503).json({error:'Personeelsidentiteiten niet actueel'});
+      return res.json({records:restrictedRosterMentionEntries(snapshot.data)});
+    }catch(error){
+      console.warn('Personeels-ID kopieercontrole:',error?.code||'bron niet beschikbaar');
+      return res.status(503).json({error:'DC-ID kopieerfunctie tijdelijk niet beschikbaar'});
     }
   });
   app.get('/api/member/personnel-list',memberIdentity,async(req,res)=>{
