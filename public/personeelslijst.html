@@ -154,7 +154,13 @@ body.roster-embedded header,body.roster-embedded main>h1,
 body.roster-embedded main>p,body.roster-embedded .roster-view-tabs{display:none!important}
 body.roster-embedded main{margin:0;padding:0}
 body.roster-embedded .panel{margin:0;padding:8px 9px;border:0;border-radius:0}
-body.roster-embedded .tablewrap{max-height:calc(100vh - 155px)}
+body.roster-embedded .tablewrap{max-height:none;overflow-y:visible}
+body.roster-embedded .mr-wrapper{border:0;border-radius:0;background:transparent;overflow:visible}
+body.roster-embedded .mr-scroll{
+ max-height:none!important;overflow-x:auto!important;overflow-y:visible!important;
+}
+body.roster-embedded .panel{padding:0}
+
 body.roster-embedded .roster-profile-dialog{max-height:90vh}
 
 /* Originele publieke lijst binnen Personeelsbeheer: REEKS op één regel. */
@@ -214,7 +220,7 @@ html.mr-dragging,html.mr-dragging *{cursor:col-resize!important;user-select:none
 </style><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/bpd-navigation.css"></head><body class="roster-personnel-page">
 <header><strong>🛡️ BelgiëPD / Personeelslijst</strong><a href="/">← Dashboard</a></header>
 <main><h1>Algemene personeelslijst</h1>
-<p>Centraal overzicht van geregistreerde leden van alle hulpdiensten, één keer per gekoppeld Discord-account. De politieregistratie blijft de basis; aanvullende hulpdiensten staan bij de naam. Wie nog geen politieregistratie heeft, krijgt geen fictief roepnummer. Alleen lezen: geen dossiers, observaties, Discord-ID’s, sancties of wijzigingen.</p>
+<p>Centraal overzicht van geregistreerde leden van alle hulpdiensten, één keer per gekoppeld Discord-account. De politieregistratie blijft de basis; aanvullende hulpdiensten staan bij de naam. Wie nog geen politieregistratie heeft, krijgt geen fictief roepnummer. Alleen lezen: geen dossiers, observaties, sancties of wijzigingen. DC-ID kopiëren is uitsluitend beschikbaar voor geverifieerd Officierenkader en Korpsleiding.</p>
 <nav class="roster-view-tabs" aria-label="Kies personeelsweergave">
   <a href="/personeelslijst.html" aria-current="page">👥 Personeelslijst</a>
   <a href="/organogram-hierarchie.html">🌳 ORGANOGRAM</a>
@@ -313,6 +319,7 @@ import {renderMemberPoliceRoster,setPublicRosterSpecialties} from '/member-polic
 import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20261031-officer-only';
 const $=id=>document.getElementById(id);
 let auth=null,people=[],discordSearchRows=[],discordSearchId='';
+let rosterCopyIds=new Map();
 let sivRestrictedCalls=new Set();
 let rosterSeriesFilter='all';
 const seriesNumber=value=>{
@@ -333,6 +340,51 @@ if(directoryEmbedded){
  if(adminSettingsLink)adminSettingsLink.target='_top';
 }
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
+const rosterCopyKey=p=>JSON.stringify([String(p.call||'').trim(),String(p.name||'').trim()]);
+function reportEmbeddedRosterHeight(){
+ if(!directoryEmbedded||window.parent===window)return;
+ const main=document.querySelector('main');
+ if(!main)return;
+ const height=Math.ceil(main.getBoundingClientRect().top+main.scrollHeight+4);
+ if(Number.isFinite(height)&&height>=300&&height<=50000)
+   window.parent.postMessage({type:'bpd-directory-natural-height',height},location.origin);
+}
+if(directoryEmbedded){
+ const main=document.querySelector('main');
+ if(main&&typeof ResizeObserver==='function')
+   new ResizeObserver(()=>requestAnimationFrame(reportEmbeddedRosterHeight)).observe(main);
+ window.addEventListener('load',reportEmbeddedRosterHeight);
+}
+async function loadRosterCopyIds(token){
+ rosterCopyIds=new Map();
+ if(!rosterColumnAllowed||!token)return;
+ try{
+  const response=await fetch('/api/member/personnel-copy-ids',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  if(!response.ok)return;
+  const data=await response.json();
+  if(auth?.currentUser?.uid?.startsWith('discord:'))
+   rosterCopyIds=new Map((Array.isArray(data.records)?data.records:[])
+     .filter(x=>/^\d{15,22}$/.test(String(x.discordId||'')))
+     .map(x=>[rosterCopyKey(x),String(x.discordId)]));
+ }catch(_error){rosterCopyIds=new Map()}
+ render();
+}
+async function copyDirectoryMention(person,mode,button){
+ const id=rosterCopyIds.get(rosterCopyKey(person));
+ if(!id||!/^\d{15,22}$/.test(id))return;
+ const value=mode==='ping'?'<@'+id+'>':id;
+ const original=button.textContent;
+ try{
+  if(!navigator.clipboard?.writeText)throw Error('Klembord niet beschikbaar');
+  await navigator.clipboard.writeText(value);
+  button.textContent='Gekopieerd ✓';
+  window.setTimeout(()=>{if(button.isConnected)button.textContent=original},1500);
+ }catch{
+  window.prompt('Kopieer de waarde:',value);
+ }
+}
+
 function openRosterProfile(person){
  if(!auth?.currentUser)return;
  if(directoryEmbedded&&window.parent!==window){
@@ -560,9 +612,11 @@ function render(){
  const shown=rosterSeriesFilter==='all'?rows:rows.filter(p=>
   seriesNumber(p.series)===rosterSeriesFilter);
  const projected=shown.map(p=>({...p,sivDrivingRestricted:
-  sivRestrictedCalls.has(String(p.call||'').trim().toUpperCase())}));
+  sivRestrictedCalls.has(String(p.call||'').trim().toUpperCase()),
+  rosterCopyAvailable:rosterCopyIds.has(rosterCopyKey(p))}));
  const count=renderMemberPoliceRoster($('rosterHead'),$('rows'),projected,
-  byDiscordId?'':q,openRosterProfile);
+  byDiscordId?'':q,openRosterProfile,copyDirectoryMention);
+ requestAnimationFrame(reportEmbeddedRosterHeight);
  renderRosterColumnHandles();
  $('message').textContent=byDiscordId?
    (ready?count+' personeelslid(leden) gevonden op Discord-ID':'Discord-ID opzoeken…'):
@@ -630,6 +684,7 @@ async function load(){
   if(auth?.currentUser?.uid?.startsWith('discord:')){
    await loadRosterLayout(token);
    await rosterColumnLoad(token);
+   await loadRosterCopyIds(token);
   }
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
@@ -667,7 +722,7 @@ try{
   if(user?.uid?.startsWith('discord:'))load();
   else {clearTimeout(discordSearchTimeout);discordSearchRequest++;
    discordSearchId='';discordSearchRows=[];
-   logoutRosterLayout();rosterColumnClear();setPublicRosterSpecialties([]);sivRestrictedCalls=new Set();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+   logoutRosterLayout();rosterColumnClear();rosterCopyIds=new Map();setPublicRosterSpecialties([]);sivRestrictedCalls=new Set();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>

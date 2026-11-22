@@ -1696,6 +1696,13 @@ $('personnelCardPing').onclick=()=>{
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin)return;
  if(event.source===$('personnelDirectoryFrame').contentWindow&&
+    event.data?.type==='bpd-directory-natural-height'){
+   const height=Number(event.data.height);
+   if(Number.isFinite(height)&&height>=300&&height<=50000)
+     $('personnelDirectoryFrame').style.height=Math.max(620,Math.ceil(height))+'px';
+   return;
+ }
+ if(event.source===$('personnelDirectoryFrame').contentWindow&&
     event.data?.type==='bpd-directory-profile-open'){
    openUnifiedCard(event.data.call,event.data.name);
    return;
