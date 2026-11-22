@@ -63,11 +63,19 @@ export function planningManager(actor,track,verifiedRoleIds=[]){
     !DISCORD_ID.test(String(actor.discordId||''))||
     actor.uid!=='discord:'+actor.discordId)return false;
  const role=roleForDepartment(actor,track.department);
+ // De Brandweer gebruikt een onafhankelijk geverifieerde dienstkaderrol.
+ // Een politieke of andere hulpdienstfunctie mag hier geen rechten geven.
+ // De route verifieert daarnaast verplicht een unieke eigen Brandweerfiche.
+ if(track.department==='brandweer'&&
+    (actor.fireZoneChief===true||
+     ['middle','leadership','zone'].includes(actor.fireAccessLevel)))return true;
  if(['middenkader','officierenkader','korpsleiding'].includes(role))return true;
  return Array.isArray(verifiedRoleIds)&&track.roleIds.some(id=>verifiedRoleIds.includes(id));
 }
 export function planningConfigurator(actor,track){
  if(!planningManager(actor,track,[]))return false;
+ if(track.department==='brandweer'&&
+    (actor.fireZoneChief===true||actor.fireAccessLevel==='leadership'))return true;
  return ['officierenkader','korpsleiding'].includes(roleForDepartment(actor,track.department));
 }
 export function planningOwnMembership(actor,roster,department){
