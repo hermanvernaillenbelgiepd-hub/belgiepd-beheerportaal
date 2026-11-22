@@ -35,6 +35,25 @@ test('Officierenkader kan extra opleidingen koppelen binnen eigen hulpdienst',()
  assert.equal(planningConfigurator(officer,planningTrack('politie:ae')),true);
  assert.equal(planningConfigurator(officer,planningTrack('ambulance:algemeen')),false);
 });
+test('Brandweerplanning erkent uitsluitend geverifieerd eigen dienstkader',()=>{
+ const id='123456789012345678';
+ const track=planningTrack('brandweer:algemeen');
+ const member={uid:'discord:'+id,discordId:id,departments:['brandweer'],
+   role:'basiskader',departmentRoles:{brandweer:'basiskader'}};
+ assert.ok(track,'Brandweer moet als eigen planningstraject bestaan');
+ assert.equal(planningManager({...member,fireAccessLevel:'middle'},track,[]),true);
+ assert.equal(planningConfigurator({...member,fireAccessLevel:'middle'},track),false);
+ assert.equal(planningManager({...member,fireAccessLevel:'leadership'},track,[]),true);
+ assert.equal(planningConfigurator({...member,fireAccessLevel:'leadership'},track),true);
+ assert.equal(planningManager({...member,fireZoneChief:true},track,[]),true);
+ assert.equal(planningManager({...member,fireAccessLevel:'none'},track,[]),false);
+ assert.equal(planningManager({...member,departments:['politie'],fireAccessLevel:'leadership'},track,[]),false);
+ assert.equal(planningManager({...member,uid:'discord:999999999999999999',fireAccessLevel:'leadership'},track,[]),false);
+ assert.equal(planningOwnMembership({...member,fireAccessLevel:'middle'},
+   [{personId:id,dept:'brandweer',lifecycleState:'active'}],'brandweer'),true);
+ assert.equal(planningOwnMembership(member,
+   [{personId:id,dept:'brandweer',lifecycleState:'archived'}],'brandweer'),false);
+});
 test('Eigen actieve personeelsfiche is vereist voor het beheren van opleidingstrajecten',()=>{
  assert.equal(planningOwnMembership(user,[person,other],'politie'),true);
  assert.equal(planningOwnMembership(user,[person,person],'politie'),false);
