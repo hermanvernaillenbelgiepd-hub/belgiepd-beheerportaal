@@ -67,6 +67,7 @@ RUN node --test tests/reference-dashboard-style.test.js
 RUN node --test tests/portal-adaptive-layout.test.js
 RUN node --test tests/ui-svg-icons.test.js
 RUN node --test tests/organogram-police-three-series-workflow.test.js
+RUN node --test tests/general-personnel-roster-actions.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
