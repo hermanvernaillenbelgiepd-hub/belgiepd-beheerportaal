@@ -89,21 +89,35 @@ function rankCell(person){
 function rosterHeaderLabel(label){return label==='INTERVENTIEDIENST'?'INTERVENTIE':
  label==='LRD (Recherche)'?'LRD':label;}
 function renderHeader(thead){
+ const specialties=visibleSpecialties();
+ const directory=Boolean(document.body?.classList?.contains('roster-personnel-page'));
+ // Search, series filtering and officer-only copy controls must not recreate
+ // identical image nodes on every render, especially for private no-store art.
+ const headers=specialties.map(label=>({
+   label,banner:visual().specialtyBannerDisplay(label),
+   icon:customPublicSpecialties.find(x=>x.label===label)?.icon||''
+ }));
+ const signature=JSON.stringify([directory,headers]);
+ if(thead.dataset.artworkSignature===signature&&thead.rows.length===1)return;
  const tr=element('tr');
  for(const title of ['CALL','RANGKENTEKEN','PERSONEELSLID','REEKS','STATUS'])
    tr.append(element('th',title));
- for(const label of visibleSpecialties()){
+ for(const {label,banner,icon} of headers){
    const th=element('th',undefined,'mr-specialty-head');
    th.title=label;
-   const banner=visual().specialtyBannerDisplay(label);
    const fallback=()=>{
      th.classList.remove('mr-specialty-head--patch');
      th.replaceChildren();
-     const pic=element('span',undefined,'mr-specialty-icon');
-     pic.textContent=customPublicSpecialties.find(x=>x.label===label)?.icon||
-       visual().specialtyIcon(label);
-     pic.setAttribute('aria-hidden','true');
-     th.append(pic,element('small',rosterHeaderLabel(label)));
+     // The directory must not briefly display obsolete emoji artwork while
+     // the official roster-header manifest and patch files are being loaded.
+     // Keep the accessible label if an approved patch is missing or fails.
+     if(!directory){
+       const pic=element('span',undefined,'mr-specialty-icon');
+       pic.textContent=icon||visual().specialtyIcon(label);
+       pic.setAttribute('aria-hidden','true');
+       th.append(pic);
+     }
+     th.append(element('small',rosterHeaderLabel(label)));
    };
    if(banner){
      th.classList.add('mr-specialty-head--patch');
@@ -117,7 +131,9 @@ function renderHeader(thead){
        th.append(tile,element('small',rosterHeaderLabel(label)));
      }else{
        const img=document.createElement('img');
-       img.src=banner.url;img.alt=label;img.loading='lazy';
+       img.src=banner.url;img.alt=label;
+       img.loading=directory?'eager':'lazy';
+       img.decoding='async';
        img.className='mr-specialty-banner';
        img.onerror=()=>fallback();
        th.append(img,element('small',rosterHeaderLabel(label)));
@@ -126,6 +142,7 @@ function renderHeader(thead){
    tr.append(th);
  }
  thead.replaceChildren(tr);
+ thead.dataset.artworkSignature=signature;
 }
 /* Keep the mobile directory as a REAL compact list, not stacked person cards.
    Desktop continues to render the complete read-only specialization matrix.
