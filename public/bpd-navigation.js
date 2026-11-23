@@ -212,8 +212,6 @@
   }
   applyTheme(currentTheme);
   const SAFE=['home','personnel','organogram','education','calendar','leave','profile'];
-  const STAFF=['home','personnel','activity','organogram','dossiers','education','documents','calendar','observations',
-    'reports','to','leave','notifications','center','admin'];
   const currentPage=(href)=>{
     const target=new URL(href,window.location.origin).pathname;
     if(target===here)return true;
@@ -553,8 +551,11 @@
   // Shared, short-lived navigation VIEW only. The Firebase login already persists
   // across same-origin pages; protected APIs keep validating every request.
   // Never persist ID tokens, role documents, dossier contents or access grants.
-  const navCacheKey='bpdPortalNavigationViewV1';
-  const navCacheTtlMs=20*1000;
+  const navCacheKey='bpdPortalNavigationViewV2';
+  // Alleen menuweergave (zonder ID-tokens of persoonsgegevens). Hergebruik de
+  // kortstondige context bij paginawissels, terwijl elke API-call zijn eigen
+  // actuele server-autorisatie blijft uitvoeren.
+  const navCacheTtlMs=90*1000;
   function cachedNavView(uid){
     if(typeof uid!=='string'||!uid)return null;
     try{
@@ -575,7 +576,15 @@
         ambulanceReportVerified:context.ambulanceReportVerified===true,
         showAdvancedDashboard:context.showAdvancedDashboard===true,
         technicalCenterVisible:context.technicalCenterVisible===true,
-        visible:context.visible===true
+        visible:context.visible===true,
+        // Only four already verified presentation booleans are cached;
+        // never store Discord roles, identities, tokens, dossiers or grants.
+        navigationCapabilities:{
+          activity:context.navigationCapabilities?.activity===true,
+          dossiers:context.navigationCapabilities?.dossiers===true,
+          reports:context.navigationCapabilities?.reports===true,
+          to:context.navigationCapabilities?.to===true
+        }
       },
       member:{mode:member?.mode||null,canUseSelfService:member?.canUseSelfService===true},
       citizen:{canAccess:citizen?.canAccess===true}
@@ -602,21 +611,29 @@
         document.getElementById('bpdCitizenDossiersLink')?.remove();
         if(!user){clearNavView();show(['home','personnel','organogram','profile']);return}
         try{
-          const token=await user.getIdToken();
           const saved=cachedNavView(user.uid);
           let context,member,citizen;
           if(saved){
+            // Dezelfde Firebase-sessie is al bekend; geen nieuwe token- of
+            // menurechtenaanvragen nodig voor enkel het tekenen van de zijbalk.
             ({context,member,citizen}=saved);
           }else{
-            [context,member,citizen]=await Promise.all([
-              fetch('/api/dashboard/admin-visibility',{cache:'no-store',
-                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
-              fetch('/api/member/dashboard',{cache:'no-store',
-                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
-              fetch('/api/citizen-staff/access',{cache:'no-store',
-                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
+            const token=await user.getIdToken();
+            if(turn!==request)return;
+            const fetchView=path=>fetch(path,{cache:'no-store',
+              headers:{Authorization:'Bearer '+token}})
+              .then(async response=>({status:response.status,
+                value:response.ok?await response.json():null}));
+            const results=await Promise.all([
+              fetchView('/api/dashboard/admin-visibility'),
+              fetchView('/api/member/dashboard'),
+              fetchView('/api/citizen-staff/access')
             ]);
-            if(turn===request)saveNavView(user.uid,context,member,citizen);
+            [context,member,citizen]=results.map(result=>result.value);
+            // Transiënte serverstoringen niet 90 seconden als weigering bewaren.
+            // Een 403 blijft een weigering, nooit een verhoging van bevoegdheid.
+            if(turn===request&&results.every(result=>result.status<500))
+              saveNavView(user.uid,context,member,citizen);
           }
           if(turn!==request)return;
           const citizenGranted=citizen?.canAccess===true;
@@ -635,33 +652,24 @@
               link.textContent='Burgerdossiers';nav.insertBefore(link,nav.querySelector('#login'));
             }
           }
-          const policeObservations=context?.basicObservationCanSubmit===true||
-            context?.basicObservationCanReview===true;
-          if(context?.dashboardProfile==='brandweer-zone'){
-            const pages=['home','personnel','activity','organogram','dossiers','education','documents','calendar','reports','leave','notifications'];
-            if(policeObservations)pages.push('observations');
-            showVerified(pages);return;
-          }
-          if(context?.dashboardProfile==='ambulance-azls'){
-            const pages=['home','personnel','organogram'];
-            if(context.ambulanceCanOpenDossier===true)pages.push('dossiers','activity');
-            pages.push('education','documents','calendar');
-            if(context.ambulanceReportVerified===true)pages.push('reports');
-            pages.push('leave','notifications');
-            if(policeObservations)pages.push('observations');
-            showVerified(pages);return;
-          }
-          if(context?.showAdvancedDashboard===true){
-            const pages=STAFF.filter(item=>item==='center'?
-              context.technicalCenterVisible===true:item!=='admin'||context.visible===true);
-            showVerified(pages);return;
-          }
-          const basic=[...SAFE];
-          if(context||member?.mode==='member')basic.push('documents');
-          if(policeObservations)basic.push('observations');
-          if(member?.mode==='member'&&member?.canUseSelfService===true)
-            basic.push('notifications');
-          showVerified(basic);
+          // Compose the UNION of independently verified service scopes.
+          // A Fire middle cadre + Police Basiskader keeps Fire modules and
+          // Motard instructor training, but never inherits Police command.
+          // A Police middle cadre still has cadre modules when also teaching.
+          const pages=[...SAFE];
+          if(context||member?.mode==='member')pages.push('documents');
+          if(context?.basicObservationCanSubmit===true||
+             context?.basicObservationCanReview===true)pages.push('observations');
+          if(context?.showAdvancedDashboard===true||
+             context?.dashboardProfile==='brandweer-zone'||
+             context?.dashboardProfile==='ambulance-azls'||
+             member?.canUseSelfService===true)pages.push('notifications');
+          const capabilities=context?.navigationCapabilities||{};
+          for(const key of ['activity','dossiers','reports','to'])
+            if(capabilities[key]===true)pages.push(key);
+          if(context?.technicalCenterVisible===true)pages.push('center');
+          if(context?.visible===true)pages.push('admin');
+          showVerified([...new Set(pages)]);
         }catch{if(turn===request)show(SAFE)}
       });
     }catch{/* Navigation is non-authoritative; keep public links only. */}

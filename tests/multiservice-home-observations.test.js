@@ -9,7 +9,7 @@ test('ZONE en AZLS tonen de Politie-observatiekaart alleen na eigen servercontro
  const server=read('src/server.js');
  assert.match(server,/basicObservationPoliceRecord:req\.bpd\.basicObservationPoliceRecord===true/);
  assert.match(server,/basicObservationAccessChecks\(req\.bpd,roster\)/);
- assert.match(nav,/if\(policeObservations\)pages\.push\('observations'\)/);
+ assert.match(nav,/if\(context\?\.basicObservationCanSubmit===true\|\|\s*context\?\.basicObservationCanReview===true\)pages\.push\('observations'\)/);
  for(const id of ['zonePoliceObservationCard','ambulancePoliceObservationCard'])
    assert.match(page,new RegExp('id="'+id+'"'));
  assert.match(page,/Je politiefiche bestaat, maar je Politierol moet worden bevestigd/);

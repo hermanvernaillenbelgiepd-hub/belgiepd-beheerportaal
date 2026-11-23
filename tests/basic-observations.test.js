@@ -204,7 +204,7 @@ test('Observaties Basiskader in Brandweer- en AZLS-menu zijn alleen zichtbaar na
  const home=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
  const route=readFileSync(new URL('../src/basic-observation-routes.js',import.meta.url),'utf8');
- assert.match(nav,/if\(policeObservations\)pages\.push\('observations'\)/);
+ assert.match(nav,/if\(context\?\.basicObservationCanSubmit===true\|\|\s*context\?\.basicObservationCanReview===true\)pages\.push\('observations'\)/);
  assert.match(nav,/context\?\.basicObservationCanReview===true/);
  for(const name of ['zoneNavObservations','ambulanceNavObservations',
    'memberNavObservations','staffNavObservations'])assert.match(home,new RegExp('id="'+name+'"'));
