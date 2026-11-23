@@ -58,6 +58,23 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
   };
   // Production defaults to read-only; authorized users cannot bypass the flag.
   const writes=()=>process.env.BPD_ENABLE_PERSONNEL_WRITES==='true';
+  // Authenticated viewer-specific shortlinks; public roster IDs remain private.
+  app.get('/api/personnel/dossier-shortcuts',requireDossierUser,async(req,res)=>{
+    if(!canViewPersonnel(req.bpd,'politie'))
+      return error(res,403,'Geen toegang tot politiedossiers');
+    try{
+      const snap=await getSnapshot();
+      if(snap.stale)return error(res,503,'Personeelsbron momenteel verouderd');
+      const overlays=await collection().limit(400).get();
+      const people=mergePersonnelEdits(snap.data,overlays.docs.map(d=>d.data()));
+      const permitted=people.filter(p=>p.dept==='politie'&&
+        canReadPersonnelSubject(req.bpd,p)&&validPersonnelKey(p.dept,p.personId));
+      res.set('Cache-Control','private, no-store');
+      return res.json({records:permitted.map(p=>({dept:p.dept,discordId:p.personId,
+        call:String(p.call||'').trim().slice(0,24),
+        name:String(p.name||'').trim().slice(0,120)}))});
+    }catch(e){return safeResponse(res,e)}
+  });
   app.get('/api/personnel/overview',requireDossierUser,async(req,res)=>{
     try {
       const lifecycleDepartments=LIFECYCLE_SERVICES.filter(dept=>canManageLifecycleDepartment(req.bpd,dept));

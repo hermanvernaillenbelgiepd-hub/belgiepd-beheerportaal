@@ -138,6 +138,13 @@ header{padding-inline:clamp(15px,2vw,34px)}
 /* Sorteren blijft compact naast zoeken en filteren, ook op kleinere schermen. */
 .staff-filters{grid-template-columns:minmax(180px,1fr) minmax(240px,1.5fr)}
 @media(max-width:760px){.staff-filters{grid-template-columns:minmax(0,1fr)}}
+/* Kleine, subtiele link op de naam, alleen als canOpenDossier bevestigd is. */
+.staff-roster-table .roster-dossier-name{font:inherit;font-weight:750;color:inherit;
+ text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;
+ text-decoration-color:#7394b680;background:transparent}
+.staff-roster-table .roster-dossier-name:hover,.staff-roster-table .roster-dossier-name:focus-visible{
+ color:#95c7ff;text-decoration-color:currentColor;outline-offset:3px}
+html[data-bpd-theme="light"] .staff-roster-table .roster-dossier-name:hover{color:#2658a3}
 /* Geen openknop of deeplink voor dossiers die alleen in de lijst mogen staan. */
 .roster-protected{display:inline-block;color:#b1c3d7;font-size:11px;font-weight:600;white-space:nowrap}
 /* Compacter CALL, rang, rangnaam, personeelslid en status; extra ruimte voor specialisaties. */
@@ -2683,7 +2690,13 @@ function render(){
       }
     }
     const nameCol=document.createElement('td');
-    const name=document.createElement('strong');name.textContent=person.name;
+    const name=document.createElement(person.canOpenDossier===true?'a':'strong');
+    name.textContent=person.name;
+    if(person.canOpenDossier===true){
+      name.href=ficheUrl(person);name.className='roster-dossier-name';
+      name.title='Open beveiligd dossier van '+person.name;
+      name.setAttribute('aria-label','Open dossier van '+person.name);
+    }
     attachRosterNamePreview(name,{...person,
       status:activeLeaveRosterIds.has(person.discordId)?'Verlof':person.status});
     const source=document.createElement('small');source.className='roster-dept';
