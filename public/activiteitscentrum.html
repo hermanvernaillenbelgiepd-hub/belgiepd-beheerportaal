@@ -5,6 +5,7 @@
 <title>BelgiëPD · Activiteitscentrum</title>
 <link rel="stylesheet" href="/bpd-navigation.css">
 <link rel="stylesheet" href="/activity-expanded.css">
+<link rel="stylesheet" href="/activity-charts.css">
 <style>
 :root{font:14px/1.45 Inter,system-ui,Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#192c48}
 *{box-sizing:border-box}body{margin:0}header{background:#101b36;color:#eef4ff;padding:14px clamp(16px,3vw,38px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -186,6 +187,23 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
  <div id="statistics" class="counts"></div>
 </details>
 <p class="source-note" id="sourceNote"></p></section>
+<section><details id="activityGraphs" class="activity-data-fold">
+ <summary>📊 Grafieken · personeelsstatus, inactiviteit en top 10</summary>
+ <p class="source-note">De grafieken volgen de geselecteerde filters. Verouderde gegevens blijven indicatief. Historische RECORDS-peilstanden zijn geen geverifieerde maanduren.</p>
+ <div class="activity-graph-grid">
+  <div class="activity-graph-panel"><h3>Verdeling personeelsstatus</h3><div id="activityGraphStatus"></div></div>
+  <div class="activity-graph-panel"><h3>Effectieve dagen zonder verbinding</h3><div id="activityGraphAbsence"></div></div>
+ </div>
+ <p class="source-note">De inactiviteit is gecorrigeerd voor goedgekeurd verlof. Bij onvolledige verlofcontrole wordt geen drempel toegekend.</p>
+ <div class="activity-graph-hours">
+  <label id="activityGraphHoursControl">Bron speeluren <select id="activityGraphHoursSource" aria-label="Kies bron of historische peildatum voor de grafieken"></select></label>
+  <p id="activityGraphHoursNote" class="source-note"></p>
+  <div class="activity-graph-grid">
+   <div class="activity-graph-panel"><h3>Top 10 meest actief</h3><div id="activityGraphMost"></div></div>
+   <div class="activity-graph-panel"><h3>Top 10 minst actief</h3><div id="activityGraphLeast"></div></div>
+  </div>
+ </div>
+ </details></section>
 <section><details id="recordsPanel" class="activity-data-fold">
  <summary>📈 Speeluren &amp; RECORDS — bekijk maandwaarden en top 5</summary>
  <p class="source-note">Actuele maanduren worden alleen als geverifieerd getoond bij een recente FiveM-meting. Historische RECORDS-peilstanden staan afzonderlijk, uitsluitend ter inzage.</p>
@@ -406,6 +424,10 @@ function render(){
    '. Dossierpingtellers zijn beperkt tot 100 registraties per persoon.';
  $('resultCount').textContent='· '+visible.length+' van '+scoped.length+' leden';
  if($('recordsPanel').open)renderVerifiedRecords(scoped);
+ if($('activityGraphs').open)void import('/activity-charts.js').then(mod=>
+  mod.renderActivityGraphs({people:visible,sources})).catch(error=>{
+   $('activityGraphHoursNote').textContent='Grafieken niet beschikbaar: '+error.message;
+  });
  void import('/activity-expanded.js').then(mod=>
   mod.renderActivityExtension({people:scoped,asOf,sources})).catch(()=>{});
  const body=$('rows');body.replaceChildren();
@@ -673,6 +695,7 @@ $('personnelDetails').addEventListener('toggle',()=>{
  if($('personnelDetails').open)render();
  else $('rows').replaceChildren();
 });
+$('activityGraphs').addEventListener('toggle',()=>{if($('activityGraphs').open)render()});
 $('recordsDate').addEventListener('change',render);
 $('recordsPanel').addEventListener('toggle',()=>{
  if($('recordsPanel').open&&!$('content').hidden)render();

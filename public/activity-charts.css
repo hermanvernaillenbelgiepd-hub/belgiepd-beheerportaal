@@ -1,0 +1,23 @@
+#activityGraphs[open] .activity-graph-grid{margin-top:12px}
+.activity-graph-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.activity-graph-panel{background:#f5f9fd;border:1px solid #cedded;
+ border-radius:10px;padding:13px;min-width:0;color:#19334e}
+.activity-graph-panel h3{font-size:14px;margin:0 0 10px;color:inherit}
+.activity-graph-ring-layout{display:flex;gap:12px;align-items:center}
+.activity-graph-ring-svg{flex:0 0 160px;max-width:47%}
+.activity-graph-ring-svg svg{width:100%;display:block;color:inherit}
+.activity-graph-legend{flex:1;list-style:none;margin:0;padding:0;font-size:12px;min-width:0}
+.activity-graph-legend li{display:flex;align-items:center;gap:7px;padding:4px 0}
+.activity-graph-legend li span:nth-child(2){flex:1}
+.activity-graph-dot{display:block;width:10px;height:10px;flex:0 0 10px;border-radius:3px}
+.activity-graph-row{margin:0 0 9px}
+.activity-graph-head{display:flex;justify-content:space-between;gap:8px;font-size:12px;overflow-wrap:anywhere}
+.activity-graph-head strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.activity-graph-track{height:11px;border-radius:5px;background:#9eacc34b;overflow:hidden;margin-top:4px}
+.activity-graph-bar{height:100%;display:block;border-radius:5px}
+.activity-graph-hours{margin-top:12px}
+.activity-graph-note{margin:10px 0}
+#activityGraphHoursSource{min-width:220px;max-width:100%}
+html[data-bpd-theme="dark"] body.bpd-shell .activity-graph-panel{background:#1b304b;border-color:#476381;color:#eff6ff}
+@media(max-width:900px){.activity-graph-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:540px){.activity-graph-ring-svg{flex-basis:118px}.activity-graph-panel{padding:10px}}
