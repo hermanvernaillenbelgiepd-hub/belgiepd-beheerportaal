@@ -8,6 +8,7 @@ test('referenced three-column stylesheet exists and is loaded after older dossie
  assert.ok(html.includes(ref));
  assert.ok(html.indexOf('/bpd-dossier-shared.css')<html.indexOf(ref));
  assert.ok(html.indexOf('/dossier-identity-polish.css')<html.indexOf(ref));
+ assert.ok(file('public/brandweerdossier.html').includes(ref),'Fire also loads the restored stylesheet');
  assert.ok(css.length>2000);
 });
 test('exact dossier composition uses three readable columns without losing categories',()=>{
