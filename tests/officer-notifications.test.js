@@ -18,9 +18,10 @@ test('Officierenkader 930 heeft kaderbevoegdheid voor meldingen ongeacht andere 
 test('Meldingen staat bij geverifieerd kader zowel in het algemene menu als de startpagina',()=>{
  const nav=source('public/bpd-navigation.js');
  const home=source('public/index.html');
- const staff=nav.match(/const STAFF=\[([\s\S]*?)\];/)?.[1]||'';
- assert.match(staff,/'notifications'/,
-   'Staff sidebar must contain Meldingen for officers such as 930');
+ assert.match(nav,/if\(context\?\.showAdvancedDashboard===true\|\|/,
+   'Confirmed cadres keep their notifications in the shared sidebar');
+ assert.match(nav,/member\?\.canUseSelfService===true\)pages\.push\('notifications'\)/,
+   'The shared navigation displays notices for authorized staff and self-service');
  const homeMenu=home.slice(home.indexOf('<nav id="staffNav"'),home.indexOf('</nav>',home.indexOf('<nav id="staffNav"')));
  assert.match(homeMenu,/href="\/meldingen\.html"/,
    'Officer homepage menu must contain Meldingen');
