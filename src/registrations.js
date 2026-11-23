@@ -148,11 +148,18 @@ export function validateAmend(raw){
   const entry=validateEntry({...raw,type:'sanctie'});
   return {...entry,status:raw?.status||'actief',amendmentReason};
 }
-export function actorFromPersonnel(user,persons){
-  if(!isDiscordId(user.discordId)) return null;
-  const matches=persons.filter(p=>p.personId===user.discordId && user.departments.includes(p.dept));
-  if(matches.length<1) return null;
-  const x=matches.find(p=>p.dept==='politie')||matches[0];
+export function actorFromPersonnel(user,persons,preferredDept=null){
+  if(!user||!isDiscordId(user.discordId)||!Array.isArray(user.departments)||
+     !Array.isArray(persons))return null;
+  const matches=persons.filter(p=>p?.personId===user.discordId&&
+    user.departments.includes(p.dept));
+  if(!matches.length)return null;
+  // For service-specific dossier entries, use the actual signed-in actor's
+  // own role IN THAT SERVICE (e.g. DIR-MED, not their separate Police INP).
+  const service=typeof preferredDept==='string'&&user.departments.includes(preferredDept)?
+    matches.filter(p=>p.dept===preferredDept):[];
+  if(service.length>1)return null; // Never guess between duplicate service records.
+  const x=service[0]||matches.find(p=>p.dept==='politie')||matches[0];
   return {discordId:user.discordId,name:x.name,call:x.call,rank:x.rank,dept:x.dept};
 }
 export function safeSubject(subjects,dept,discordId){
