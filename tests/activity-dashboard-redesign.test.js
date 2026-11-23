@@ -9,7 +9,8 @@ test('six status cards, default-open charts, priority first, archived RECORDS be
  for(const key of ['active','half','inactive','leave','checking','review'])
   assert.ok(ui.includes("'"+key+"'"));
  assert.match(ui,/activityStatusTiles/);
- assert.match(ui,/for\(const section of \[filters,overview,charts,priority,warning,rankings,records,roster\]/);
+ assert.match(ui,/const panels=\[filter,overview,graphs,priority,warning,ranking,records,roster\]/);
+ assert.match(ui,/panels\.forEach/);
  assert.match(ui,/activityGraphs'\)\.open=true/);
  const html=read('public/activiteitscentrum.html');
  assert.match(html,/renderActivityDashboard\(scoped,sources/);
