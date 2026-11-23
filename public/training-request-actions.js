@@ -33,8 +33,10 @@ export function trainingActionData(action){
   return {action,startAt:start.toISOString(),endAt:end.toISOString(),location};
  }
  if(action==='afgewezen'){
-  const reason=window.prompt('Reden van afwijzing (minimaal 5 tekens)');
-  return reason?.trim()?.length>=5?{action,reason:reason.trim()}:null;
+  const reason=window.prompt('Reden van afwijzing (optioneel, maximaal 400 tekens):','');
+  if(reason===null)return null;
+  if(reason.trim().length>400){window.alert('Gebruik maximaal 400 tekens.');return null}
+  return {action,reason:reason.trim()};
  }
  if(action==='uitgevoerd'){
   return window.confirm('Bevestig je dat deze opleiding daadwerkelijk plaatsvond en de persoon deelnam?')?
@@ -51,7 +53,7 @@ export function trainingStateText(r){
   return 'Gepland: '+(r.scheduledStartAt?
     new Date(r.scheduledStartAt).toLocaleString('nl-BE',{timeZone:'Europe/Brussels'}):'')+
     ' · '+(r.scheduledLocation||'Locatie volgt');
- if(r.status==='afgewezen')return 'Afgewezen · '+(r.rejectionReason||'');
+ if(r.status==='afgewezen')return 'Afgewezen'+(r.rejectionReason?' · '+r.rejectionReason:' · zonder opgegeven reden');
  if(r.status==='uitgevoerd'||r.status==='gegeven')return 'Opleiding uitgevoerd en gelogd';
  if(r.status==='gewist')return 'Gearchiveerd; dossier- en weekrapporthistoriek blijft behouden';
  if(r.status==='gelezen')return 'Gelezen door bevoegd kader of reekshoofd';
