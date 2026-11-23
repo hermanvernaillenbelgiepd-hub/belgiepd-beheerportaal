@@ -730,23 +730,23 @@ async function load(){
   if(!res.ok)throw Error(data.error||'Geen toegang');
   $('discordLogin').hidden=true;
   people=Array.isArray(data.records)?data.records:[];
+  // Independent read-only calls start together. Waiting for both results
+  // before the first roster render avoids displaying temporary emoji headers.
+  const [restrictions,artwork]=await Promise.all([
+   fetch('/api/siv-training-restrictions',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   }).then(async r=>r.ok?r.json():null).catch(()=>null),
+   fetch('/api/role-artwork/manifest',{
+    headers:{Authorization:'Bearer '+token},cache:'no-store'
+   }).then(async r=>r.ok?r.json():null).catch(()=>null)
+  ]);
   sivRestrictedCalls=new Set();
-  try{
-   const restrictions=await fetch('/api/siv-training-restrictions',{
-    headers:{Authorization:'Bearer '+token},cache:'no-store'
-   }).then(async response=>response.ok?response.json():null);
-   for(const item of [...(restrictions?.mine||[]),...(restrictions?.review||[])]){
-    if(item.status==='actief'&&item.call)
-      sivRestrictedCalls.add(String(item.call).trim().toUpperCase());
-   }
-  }catch(_error){sivRestrictedCalls=new Set()}
+  for(const item of [...(restrictions?.mine||[]),...(restrictions?.review||[])]){
+   if(item.status==='actief'&&item.call)
+     sivRestrictedCalls.add(String(item.call).trim().toUpperCase());
+  }
   setPublicRosterSpecialties(data.customSpecialties);
-  try{
-   const artwork=await fetch('/api/role-artwork/manifest',{
-    headers:{Authorization:'Bearer '+token},cache:'no-store'
-   }).then(r=>{if(!r.ok)throw Error('Logo-overzicht tijdelijk niet beschikbaar');return r.json()});
-   window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork.artworks);
-  }catch(_err){window.BPDPersonnelVisuals?.setArtworkManifest?.([])}
+  window.BPDPersonnelVisuals?.setArtworkManifest?.(artwork?.artworks||[]);
   searchDirectory();
   // Do not start an officer-only layout request after the user signed out.
   if(auth?.currentUser?.uid?.startsWith('discord:')){

@@ -73,6 +73,7 @@ RUN node --test tests/personnel-ping-scope-policy.test.js
 RUN node --test tests/activity-roster-adaptive.test.js
 RUN node --test tests/personnel-roster-responsive-consistency.test.js
 RUN node --test tests/service-scoped-dossier-author.test.js
+RUN node --test tests/roster-header-no-emoji-flash.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
