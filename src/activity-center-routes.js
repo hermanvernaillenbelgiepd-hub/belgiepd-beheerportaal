@@ -3,6 +3,7 @@
 import {google} from 'googleapis';
 import {canViewPersonnel,canReadPersonnelSubject} from './personnel-editor-policy.js';
 import {activityOverview} from './activity-center-model.js';
+import {parseHistoricalRecords} from './activity-records-model.js';
 import {getFirestore} from 'firebase-admin/firestore';
 import {ACTIVITY_COLLECTION} from './activity-ping-policy.js';
 import {RETURN_CHECK_COLLECTION} from './activity-return-policy.js';
@@ -10,6 +11,7 @@ import {enrichActivityRow,dossierPingSummary,activityCenterStatistics}
  from './activity-center-details.js';
 const DEPTS=['politie','brandweer','ambulance','depannage'];
 const SHEET_RANGE='ACTIVITEITSCHECK!A2:Z200';
+const RECORDS_RANGE='RECORDS!A3:W750';
 const MAX_ROWS=200;
 let cached=null,expires=0,pending=null;
 async function loadSheet(){
@@ -31,6 +33,27 @@ async function loadSheet(){
   return rows;
  })().finally(()=>{pending=null});
  return pending;
+}
+// Optional legacy snapshots from the same workbook; never considered verified.
+let historicCache=null,historicExpires=0,historicPending=null;
+async function loadRecords(){
+ if(historicCache&&historicExpires>Date.now())return historicCache;
+ if(historicPending)return historicPending;
+ historicPending=(async()=>{
+  const spreadsheetId=String(process.env.BPD_ACTIVITY_CENTER_SPREADSHEET_ID||
+   process.env.ACTIVITY_SPREADSHEET_ID||'').trim();
+  if(!/^[A-Za-z0-9_-]{20,100}$/.test(spreadsheetId))throw Error('Historische RECORDS-bron ontbreekt');
+  const auth=new google.auth.GoogleAuth({scopes:['https://www.googleapis.com/auth/spreadsheets.readonly']});
+  const sheets=google.sheets({version:'v4',auth});
+  const response=await sheets.spreadsheets.values.get({spreadsheetId,
+   range:RECORDS_RANGE,valueRenderOption:'FORMATTED_VALUE'});
+  const rows=response.data.values||[];
+  if(!Array.isArray(rows)||!parseHistoricalRecords(rows).dates.length)
+   throw Error('RECORDS heeft geen herkenbare peildata');
+  historicCache=rows;historicExpires=Date.now()+90_000;
+  return rows;
+ })().finally(()=>{historicPending=null});
+ return historicPending;
 }
 const todayBrussels=()=>new Intl.DateTimeFormat('sv-SE',{
  timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'
@@ -69,12 +92,12 @@ async function loadDossierPings(db,people){
  }
  return map;
 }
-export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readSheet=loadSheet}){
+export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readSheet=loadSheet,readRecords=loadRecords}){
  app.get('/api/activity-center/overview',requireUser,async(req,res)=>{
   const scopes=DEPTS.filter(dept=>canViewPersonnel(req.bpd,dept));
   if(!scopes.length)return res.status(403).json({error:'Geen toegang tot activiteitsopvolging'});
   try{
-   const [snapshot,legacy]=await Promise.all([getSnapshot(),loadOptionalSheet(readSheet)]);
+   const [snapshot,legacy,historical]=await Promise.all([getSnapshot(),loadOptionalSheet(readSheet),loadOptionalSheet(readRecords)]);
    if(snapshot.stale||!Array.isArray(snapshot.data))
     return res.status(503).json({error:'Actuele personeelsbron tijdelijk niet controleerbaar'});
    const allowed=snapshot.data.filter(person=>scopes.includes(person.dept)&&
@@ -85,6 +108,7 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
     return res.status(503).json({error:'Te veel personeelsleden voor een volledig beveiligd overzicht'});
    const db=getFirestore(),today=todayBrussels();
    const summary=activityOverview(allowed,legacy.rows,today);
+   const historicalRows=parseHistoricalRecords(historical.rows);
    const uniqueIds=[...new Set(allowed.map(p=>p.personId))];
    const [approvedResult,verifiedResult,pingsResult,checkingResult]=await Promise.allSettled([
     db.collection('bpd_leave_requests').where('status','==','approved').limit(1501).get(),
@@ -132,7 +156,7 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
      }
     }
     if(!item)return null;
-    return copy;
+    return {...copy,historicalRecords:historicalRows.items.get(row.discordId)||[]};
    }).filter(Boolean);
    res.set('Cache-Control','private, no-store');
    const counts=Object.create(null);
@@ -141,6 +165,7 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
     statistics:activityCenterStatistics(people),asOf:today,readOnly:true,
     departments:[...new Set(allowed.map(p=>p.dept))],
     source:{...summary.source,legacyAvailable:legacy.available,
+     legacyRecordsAvailable:historical.available,
      approvedLeaveComplete:leaveComplete,verifiedAvailable:verifiedResult.status==='fulfilled',
      dossierPingsAvailable:pingsResult.status==='fulfilled',
      leaveReturnChecksAvailable:checkingResult.status==='fulfilled'}});
