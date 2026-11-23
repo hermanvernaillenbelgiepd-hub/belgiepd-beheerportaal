@@ -257,9 +257,9 @@ const $=id=>document.getElementById(id);
    return el;
  };
  overview.append(column('left',['leave','basisNotes']),column('middle',['notes','observations']),
-   column('right',['movements','sanctions','promotions']));
- const extra=document.createElement('div');extra.className='dossier-training-footer';
- extra.append(tile('training'));sheet.replaceChildren(overview,extra);
+   column('right',['movements','sanctions','promotions','training']));
+ // Same three-column dossier system as Police; avoid the full-width empty footer.
+ sheet.replaceChildren(overview);
 })();
 const copyFireHeader=async mode=>{
  const id=String($('discord').textContent||'').trim();

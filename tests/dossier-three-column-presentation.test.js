@@ -21,6 +21,8 @@ test('exact dossier composition uses three readable columns without losing categ
   assert.ok(html.includes(exact),column+' still has all dossier sections');
  }
  assert.match(css,/\.dossier-three-column\{/);
+ const fire=file('public/brandweerdossier.html');
+ assert.match(fire,/column\('right',\['movements','sanctions','promotions','training'\]\)/);
  assert.match(css,/grid-template-columns:minmax\(0,1fr\) minmax\(0,1\.12fr\) minmax\(0,1\.12fr\)!important/);
  assert.match(css,/\.dossier-column>.landscape-cell/);
  assert.match(css,/align-items:start/);

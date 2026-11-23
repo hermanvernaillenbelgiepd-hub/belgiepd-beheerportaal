@@ -134,7 +134,7 @@ test('Nieuwe drie-kolommenfiche behoudt identiteiten, registratiehub, audits en 
  assert.match(police,/className='dossier-three-column'/);
  assert.match(police,/makeColumn\('left',\['leave','basisNotes'\]\)/);
  assert.match(police,/makeColumn\('middle',\['notes','observations'\]\)/);
- assert.match(police,/makeColumn\('right',\['movements','activityPings','sanctions'\]\)/);
+ assert.match(police,/makeColumn\('right',\['movements','activityPings','sanctions','training'\]\)/);
  assert.match(police,/sheetHeaderSpecialties/);
  assert.match(police,/sheetCopyDcId/);
  assert.match(police,/sheetCopyDiscordPing/);
@@ -142,11 +142,12 @@ test('Nieuwe drie-kolommenfiche behoudt identiteiten, registratiehub, audits en 
  assert.match(police,/registrationKind/);
  assert.match(police,/formalInlineArea/);
  assert.match(fire,/className='dossier-three-column'/);
+ assert.match(fire,/column\('right',\['movements','sanctions','promotions','training'\]\)/);
  assert.match(fire,/fireHeaderSpecialties/);
  assert.match(fire,/fireOverviewRows/);
  assert.match(fire,/renderRecentDossierEntries/);
  assert.match(style,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
- assert.match(style,/@media\(max-width:780px\)/);
+ assert.match(style,/@media\(max-width:800px\)/);
 });
 test('Elke registratie onderscheidt Belgische logtijd, werkelijke registrator en oorspronkelijke auteur',()=>{
  const original={historicalImport:true,
