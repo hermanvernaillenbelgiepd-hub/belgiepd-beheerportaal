@@ -22,9 +22,9 @@ const db=(hasData=true)=>({collection:name=>({
 test('all six links distinguish configured, verified, and recent telemetry',async()=>{
  const data=await readIntegrations({actor,env,db:db(),now});
  assert.deepEqual(data.integrations.map(x=>x.id),
-  ['discord','discord-bot','discord-roles','hours','activity','firebase']);
+  ['discord','discord-bot','discord-roles','hours','activity','bpd-app','bpd-activity','bpd-duty','firebase']);
  assert.deepEqual(data.integrations.map(x=>x.state),
-  ['connected','configured','configured','connected','connected','connected']);
+  ['connected','configured','configured','connected','connected','disabled','disabled','disabled','connected']);
  assert.equal(data.integrations[3].lastReceivedAt,new Date(now-600000).toISOString());
  assert.doesNotMatch(JSON.stringify(data),/safe-example-for-tests-only|access-token-for-test|123456789012345678/);
 });
@@ -37,7 +37,7 @@ test('configuration alone is not a connected tracker',async()=>{
   activity:{status:'fulfilled',value:null}
  },now);
  assert.deepEqual(disabled.integrations.map(x=>x.state),
-  ['disabled','disabled','disabled','disabled','disabled','error']);
+  ['disabled','disabled','disabled','disabled','disabled','disabled','disabled','disabled','error']);
 });
 test('stale telemetry and Firestore failures are not labelled connected',async()=>{
  const before=event(now-9*86400000);
@@ -60,7 +60,7 @@ test('integration endpoint rejects ordinary members and serves only sanitized re
   let result=await fetch(base+'/api/technical-center/integrations');
   assert.equal(result.status,200);
   assert.match(result.headers.get('cache-control'),/no-store/);
-  const body=await result.json();assert.equal(body.integrations.length,6);
+  const body=await result.json();assert.equal(body.integrations.length,9);
   current={...actor,role:'basiskader',departmentRoles:{politie:'basiskader'}};
   result=await fetch(base+'/api/technical-center/integrations');
   assert.equal(result.status,403);
