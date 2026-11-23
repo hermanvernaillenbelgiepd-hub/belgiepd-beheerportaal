@@ -6,7 +6,10 @@ import {discordBotToken} from './discord-bot-refresh.js';
 import {botTelemetryReady} from './callsign-bot-telemetry.js';
 import {activityTelemetryEnabled} from './activity-telemetry-routes.js';
 import {ACTIVITY_INGEST_EVENTS} from './activity-ping-policy.js';
-import {mayOpenTechnicalCenter} from './technical-center-config.js';
+import {mayOpenTechnicalCenter,mayEditTechnicalSettings} from './technical-center-config.js';
+import {bpdAppApiConfigured} from './bpd-app-hours.js';
+import {appActivityPrimaryEnabled} from './bpd-app-player-index.js';
+import {inspectDutySchema} from './bpd-duty-schema.js';
 
 const item=(id,title,state,detail,lastReceivedAt=null)=>({id,title,state,detail,lastReceivedAt});
 const iso=value=>{
@@ -43,6 +46,15 @@ export function integrationsSummary(actor,env,checks,now=Date.now()){
       'De afzonderlijke Discord-leden-API is niet ingesteld.'),
   measurement('hours','FiveM-speeluren · vast roepnummer',hours,checks.hours,now,7*86400000),
   measurement('activity','FiveM-activiteit · maanduren',activity,checks.activity,now,36*3600000),
+  item('bpd-app','BelgiëPD API · totale speeluren',bpdAppApiConfigured(env)?'configured':'disabled',
+    bpdAppApiConfigured(env)?'Serverkoppeling ingesteld; daadwerkelijke bereikbaarheid nog niet bevestigd.':
+      'API-sleutel of BPD_ENABLE_BPD_APP_HOURS ontbreekt.'),
+  item('bpd-activity','BelgiëPD API · Activiteitencentrum',appActivityPrimaryEnabled(env)?'configured':'disabled',
+    appActivityPrimaryEnabled(env)?'BelgiëPD API primair ingesteld met terugval op oude activiteitenbron.':
+      'De API-voorrang staat uit.'),
+  item('bpd-duty','BelgiëPD API · diensturen',bpdAppApiConfigured(env)?'configured':'disabled',
+    bpdAppApiConfigured(env)?'Technisch schema te controleren; geen uren per dienst toegekend.':
+      'Diensturenschema nog niet aangesloten.'),
   item('firebase','Firebase / Firestore',checks.firebase.status==='fulfilled'?'connected':'error',
     checks.firebase.status==='fulfilled'?'Databaseantwoord ontvangen bij deze controle.':
       'De databasecontrole is mislukt.')
@@ -63,8 +75,21 @@ export async function readIntegrations({actor,env=process.env,db=getFirestore(),
  },now);
 }
 export function installTechnicalIntegrationStatusRoutes(app,{
- requireUser,dbFactory=getFirestore,env=process.env,now=Date.now
+ requireUser,dbFactory=getFirestore,env=process.env,now=Date.now,dutyFetchImpl=fetch
 }){
+ app.get('/api/technical-center/bpd-duty-schema',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!mayEditTechnicalSettings(req.bpd))
+   return res.status(403).json({error:'Alleen Technisch Beheer mag de API-velden controleren'});
+  try{
+   const [personal,aggregate]=await Promise.all([
+    inspectDutySchema('self',req.bpd.discordId,{env,fetchImpl:dutyFetchImpl}),
+    inspectDutySchema('all',req.bpd.discordId,{env,fetchImpl:dutyFetchImpl})
+   ]);
+   return res.json({readOnly:true,checkedAt:new Date(now()).toISOString(),
+    personal,aggregate,note:'Alleen technische veldnamen en gegevenstypes; geen diensturen.'});
+  }catch{return res.status(503).json({error:'Diensturenstructuur tijdelijk niet beschikbaar'})}
+ });
  app.get('/api/technical-center/integrations',requireUser,async(req,res)=>{
   res.set('Cache-Control','private, no-store');
   if(!mayOpenTechnicalCenter(req.bpd))
