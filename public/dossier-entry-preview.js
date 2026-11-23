@@ -29,6 +29,38 @@ export function dossierAuthorLine(row={}){
   return (x.imported?'Oorspronkelijke invoerder: ':'Door ')+x.name+
     (x.rank?' · '+x.rank:'')+(x.call?' · '+x.call:'');
 }
+// Read-only byline for dossier overviews. No client-side authority assumptions.
+// The actual registrator is never replaced by the historical/represented author.
+export function dossierRecordByline(row={}){
+  const facts=dossierAuthorFacts(row);
+  const actual=row?.submittedByActor||row?.importedBy||null;
+  const actor=actual&&typeof actual==='object'?actual:{};
+  const actualName=str(actor.name||'',130);
+  const actualCall=str(actor.call||'',32);
+  let logged='';
+  if(facts.savedAt){
+    const date=new Date(facts.savedAt);
+    if(Number.isFinite(date.valueOf()))
+      logged=new Intl.DateTimeFormat('nl-BE',{
+        timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',
+        hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+      }).format(date).replace(',','');
+  }
+  const eventTime=/^\d{2}:\d{2}/.test(facts.time)?facts.time.slice(0,5):'';
+  const eventDate=/^\d{4}-\d{2}-\d{2}$/.test(facts.date)?
+    facts.date.slice(8,10)+'/'+facts.date.slice(5,7)+'/'+facts.date.slice(0,4):facts.date;
+  const stamp=logged?'Gelogd '+logged:
+    eventDate?'Gebeurtenis '+[eventDate,eventTime].filter(Boolean).join(' '):'';
+  const represented=facts.imported||Boolean(actualName&&
+    (actualName!==facts.name||actualCall&&facts.call&&actualCall!==facts.call));
+  const loggedBy=represented&&actualName?
+    actualName+(actualCall?' · '+actualCall:''):facts.name+
+      (facts.call?' · '+facts.call:'');
+  const parts=[stamp,loggedBy?'Door '+loggedBy:''];
+  if(represented)
+    parts.push('Namens '+facts.name+(facts.call?' · '+facts.call:''));
+  return parts.filter(Boolean).join(' · ');
+}
 function field(content,label,value){
  if(!value)return;
  const row=document.createElement('div');row.className='bpd-record-fact';
