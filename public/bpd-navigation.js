@@ -554,7 +554,10 @@
   // across same-origin pages; protected APIs keep validating every request.
   // Never persist ID tokens, role documents, dossier contents or access grants.
   const navCacheKey='bpdPortalNavigationViewV1';
-  const navCacheTtlMs=20*1000;
+  // Alleen menuweergave (zonder ID-tokens of persoonsgegevens). Hergebruik de
+  // kortstondige context bij paginawissels, terwijl elke API-call zijn eigen
+  // actuele server-autorisatie blijft uitvoeren.
+  const navCacheTtlMs=90*1000;
   function cachedNavView(uid){
     if(typeof uid!=='string'||!uid)return null;
     try{
@@ -602,21 +605,29 @@
         document.getElementById('bpdCitizenDossiersLink')?.remove();
         if(!user){clearNavView();show(['home','personnel','organogram','profile']);return}
         try{
-          const token=await user.getIdToken();
           const saved=cachedNavView(user.uid);
           let context,member,citizen;
           if(saved){
+            // Dezelfde Firebase-sessie is al bekend; geen nieuwe token- of
+            // menurechtenaanvragen nodig voor enkel het tekenen van de zijbalk.
             ({context,member,citizen}=saved);
           }else{
-            [context,member,citizen]=await Promise.all([
-              fetch('/api/dashboard/admin-visibility',{cache:'no-store',
-                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
-              fetch('/api/member/dashboard',{cache:'no-store',
-                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null),
-              fetch('/api/citizen-staff/access',{cache:'no-store',
-                headers:{Authorization:'Bearer '+token}}).then(r=>r.ok?r.json():null)
+            const token=await user.getIdToken();
+            if(turn!==request)return;
+            const fetchView=path=>fetch(path,{cache:'no-store',
+              headers:{Authorization:'Bearer '+token}})
+              .then(async response=>({status:response.status,
+                value:response.ok?await response.json():null}));
+            const results=await Promise.all([
+              fetchView('/api/dashboard/admin-visibility'),
+              fetchView('/api/member/dashboard'),
+              fetchView('/api/citizen-staff/access')
             ]);
-            if(turn===request)saveNavView(user.uid,context,member,citizen);
+            [context,member,citizen]=results.map(result=>result.value);
+            // Transiënte serverstoringen niet 90 seconden als weigering bewaren.
+            // Een 403 blijft een weigering, nooit een verhoging van bevoegdheid.
+            if(turn===request&&results.every(result=>result.status<500))
+              saveNavView(user.uid,context,member,citizen);
           }
           if(turn!==request)return;
           const citizenGranted=citizen?.canAccess===true;
