@@ -64,6 +64,6 @@ test('De vaste uitlijning deelt de zijmenukolommen over alle schermen',()=>{
  assert.match(css,/\.portal > \.surface > main\{\s*margin-left:0!important;margin-right:0!important/);
  assert.match(nav,/className='bpd-home-side-icon'/);
  assert.match(nav,/className='bpd-home-side-label'/);
- assert.match(activity,/sortActivityLikePersonnel\(records\.filter/);
+ assert.match(activity,/sortActivityLikePersonnel\(scoped\.filter/);
  assert.match(activity,/activity-group-row/);
 });

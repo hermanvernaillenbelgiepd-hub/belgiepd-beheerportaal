@@ -11,6 +11,22 @@ header a{color:#d7e4ff}main{max-width:1400px;margin:auto;padding:22px clamp(12px
 h1{font-size:24px;margin:0 0 4px}h2{font-size:16px;margin:0 0 10px}
 p{color:#536a85;margin:4px 0 14px}
 section{background:white;border:1px solid #dfe8f3;border-radius:12px;padding:16px;margin:12px 0}
+.activity-help summary,.activity-stats summary{cursor:pointer;font-weight:750;color:inherit;padding:3px 0}
+.activity-help p,.activity-stats p{margin-top:8px}
+.activity-help{margin:12px 0;padding:12px 16px}
+.activity-stats{margin-top:16px;border-top:1px solid #dfe8f3;padding-top:10px}
+.activity-stats[open] #statistics{margin-top:12px}
+.priority-toggle{display:inline-flex;align-items:center;gap:7px;min-height:39px;
+ border:1px solid #b9c7d9;border-radius:8px;padding:0 11px;font-weight:750}
+.priority-toggle input{width:17px;height:17px;margin:0;padding:0;accent-color:#3158cb}
+button.counter{text-align:left;color:inherit;cursor:pointer;font-weight:normal;
+ background:#f9fbff;border-color:#dce6f0;width:100%}
+button.counter[aria-pressed="true"]{border-color:#3158cb;outline:2px solid #3158cb;outline-offset:0}
+@media(max-width:620px){.controls label,.controls input[type="search"]{min-width:0;width:100%}
+ .priority-toggle{width:100%}.controls button{flex:1}}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-stats{border-color:#36516e}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-help summary,
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-stats summary{color:#f1f6ff}
 button,input,select{font:inherit;border:1px solid #b9c7d9;border-radius:8px;padding:9px 11px;background:white}
 button{cursor:pointer;background:#3158cb;border-color:#3158cb;color:white;font-weight:700}
 button:disabled{opacity:.55}label{display:grid;gap:4px;font-size:12px;font-weight:700;color:#506682}
@@ -140,8 +156,8 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <main>
 <h1>Activiteitscentrum</h1>
 <p>Bevoegd overzicht per dienst: actuele personeelslijst, geverifieerde FiveM-speeluren, goedgekeurd verlof en in het dossier geregistreerde activiteitenpings.</p>
-<section><strong>Activiteitsadviezen en registraties zijn afzonderlijk</strong>
-<p>De tracker kan alleen op geverifieerde maandgegevens adviseren (20 / 10 speeluren en 15 / 30 / 60 dagen zonder connectie). Goedgekeurd verlof schort onterechte adviezen op. CHECKING is de controle na afgelopen verlof: bevoegd kader bevestigt ACTIEF of 50/50; de officiële personeelslijst en Discord-rollen worden hierdoor niet stilzwijgend gewijzigd.</p></section>
+<details class="activity-help"><summary>Hoe werkt de activiteitsopvolging?</summary>
+<p>De tracker kan alleen op geverifieerde maandgegevens adviseren (20 / 10 speeluren en 15 / 30 / 60 dagen zonder connectie). Goedgekeurd verlof schort onterechte adviezen op. CHECKING is de controle na afgelopen verlof: bevoegd kader bevestigt ACTIEF of 50/50; de officiële personeelslijst en Discord-rollen worden hierdoor niet stilzwijgend gewijzigd.</p></details>
 <div id="feedback" role="status" aria-live="polite">Aanmelden om gegevens te bekijken.</div>
 <div id="content" hidden>
 <section><div class="controls">
@@ -149,9 +165,16 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <label id="activitySeriesLabel" hidden>Reeks<select id="activitySeries" aria-label="Politiereeks filteren"><option value="">Alle reeksen</option></select></label>
 <label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">15+ dagen</option><option value="checking">CHECKING na verlof</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
 <label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
+<label class="priority-toggle"><input id="attentionOnly" type="checkbox"> Alleen prioritaire opvolging</label>
+<button id="resetActivityFilters" type="button" class="secondary-action">Filters wissen</button>
 <button id="refresh" type="button">↻ Vernieuwen</button></div></section>
-<section><h2>Overzicht <small id="asof"></small></h2><div id="counts" class="counts"></div>
-<h2>Statistieken binnen de geselecteerde filters</h2><div id="statistics" class="counts"></div>
+<section><h2>Opvolging in één oogopslag <small id="asof"></small></h2>
+<p class="source-note">Klik op een teller om rechtstreeks naar die opvolging te filteren. Prioritaire opvolging omvat CHECKING, 50/50, INACTIEF, 60+ dagen en verlof dat moet worden nagekeken.</p>
+<div id="counts" class="counts"></div>
+<details id="statisticsDetails" class="activity-stats">
+ <summary>Meer statistieken over de geselecteerde leden</summary>
+ <div id="statistics" class="counts"></div>
+</details>
 <p class="source-note" id="sourceNote"></p></section>
 <section id="returnPanel" class="activity-warnings" hidden><h2>⚠ Verlof afgelopen · CHECKING <small id="returnCount"></small></h2>
 <p>Nieuwe en nog niet door jou gelezen controles blijven gemarkeerd. Iedere bevoegde leidinggevende bevestigt het lezen individueel; de opvolging blijft open tot iemand een gemotiveerde beslissing registreert.</p>
@@ -196,16 +219,28 @@ let cadreConfig=null,cadreData=null;
 function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
+const priorityKinds=new Set(['checking','50/50','inactief','beoordelen','verlof_nazien']);
 function render(){
  const dept=$('department').value,kind=$('filter').value,series=$('activitySeries').value;
  const query=$('search').value.trim().toLocaleLowerCase('nl');
- const visible=sortActivityLikePersonnel(records.filter(p=>(!dept||p.department===dept)&&
-  matchesActivityPoliceSeries(p,series)&&(!kind||p.kind===kind)&&
-  (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query)))));
+ const scoped=records.filter(p=>(!dept||p.department===dept)&&
+  matchesActivityPoliceSeries(p,series)&&
+  (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query))));
+ const visible=sortActivityLikePersonnel(scoped.filter(p=>
+  (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))));
  $('counts').replaceChildren();
- for(const key of ['ok','checking','50/50','inactief','beoordelen','verlof_nazien','verouderd','geen_data']){
-  const box=el('div','', 'counter');box.append(el('strong',visible.filter(p=>p.kind===key).length),
-    el('small',label(key)));$('counts').append(box);
+ for(const key of ['checking','beoordelen','inactief','50/50','verlof_nazien','verouderd','geen_data','ok']){
+  const button=el('button','', 'counter');
+  button.type='button';
+  button.setAttribute('aria-pressed',String(kind===key));
+  button.title='Filter op '+label(key)+'; klik nogmaals om te wissen';
+  button.append(el('strong',scoped.filter(p=>p.kind===key).length),el('small',label(key)));
+  button.addEventListener('click',()=>{
+   $('filter').value=kind===key?'':key;
+   $('attentionOnly').checked=false;
+   render();
+  });
+  $('counts').append(button);
  }
  const stats=[
   ['Personeelsleden',visible.length],
@@ -222,13 +257,17 @@ function render(){
  $('statistics').replaceChildren();
  for(const [name,value] of stats){const card=el('div','', 'counter');card.append(el('strong',value),
   el('small',name));$('statistics').append(card)}
+ const measured=scoped.filter(p=>p.verified===true).length;
  $('sourceNote').textContent='Bronnen: personeelslijst · '+
-   (sources?.verifiedAvailable?'geverifieerde tracker gekoppeld':'geverifieerde tracker niet beschikbaar')+
+   (sources?.verifiedAvailable?
+    measured+' recente geverifieerde FiveM-metingen binnen deze selectie; '+ 
+    (measured?'gegevens gecontroleerd':'geen actuele metingen aangetroffen'):
+    'FiveM-broncontrole mislukt; geen veilige automatische beoordeling')+
    ' · '+(sources?.approvedLeaveComplete?'goedgekeurd verlof gecontroleerd':'verlofcontrole onvolledig')+
    ' · '+(sources?.dossierPingsAvailable?'Firebase-dossierpings':'dossierpings niet beschikbaar')+
    ' · '+(sources?.legacyAvailable?'oude spreadsheet uitsluitend als fallback':'oude spreadsheet niet beschikbaar')+
    '. Dossierpingtellers zijn beperkt tot 100 registraties per persoon.';
- $('resultCount').textContent='· '+visible.length+' leden';
+ $('resultCount').textContent='· '+visible.length+' van '+scoped.length+' leden';
  const body=$('rows');body.replaceChildren();
  let previousGroup=null;
  for(const p of visible){
@@ -479,7 +518,12 @@ function updateActivitySeries(){
  $('activitySeriesLabel').hidden=series.length===0;
 }
 $('department').addEventListener('input',()=>{updateActivitySeries();render()});
-for(const control of ['activitySeries','filter','search'])$(control).addEventListener('input',render);
+for(const control of ['activitySeries','filter','search','attentionOnly'])$(control).addEventListener('input',render);
+$('resetActivityFilters').addEventListener('click',()=>{
+ $('department').value='';$('filter').value='';$('search').value='';
+ $('attentionOnly').checked=false;
+ updateActivitySeries();$('activitySeries').value='';render();
+});
 $('refresh').addEventListener('click',load);
 (async()=>{
  try{
