@@ -67,6 +67,22 @@ button:disabled{cursor:not-allowed;opacity:.55}
 #visualDesignPreview strong{display:block;color:var(--bpd-v-accent,var(--accent))}
 #visualDesignPreview p{color:inherit}
 #visualDesignHistory{padding-left:22px;line-height:1.8}
+.integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.integration-item{background:var(--field);border:1px solid var(--stroke);border-radius:10px;padding:12px;min-width:0}
+.integration-item .row{align-items:flex-start}
+.integration-item strong{font-size:13px}
+.integration-item p{font-size:12px;margin:7px 0 4px}
+.integration-item small{color:var(--sub);font-size:11px}
+.integration-state{border:1px solid var(--stroke);border-radius:14px;padding:3px 8px;font-size:11px;font-weight:750;white-space:nowrap}
+.integration-state.connected{color:#a5e3bd;border-color:#548b70}
+.integration-state.configured{color:var(--accent)}
+.integration-state.waiting{color:#f0cb8a;border-color:#a0803e}
+.integration-state.disabled,.integration-state.error{color:#ffb4bd;border-color:#a85b63}
+html[data-bpd-theme="light"] .integration-state.connected{color:#286e46}
+html[data-bpd-theme="light"] .integration-state.waiting{color:#8a5906}
+html[data-bpd-theme="light"] .integration-state.disabled,
+html[data-bpd-theme="light"] .integration-state.error{color:#9f2e40}
+@media(max-width:690px){.integration-grid{grid-template-columns:1fr}}
 #visualDesignStatus.bad{color:#ffb4bd}
 html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
 @media(max-width:1150px){.edit-line{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -105,8 +121,20 @@ html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
   <a class="tile" id="simulatorTile" href="/technische-rollen-simulatie.html" hidden><h3>🧪 Testrollen simuleren</h3><p>Fictieve leidinggevende accounts en bevoegdheden per discipline testen, zonder wijzigingen aan echte gegevens.</p><small>TEST en uitsluitend Technisch Beheer</small></a>
   <a class="tile" href="/opleidingscentrum.html"><h3>🎓 Opleidingen</h3><p>Opleidingscentrum en dienstgebonden aanvragen.</p><small>Open opleidingscentrum</small></a>
   <a class="tile" href="/organogram-hierarchie.html"><h3>🌳 Organogram</h3><p>Personeelsindeling en beschikbare weergave-instellingen.</p><small>Open organogram</small></a>
+  <a class="tile" href="#integrations"><h3>🔌 Koppelingen &amp; status</h3>
+  <p>Discord, bot, speeluren, activiteitentracker en Firebase op één plek.</p>
+  <small>Bekijk verbindingsstatus</small></a>
   <a class="tile" href="/discord-status.html"><h3>🔗 Discord-koppeling</h3><p>Controleer jouw profiel, verificatie en verbinding.</p><small>Open mijn profiel</small></a>
  </div>
+</section>
+<section id="integrations" class="card" hidden aria-labelledby="integrationsTitle">
+ <div class="row"><div><h2 id="integrationsTitle">🔌 Koppelingen &amp; status</h2>
+  <p class="muted">Ingestelde koppelingen en werkelijk ontvangen controles.
+  'Ingesteld' betekent niet dat de externe verbinding live getest is.</p></div>
+  <button type="button" class="secondary" id="integrationReload">↻ Status vernieuwen</button></div>
+ <p class="muted" id="integrationMessage" role="status" aria-live="polite">Status wordt geladen…</p>
+ <div id="integrationGrid" class="integration-grid" aria-label="Status van koppelingen"></div>
+ <p class="muted">Vaste-roepnummer-speeluren en maandelijkse FiveM-activiteit zijn twee onafhankelijke koppelingen. Dit scherm is uitsluitend ter inzage.</p>
 </section>
 <section id="visualDesign" class="card" hidden aria-labelledby="visualDesignTitle">
  <div class="row"><div><p><a href="/vormgeving.html">Open de uitgebreide vormgevingseditor per pagina en per kader →</a></p><h2 id="visualDesignTitle">🎨 Vormgeving · centrale standaard</h2>
@@ -436,16 +464,60 @@ function drawHistory(items){
   list.append(row);
  }
 }
+const integrationStates={connected:'Recent bevestigd',configured:'Ingesteld',
+ waiting:'Wacht op meting',disabled:'Niet actief',error:'Controle mislukt'};
+let integrationRequest=0;
+async function loadIntegrations(){
+ const user=auth?.currentUser,turn=++integrationRequest;
+ if(!user||!context)return;
+ $('integrationReload').disabled=true;
+ $('integrationMessage').textContent='Koppelingen controleren…';
+ $('integrationGrid').replaceChildren();
+ try{
+  const data=await api('/api/technical-center/integrations');
+  if(turn!==integrationRequest||auth?.currentUser?.uid!==user.uid||!context)return;
+  for(const entry of data.integrations||[]){
+   const box=document.createElement('article');box.className='integration-item';
+   const header=document.createElement('div');header.className='row';
+   const name=document.createElement('strong');name.textContent=entry.title;
+   const badge=document.createElement('span');
+   badge.className='integration-state '+(integrationStates[entry.state]?entry.state:'error');
+   badge.textContent=integrationStates[entry.state]||'Onbekend';
+   header.append(name,badge);
+   const description=document.createElement('p');description.textContent=entry.detail;
+   box.append(header,description);
+   if(entry.lastReceivedAt){
+    const date=new Date(entry.lastReceivedAt);
+    if(Number.isFinite(date.getTime())){
+     const timestamp=document.createElement('small');
+     timestamp.textContent='Laatste meting: '+date.toLocaleString('nl-BE');
+     box.append(timestamp);
+    }
+   }
+   $('integrationGrid').append(box);
+  }
+  $('integrationMessage').textContent='Gecontroleerd: '+
+   new Date(data.checkedAt).toLocaleString('nl-BE')+' · Alleen lezen';
+ }catch(error){
+  if(turn!==integrationRequest||auth?.currentUser?.uid!==user.uid)return;
+  $('integrationMessage').textContent='Status tijdelijk niet beschikbaar: '+error.message;
+ }finally{
+  if(turn===integrationRequest)$('integrationReload').disabled=false;
+ }
+}
+$('integrationReload').addEventListener('click',loadIntegrations);
 async function load(){
  if(!auth?.currentUser){
-  context=null;aeHasAccess=false;aePeople=[];
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
+  context=null;aeHasAccess=false;aePeople=[];integrationRequest++;
+  for(const id of ['overview','integrations','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
   if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
   notice('Meld je aan met een bevoegd BelgiumPD-account.');return;
  }
  try{
   const next=await api('/api/technical-center/context');
   context=next;
+  $('integrations').hidden=false;
+  void loadIntegrations();
   void loadPersonnelManagement();
   $('overview').hidden=false;$('automation').hidden=false;
   $('serviceCenter').hidden=false;
@@ -481,8 +553,8 @@ async function load(){
     'Je kunt de centrale automatiseringsinstellingen wijzigen.':
     'Je hebt alleen leesrechten op de centrale instellingen.'));
  }catch(error){
-  context=null;
-  for(const id of ['overview','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
+  context=null;integrationRequest++;
+  for(const id of ['overview','integrations','automation','historyPanel','next','serviceCenter','cleanupTile','simulatorTile','awardManage','ae-beheer','awardTile','awardLibraryTile','aeTile','visualDesign','visualDesignTile'])$(id).hidden=true;
   // A delegated design editor must not open any general management section.
   if($('visualGrantPanel'))$('visualGrantPanel').hidden=true;
   try{
