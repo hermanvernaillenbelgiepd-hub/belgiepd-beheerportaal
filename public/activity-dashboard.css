@@ -1,0 +1,86 @@
+/* Visual activity dashboard – no backend permission changes */
+main,body.bpd-shell main{max-width:1520px}
+.activity-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;
+ border:1px solid #3c6692;border-radius:16px;padding:22px 25px;
+ color:#f4faff;background:linear-gradient(115deg,#153453,#21517e);box-shadow:0 8px 24px #183c6127}
+.activity-hero h1{font-size:clamp(24px,2.6vw,34px);color:inherit;margin:5px 0 8px}
+.activity-hero p{margin:0;color:#d3e7fc}
+.activity-hero-kicker{font-size:10px;color:#afd2fc;font-weight:850;letter-spacing:.15em}
+.activity-hero svg{width:112px;flex:none;opacity:.36}
+#content{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+#content>section{margin:0;min-width:0}
+.activity-eyebrow{font-size:10px;font-weight:850;letter-spacing:.13em;color:#5979a0}
+#activityFilterPanel>.activity-eyebrow{margin-bottom:9px}
+.activity-panel-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 13px}
+.activity-panel-heading h2{font-size:18px;margin:4px 0 0}
+.activity-total{min-width:110px;background:#edf4fc;border:1px solid #d0dfef;border-radius:10px;text-align:right;padding:9px 12px}
+.activity-total strong{display:block;font-size:26px;color:#173d65;line-height:1.2;font-variant-numeric:tabular-nums}
+.activity-total small{font-size:11px;color:#687e98}
+.activity-status-tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.activity-status-tile{--accent:#8691a3;min-width:0;min-height:96px;background:#f7faff;
+ color:#1e3a57;font-weight:normal;text-align:left;border:1px solid #d4e1ee;
+ border-top:3px solid var(--accent);border-radius:11px;padding:11px 12px;
+ display:flex;flex-direction:column;gap:3px;transition:transform .13s ease,box-shadow .13s ease}
+.activity-status-tile[data-tone=active]{--accent:#22956e}
+.activity-status-tile[data-tone=half]{--accent:#e7a348}
+.activity-status-tile[data-tone=inactive]{--accent:#d45868}
+.activity-status-tile[data-tone=leave]{--accent:#478ccf}
+.activity-status-tile[data-tone=checking]{--accent:#9879cc}
+.activity-status-tile[data-tone=review]{--accent:#8a94a6}
+.activity-status-tile:hover{transform:translateY(-2px);box-shadow:0 6px 14px #1b426625}
+.activity-status-tile[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:1px}
+.activity-status-heading{display:flex;gap:7px;align-items:center;font-size:12px;font-weight:750}
+.activity-status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+.activity-status-tile strong{font-weight:850;font-size:26px;color:#173c65;font-variant-numeric:tabular-nums}
+.activity-status-tile small{font-size:11px;color:#667f9a}
+.activity-status-note{font-size:11px;color:#6a7e96;margin:9px 0}
+.activity-source-detail{margin-top:11px;border-top:1px solid #d4e2ee;padding-top:10px}
+.activity-source-detail>summary{cursor:pointer;font-size:12px;font-weight:750;color:#567493}
+.activity-source-detail #counts{margin-top:12px}
+#activityChartsPanel #activityGraphs>summary{font-size:17px}
+#activityPriorityPanel>h2{font-size:18px}
+#activityPriorityPanel #activityExpandedCounters{margin-bottom:10px}
+#activityFilterPanel .controls label{font-size:11px}
+#activityFilterPanel .controls input{min-width:185px}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-hero{color:#f5faff;background:linear-gradient(115deg,#122740,#1e456d);border-color:#436b91}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-hero p{color:#d4e8ff}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-eyebrow{color:#a6c9f2}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-total{background:#1d3957;border-color:#436583}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-total strong{color:#f4f9ff}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-total small{color:#c5d9f0}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-status-tile{color:#eff7ff;background:#1c344f;border-color:#426484;border-top-color:var(--accent)}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-status-tile strong{color:#f4f9ff}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-status-tile small{color:#c7d9ed}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-status-tile[aria-pressed=true]{background:#294a6e}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-source-detail>summary{color:#cce1fb}
+@media(max-width:1150px){.activity-status-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){
+ .activity-hero{padding:18px}.activity-hero svg{display:none}
+ .activity-status-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .activity-status-tile{min-height:85px;padding:9px}
+ #activityFilterPanel .controls label{min-width:0;flex:1 1 140px}
+ #activityFilterPanel .controls input{min-width:0;max-width:100%;width:100%}
+ #activityFilterPanel .controls button{flex:1}
+ #activityPersonnelPanel .tablewrap{overflow:visible;max-height:none}
+ #activityPersonnelPanel table{display:block;min-width:0;width:100%}
+ #activityPersonnelPanel thead{display:none}#activityPersonnelPanel tbody{display:block}
+ #activityPersonnelPanel tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  padding:10px 12px;border:1px solid #d4e2ee;border-radius:9px;margin-bottom:9px}
+ #activityPersonnelPanel .activity-group-row{display:block;padding:0}
+ #activityPersonnelPanel .activity-group-row th{display:block}
+ #activityPersonnelPanel td{display:block;border:0;padding:5px 3px;overflow-wrap:anywhere;min-width:0}
+ #activityPersonnelPanel td::before{font-size:10px;color:#71859d;font-weight:800;display:block;text-transform:uppercase}
+ #activityPersonnelPanel td:nth-child(1)::before{content:'Personeel'}
+ #activityPersonnelPanel td:nth-child(2)::before{content:'Dienst'}
+ #activityPersonnelPanel td:nth-child(3)::before{content:'Status'}
+ #activityPersonnelPanel td:nth-child(4)::before{content:'Opvolging'}
+ #activityPersonnelPanel td:nth-child(5)::before{content:'Laatste verbinding'}
+ #activityPersonnelPanel td:nth-child(6)::before{content:'Kalenderdagen'}
+ #activityPersonnelPanel td:nth-child(7)::before{content:'Effectief inactief'}
+ #activityPersonnelPanel td:nth-child(8)::before{content:'Speeluren'}
+ #activityPersonnelPanel td:nth-child(9)::before{content:'Verlof'}
+ #activityPersonnelPanel td:nth-child(10)::before{content:'Dossierpings'}
+ #activityPersonnelPanel td:nth-child(11)::before{content:'Advies'}
+ #activityPersonnelPanel td:nth-child(11){grid-column:1/-1}
+}
+@media(prefers-reduced-motion:reduce){.activity-status-tile{transition:none}.activity-status-tile:hover{transform:none}}

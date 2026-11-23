@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="/bpd-navigation.css">
 <link rel="stylesheet" href="/activity-expanded.css">
 <link rel="stylesheet" href="/activity-charts.css">
+<link rel="stylesheet" href="/activity-dashboard.css">
 <style>
 :root{font:14px/1.45 Inter,system-ui,Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#192c48}
 *{box-sizing:border-box}body{margin:0}header{background:#101b36;color:#eef4ff;padding:14px clamp(16px,3vw,38px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -164,9 +165,11 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 }
 </style></head>
 <body><header><strong>BelgiëPD · Activiteitscentrum</strong><div><a href="/">← Dashboard</a> <button id="login" type="button">Aanmelden</button></div></header>
-<main>
-<h1>Activiteitscentrum</h1>
-<p>Bevoegd overzicht per dienst: actuele personeelslijst, geverifieerde FiveM-speeluren, goedgekeurd verlof en in het dossier geregistreerde activiteitenpings.</p>
+<main><div class="activity-hero"><div>
+<span class="activity-hero-kicker">PERSONEEL · ACTIVITEIT · OPVOLGING</span>
+<h1>Activiteitscentrum</h1><p>Personeelsstatussen, speeluren en opvolging binnen jouw toegangsrechten.</p>
+</div><svg viewBox="0 0 120 72" aria-hidden="true">
+<path d="M4 42h20l10-23 18 41 13-28 8 10h43" stroke="currentColor" stroke-width="5" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
 <details class="activity-help"><summary>Hoe werkt de activiteitsopvolging?</summary>
 <p>De tracker kan alleen op geverifieerde maandgegevens adviseren (20 / 10 speeluren en 15 / 30 / 60 dagen zonder connectie). Goedgekeurd verlof schort onterechte adviezen op. CHECKING is de controle na afgelopen verlof: bevoegd kader bevestigt ACTIEF of 50/50; de officiële personeelslijst en Discord-rollen worden hierdoor niet stilzwijgend gewijzigd.</p></details>
 <div id="feedback" role="status" aria-live="polite">Aanmelden om gegevens te bekijken.</div>
@@ -295,6 +298,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 </main>
 <script type="module">
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel,matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-roster-order.js';
+import {renderActivityDashboard,activityStatusTileMatch} from '/activity-dashboard.js';
 const $=id=>document.getElementById(id);
 let auth,authSdk,records=[],asOf='',sources=null;
 let cadreConfig=null,cadreData=null;
@@ -380,8 +384,14 @@ function render(){
  const scoped=records.filter(p=>(!dept||p.department===dept)&&
   matchesActivityPoliceSeries(p,series)&&
   (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query))));
+ renderActivityDashboard(scoped,sources,()=>{
+  $('filter').value='';$('attentionOnly').checked=false;
+  $('personnelDetails').open=true;render();
+  $('personnelDetails').scrollIntoView({block:'start'});
+ });
  const visible=sortActivityLikePersonnel(scoped.filter(p=>
-  (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))));
+  (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))&&
+  activityStatusTileMatch(p)));
  $('counts').replaceChildren();
  for(const key of ['checking','beoordelen','inactief','50/50','verlof_nazien','verouderd','geen_data','ok']){
   const button=el('button','', 'counter');
