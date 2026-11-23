@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {dossierPreviewText,dossierAuthorFacts,dossierAuthorLine,
+import {dossierPreviewText,dossierAuthorFacts,dossierAuthorLine,dossierRecordByline,
  attachDossierRecordPreview} from '../public/dossier-entry-preview.js';
 
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
@@ -87,4 +87,33 @@ test('fire source toont historische graad uitsluitend indien opgeslagen',()=>{
  const police=source('public/personeelsbeheer.html');
  assert.match(police,/dossierAuthorLine\(row\)/);
  assert.match(police,/bodyNode:details,metaNode:author/);
+});
+
+test('dossier author byline exists as a real ESM export and does not invent attribution',()=>{
+ assert.equal(dossierRecordByline({
+  eventDate:'2026-11-23',eventTime:'19:15',
+  registeredBy:{name:'Unemi',call:'620',rank:'Hoofdinspecteur'}
+ }), 'Door Unemi · Hoofdinspecteur · 620 · 2026-11-23 19:15');
+ assert.equal(dossierRecordByline({}), '');
+ assert.match(dossierRecordByline({
+  historicalImport:true,
+  registeredBy:{name:'Yassine',call:'207'}
+ }), /^Oorspronkelijke invoerder: Yassine · 207$/);
+});
+test('personnel page imports only exports that exist, preventing a stuck login screen',()=>{
+ const html=source('public/personeelsbeheer.html');
+ const module=/<script type="module">([\s\S]*?)<\/script>/.exec(html)?.[1];
+ assert.ok(module,'personnel module must exist');
+ const imports=[...module.matchAll(/^import\s*\{([^}]+)\}\s*from\s*['"]\/([^'"]+)['"];?/gm)];
+ assert.ok(imports.length>=15,'expected application import dependencies');
+ for(const [,names,path] of imports){
+  const sourceCode=source('public/'+path);
+  for(const entry of names.split(',')){
+   const exported=entry.trim().split(/\s+as\s+/)[0].trim();
+   assert.match(sourceCode,
+    new RegExp('(?:^|\\n)export\\s+(?:(?:async|default)\\s+)?(?:function|const|let|class|var)\\s+'+
+       exported+'\\b|(?:^|\\n)export\\s*\\{[^}]*\\b'+exported+'\\b'),
+    path+' must export '+exported);
+  }
+ }
 });
