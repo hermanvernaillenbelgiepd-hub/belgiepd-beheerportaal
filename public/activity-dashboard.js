@@ -3,7 +3,8 @@ const $=id=>document.getElementById(id);
 const TILES=[['active','Actief','Officiële status'],['half','50/50','Opvolgstatus'],
  ['inactive','Inactief','Opvolgstatus'],['leave','Verlof','Goedgekeurd'],
  ['checking','CHECKING','Controle vereist'],['review','60+ dagen','Manueel beoordelen']];
-let active='',initialized=false,verifiedLeave=false;
+let active='',initialized=false,verifiedLeave=false,activeTab='overview';
+const DASHBOARD_TABS=[['overview','Overzicht'],['followup','Opvolging'],['history','Historiek']];
 function belongs(p,key){
  const status=String(p.currentStatus||'').trim().toLowerCase();
  if(key==='active')return status==='actief'&&!p.returnChecking&&!p.leave?.active;
@@ -61,8 +62,39 @@ function initialize(){
  filterLabel.textContent='FILTERS · Dienst, reeks en opvolging';
  filter.prepend(filterLabel);
  priority.querySelector('h2').textContent='Wie heeft opvolging nodig?';
+ // Three tabs replace long initial scroll. No hidden panel gains access:
+ // tabs only move the already-authorized DOM sections.
+ const nav=document.createElement('nav');nav.id='activityDashboardTabs';
+ nav.className='activity-dashboard-tabs';nav.setAttribute('aria-label','Activiteitencentrum navigatie');
+ const tabs=Object.create(null);
+ for(const [key,label] of DASHBOARD_TABS){
+  const button=document.createElement('button');button.type='button';
+  button.dataset.tab=key;button.textContent=label;button.setAttribute('role','tab');
+  button.id='activityTab_'+key;button.setAttribute('aria-controls','activityTabPanel_'+key);
+  button.onclick=()=>selectTab(key);nav.append(button);
+  const panel=document.createElement('div');panel.className='activity-tab-panel';
+  panel.id='activityTabPanel_'+key;panel.setAttribute('role','tabpanel');
+  panel.setAttribute('aria-labelledby',button.id);tabs[key]=panel;
+ }
+ root.prepend(nav);
+ root.append(tabs.overview,tabs.followup,tabs.history);
+ for(const element of [filter,overview,graphs,ranking])tabs.overview.append(element);
+ for(const element of [priority,warning,roster])tabs.followup.append(element);
+ tabs.history.append(records);
+ selectTab(activeTab);
  // Visible on first load; user can close it.
  $('activityGraphs').open=true;
+}
+function selectTab(key){
+ activeTab=DASHBOARD_TABS.some(([id])=>id===key)?key:'overview';
+ for(const [id] of DASHBOARD_TABS){
+  const pane=$('activityTabPanel_'+id),button=$('activityTab_'+id);
+  if(pane)pane.hidden=id!==activeTab;
+  if(button){
+   button.setAttribute('aria-selected',String(id===activeTab));
+   button.tabIndex=id===activeTab?0:-1;
+  }
+ }
 }
 export function renderActivityDashboard(people,sources,onSelect){
  initialize();verifiedLeave=sources?.approvedLeaveComplete===true;
@@ -82,7 +114,7 @@ export function renderActivityDashboard(people,sources,onSelect){
   const strong=document.createElement('strong');strong.textContent=String(count);
   const small=document.createElement('small');small.textContent=note;
   button.append(label,strong,small);
-  button.onclick=()=>{active=active===key?'':key;onSelect()};
+  button.onclick=()=>{active=active===key?'':key;selectTab('followup');onSelect()};
   container.append(button);
  }
 }

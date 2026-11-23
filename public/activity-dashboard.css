@@ -84,3 +84,20 @@ html[data-bpd-theme="dark"] body.bpd-shell main .activity-source-detail>summary{
  #activityPersonnelPanel td:nth-child(11){grid-column:1/-1}
 }
 @media(prefers-reduced-motion:reduce){.activity-status-tile{transition:none}.activity-status-tile:hover{transform:none}}
+
+/* Three compact activity workspaces, no extra permission surface. */
+.activity-dashboard-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px;
+ border:1px solid #d7e3f0;background:#edf4fb;border-radius:13px;max-width:100%}
+.activity-dashboard-tabs button{min-width:128px;flex:0 1 auto;border:1px solid transparent;border-radius:9px;
+ background:transparent;color:#34516e;padding:10px 17px;font-weight:750;min-height:40px}
+.activity-dashboard-tabs button[aria-selected=true]{background:#315cc5;color:#fff;
+ border-color:#315cc5;box-shadow:0 3px 12px #183b761e}
+.activity-dashboard-tabs button:focus-visible{outline:3px solid #6b95e9;outline-offset:2px}
+.activity-tab-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.activity-tab-panel[hidden]{display:none!important}
+.activity-tab-panel>section{margin:0;min-width:0}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-dashboard-tabs{background:#17324f;border-color:#406080}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-dashboard-tabs button{color:#d6e7fa}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-dashboard-tabs button[aria-selected=true]{background:#4675df;color:#fff}
+@media(max-width:500px){.activity-dashboard-tabs{gap:4px;padding:5px}
+ .activity-dashboard-tabs button{min-width:0;flex:1 1 28%;padding:10px 6px;font-size:12px}}
