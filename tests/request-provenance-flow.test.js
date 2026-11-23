@@ -42,3 +42,19 @@ test('training rejection reason is optional without changing reviewer scope',()=
  assert.match(ui,/Reden van afwijzing \(optioneel/);
  assert.match(ui,/reason===null/);
 });
+
+test('notification cards keep applicant, submitter, approver and optional rejection form together',()=>{
+ const ui=readFileSync(new URL('../public/meldingen.html',import.meta.url),'utf8');
+ assert.match(ui,/function leaveWorkflowCard\(row,record\)/);
+ assert.match(ui,/function trainingWorkflowCard\(row,record\)/);
+ assert.match(ui,/Handmatig ingevoerd door/);
+ assert.match(ui,/Oorspronkelijke registrator/);
+ assert.match(ui,/Afgewezen door/);
+ assert.match(ui,/Reden van afwijzing \(optioneel, maximaal 300 tekens\)/);
+ assert.match(ui,/override\?\{decision,reason:note\}:\{decision,note\}/);
+ assert.match(ui,/leaveWorkflowCard\(entry,record\)/);
+ assert.match(ui,/trainingWorkflowCard\(row,r\)/);
+ const script=ui.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
+ assert.ok(script);
+ assert.doesNotThrow(()=>new Function(script.replace(/^import\s+.*?;\s*$/gm,'')));
+});
