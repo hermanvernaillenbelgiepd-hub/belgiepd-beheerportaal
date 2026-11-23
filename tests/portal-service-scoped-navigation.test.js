@@ -39,7 +39,9 @@ test('Brandweer Middenkader + Police Basiskader only sees its actual Fire scope'
  const a=make({politie:'basiskader',brandweer:'middenkader'},{
   dossierAllowedDepartments:['brandweer'],fireAccessLevel:'middle'
  });
- assert.deepEqual(nav(a),{activity:true,dossiers:true,reports:false,to:false});
+ // MAIN deliberately limits BW Middenkader to the service dossier, not
+ // the general personnel/activity workspace. The menu must respect that.
+ assert.deepEqual(nav(a),{activity:false,dossiers:true,reports:false,to:false});
  assert.equal(canSeeDashboardManagement(a),false);
 });
 test('verified ZONE only gets Fire reports and dossiers, not Police command',()=>{
