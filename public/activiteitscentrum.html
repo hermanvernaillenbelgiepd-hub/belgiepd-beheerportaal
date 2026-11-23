@@ -4,6 +4,7 @@
 <meta name="referrer" content="no-referrer">
 <title>BelgiëPD · Activiteitscentrum</title>
 <link rel="stylesheet" href="/bpd-navigation.css">
+<link rel="stylesheet" href="/activity-expanded.css">
 <style>
 :root{font:14px/1.45 Inter,system-ui,Segoe UI,Arial,sans-serif;background:#f4f7fb;color:#192c48}
 *{box-sizing:border-box}body{margin:0}header{background:#101b36;color:#eef4ff;padding:14px clamp(16px,3vw,38px);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -202,13 +203,45 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
   <p>De oude RECORDS-tab gebruikt playtime-resetpeildata, waaronder 15/10/2026 en 16/11/2026. Dit zijn niet noodzakelijk volledige kalendermaanden. Alleen waarden met een ondubbelzinnig overeenkomende Discord-ID zijn zichtbaar; ze dienen nooit als automatisch bewijs voor pings. De toekomstige bot bewaart apart geverifieerde metingen.</p>
  </details>
 </details></section>
+<section><h2>Activiteitsopvolging · drempels na verlofcorrectie</h2>
+<p class="source-note">De kalenderdagen blijven zichtbaar. Alleen goedgekeurde verlofdagen worden van de effectieve inactiviteit afgetrokken. Niet-geverifieerde gegevens worden uitsluitend ter controle getoond.</p>
+<div id="activityExpandedCounters" class="counts"></div>
+<details id="activityExpandedFollowup" class="activity-data-fold">
+ <summary>Wie is in verlof, bereikt 50/50, INACTIEF of 60+ dagen? · alle leden</summary>
+ <div id="activityExpandedGroups" class="activity-summary-grid"></div>
+</details>
+</section>
+<section><details id="activityExpandedRankings" class="activity-data-fold">
+ <summary>Top 10 meest actief en minst actief · bekijk de volledige ranglijsten</summary>
+ <p id="activityExpandedRankSource" class="source-note"></p>
+ <div id="activityExpandedRankRows" class="activity-summary-grid"></div>
+</details></section>
+<dialog id="activityExpandedNoticeDialog">
+ <form id="activityExpandedNoticeForm">
+  <h3>Portaalmelding en activiteitenping</h3>
+  <p id="activityExpandedNoticePerson"></p>
+  <p class="source-note">Dit maakt een melding in het portaal, een dossierregistratie en een weekrapportregel. Er wordt geen Discord-DM verstuurd en geen officiële status gewijzigd.</p>
+  <label>Opvolgstatus<select id="activityExpandedNoticeKind" required>
+   <option value="">Kies de opvolging…</option>
+   <option value="ACTIEF">ACTIEF · controle</option>
+   <option value="50/50">50/50 · opvolging</option>
+   <option value="INACTIEF">INACTIEF · opvolging</option>
+   <option value="VERWIJDERING_TE_BEOORDELEN">60+ dagen · manuele beoordeling</option>
+   <option value="GEEN_VERBETERING_NA_PING">Geen verbetering na eerdere ping</option>
+  </select></label>
+  <label>Persoonlijke melding en motivering<textarea id="activityExpandedNoticeDetails" minlength="15" maxlength="1200" required></textarea></label>
+  <div class="activity-row-actions"><button type="submit" id="activityExpandedNoticeSubmit">Portaalmelding versturen</button>
+   <button type="button" id="activityExpandedNoticeCancel">Annuleren</button></div>
+  <p id="activityExpandedNoticeFeedback" role="status"></p>
+ </form>
+</dialog>
 <section id="returnPanel" class="activity-warnings" hidden><h2>⚠ Verlof afgelopen · CHECKING <small id="returnCount"></small></h2>
 <p>Nieuwe en nog niet door jou gelezen controles blijven gemarkeerd. Iedere bevoegde leidinggevende bevestigt het lezen individueel; de opvolging blijft open tot iemand een gemotiveerde beslissing registreert.</p>
 <div id="returnList" aria-live="polite"></div></section>
 <section><details id="personnelDetails" class="activity-data-fold">
  <summary>Volledige personeelslijst <small id="resultCount"></small></summary>
  <p class="activity-order-note">Geordend volgens de Personeelslijst. Deze grote tabel wordt pas opgebouwd na openklappen.</p><div class="tablewrap"><table>
-<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Opvolging</th><th>Laatste connectie</th><th>Geen connectie</th><th>Speeluren</th><th>Verlof</th><th>Dossierpings</th><th>Advies</th></tr></thead>
+<thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Opvolging</th><th>Laatste connectie</th><th>Geen connectie</th><th>Effectief</th><th>Speeluren</th><th>Verlof</th><th>Dossierpings</th><th>Advies</th></tr></thead>
 <tbody id="rows"></tbody></table></div></details></section>
 </div>
 <section id="cadrePanel" hidden aria-labelledby="cadreTitle">
@@ -373,6 +406,8 @@ function render(){
    '. Dossierpingtellers zijn beperkt tot 100 registraties per persoon.';
  $('resultCount').textContent='· '+visible.length+' van '+scoped.length+' leden';
  if($('recordsPanel').open)renderVerifiedRecords(scoped);
+ void import('/activity-expanded.js').then(mod=>
+  mod.renderActivityExtension({people:scoped,asOf,sources})).catch(()=>{});
  const body=$('rows');body.replaceChildren();
  if(!$('personnelDetails').open)return;
  let previousGroup=null;
@@ -380,7 +415,7 @@ function render(){
   const group=activityRosterGroup(p);
   if(group!==previousGroup){
    const divider=document.createElement('tr');divider.className='activity-group-row';
-   const cell=el('th',activityRosterGroupLabel(p));cell.colSpan=10;cell.scope='rowgroup';
+   const cell=el('th',activityRosterGroupLabel(p));cell.colSpan=11;cell.scope='rowgroup';
    divider.append(cell);body.append(divider);previousGroup=group;
   }
   const row=document.createElement('tr');
@@ -397,13 +432,14 @@ function render(){
    p.pingDossier?.latestStatus||'—');
   if(p.returnChecking)follow.className='state-checking';row.append(follow);
   row.append(el('td',p.lastConnection||'Geen gegevens'));
-  row.append(el('td',p.daysInactive===null?'—':p.daysInactive+' dagen'));
+  row.append(el('td',p.calendarInactiveDays===null?'—':p.calendarInactiveDays+' dagen'));
+  row.append(el('td',p.effectiveInactiveDays===null?'—':p.effectiveInactiveDays+' dagen · '+p.excludedLeaveDays+' verlof'));
   const hours=el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur');
   hours.append(el('small',p.verified?'✓ Geverifieerd · '+p.periodLabel:p.periodLabel||'Oude bron'));
   const lastHistorical=p.historicalRecords?.at(-1);
   if(lastHistorical)hours.append(el('small','RECORDS '+belgianHistoricalDate(lastHistorical.date)+': '+lastHistorical.hours+' uur (peilstand)'));
   row.append(hours);
-  const leave=el('td',p.leave?.active?'Verlof tot '+p.leave.endDate:
+  const leave=el('td',p.leave?.active?'Verlof '+belgianHistoricalDate(p.leave.startDate)+' – '+belgianHistoricalDate(p.leave.endDate):
    p.leave?.lastEnded?'Einde '+p.leave.lastEnded:'—');
   if(p.leave?.nextStart)leave.append(el('small','Volgend: '+p.leave.nextStart+' → '+p.leave.nextEnd));
   row.append(leave);
@@ -416,7 +452,7 @@ function render(){
     el('small',p.reason));row.append(note);body.append(row);
  }
  if(!visible.length){const row=document.createElement('tr'),cell=el('td','Geen resultaten binnen de gekozen filters.');
-  cell.colSpan=10;row.append(cell);body.append(row)}
+  cell.colSpan=11;row.append(cell);body.append(row)}
  $('asof').textContent='· broncontrole '+asOf;
 }
 async function load(){

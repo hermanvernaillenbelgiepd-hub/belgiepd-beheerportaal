@@ -21,9 +21,6 @@ export function leaveInformation(leaves,today){
  const finished=approved.filter(x=>x.endDate<today)
   .sort((a,b)=>b.endDate.localeCompare(a.endDate))[0]||null;
  return {active:!!current,
-  periods:approved.filter(x=>x.endDate>=today)
-   .sort((a,b)=>a.startDate.localeCompare(b.startDate)).slice(0,30)
-   .map(x=>({startDate:x.startDate,endDate:x.endDate})),
   startDate:current?.startDate||null,endDate:current?.endDate||null,
   nextStart:upcoming?.startDate||null,nextEnd:upcoming?.endDate||null,
   lastEnded:finished?.endDate||null};
@@ -46,7 +43,13 @@ export function enrichActivityRow(row,{verified=null,leaves=[],pings=null,return
  today,now=new Date()}={}){
  const leave=leaveInformation(leaves,today);
  const absence=absenceBreakdown(row.lastConnection,leaves,today);
- const enriched={...row,leave,
+ const leavePeriods=(leaves||[]).filter(x=>x.status==='approved'&&
+  /^\d{4}-\d{2}-\d{2}$/.test(x.startDate||'')&&
+  /^\d{4}-\d{2}-\d{2}$/.test(x.endDate||'')&&
+  x.startDate<=x.endDate&&x.endDate>=today).sort((a,b)=>
+   a.startDate.localeCompare(b.startDate)).slice(0,30)
+  .map(x=>({startDate:x.startDate,endDate:x.endDate}));
+ const enriched={...row,leave,leavePeriods,
   calendarInactiveDays:absence.calendarDays,
   excludedLeaveDays:absence.excludedLeaveDays,
   effectiveInactiveDays:absence.effectiveDays,
