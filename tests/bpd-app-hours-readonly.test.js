@@ -42,7 +42,7 @@ test('mismatching Discord identity or unsafe playtime cannot become evidence',()
  assert.equal(normalizedServerPlayer({...player,discord_id:other},user),null);
  assert.equal(normalizedServerPlayer({...player,play_time_minutes:-3},user),null);
  assert.equal(normalizedServerPlayer({...player,play_time_minutes:9007199254740992},user),null);
- assert.equal(normalizedServerPlayer({...player,play_time_minutes:599},user).playHours,10);
+ assert.equal(normalizedServerPlayer({...player,play_time_minutes:599},user).playHours,9.98);
  const threshold=fivemEligibility({playTimeMinutes:599,firstConnectionAt:'2026-11-01T00:00:00Z'},clock);
  assert.equal(threshold.eligible,false);
  assert.equal(fivemEligibility({playTimeMinutes:600,firstConnectionAt:'2026-11-21T00:00:00Z'},clock).eligible,false);

@@ -41,7 +41,7 @@ export function normalizedServerPlayer(payload,discordId){
  if(!Number.isSafeInteger(minutes)||minutes<0||minutes>1e9)return null;
  return {
   playTimeMinutes:minutes,
-  playHours:Math.round(minutes/6)/10,
+  playHours:Math.round(minutes/60*100)/100,
   firstConnectionAt:date(candidate.first_connection_at),
   lastConnectionAt:date(candidate.last_connection_at),
   source:'bpd-app-server-player'
