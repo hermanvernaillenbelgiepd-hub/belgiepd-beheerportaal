@@ -149,7 +149,9 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
      returnCheck:checking.get(row.department+':'+row.discordId)||null,
      today,now});
     if(!leaveComplete){
-     copy.leave={active:null,startDate:null,endDate:null,nextStart:null,nextEnd:null,lastEnded:null};
+     copy.leave={active:null,periods:[],startDate:null,endDate:null,nextStart:null,nextEnd:null,lastEnded:null};
+     copy.excludedLeaveDays=null;
+     copy.effectiveInactiveDays=null;
      if(copy.kind!=='checking'){
       copy.kind='verouderd';
       copy.reason='Goedgekeurd verlof is niet volledig verifieerbaar; geen veilig activiteitsadvies';
