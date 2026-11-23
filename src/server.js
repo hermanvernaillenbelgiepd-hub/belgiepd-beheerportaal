@@ -24,6 +24,7 @@ import {installBasicObservationRoutes} from './basic-observation-routes.js';
 import {basicObservationJsonParser} from './basic-observation-json.js';
 import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-archive.js';
 import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
+import {installTechnicalIntegrationStatusRoutes} from './technical-integration-status.js';
 import {installVisualDesignRoutes} from './visual-design-routes.js';
 import {installVisualDesignPageRoutes} from './visual-design-page-routes.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
@@ -1036,6 +1037,7 @@ installDcIdTransferRoutes(app,{requireUser:requireDossierUser,getSnapshot,
 installLeaveRoutes(app,{requireUser,requireDossierUser,getSnapshot,accessList});
 installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
+installTechnicalIntegrationStatusRoutes(app,{requireUser});
 installVisualDesignRoutes(app,{requireUser});
 installVisualDesignPageRoutes(app,{requireUser});
 installPortalLabelRoutes(app,{requireUser:requireDossierUser});
