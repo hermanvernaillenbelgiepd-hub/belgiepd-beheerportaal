@@ -327,11 +327,14 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         represented=representativeFromPersonnel(snap.data,dept,representedId);
         if(!represented)return res.status(400).json({error:'Oorspronkelijke registrator niet gevonden in de personeelslijst'});
       }
-      // Record-only updates must never imply that a message was delivered.
-      // A separate private portal notice is created only for an attested
-      // manual Discord contact; this code NEVER sends an actual Discord DM.
+      // Explicit portal-only delivery is separate from an attested Discord DM.
+      const portalNotice=req.body?.portalNotice===true;
+      if(req.body?.portalNotice!==undefined&&
+         (req.body.portalNotice!==true||type!=='inactiviteitsping'||
+          data.discordPingSent!==false||represented))
+       return res.status(400).json({error:'Ongeldige portaalmelding'});
       const createMemberNotice=type==='inactiviteitsping'&&!represented&&
-        data.discordPingSent===true;
+        (data.discordPingSent===true||portalNotice);
       const newDoc=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc();
       const notice=db().collection('bpd_notices').doc(dept).collection('events').doc();
       const batch=db().batch();
@@ -348,7 +351,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
           historicalPing:true,pingNotificationStatus:'historisch'
         }:createMemberNotice?{
           pingNotificationId:newDoc.id,pingNotificationStatus:'sent',
-          discordContactSource:'manual_attestation'
+          discordContactSource:portalNotice?'portal_only':'manual_attestation'
         }:{pingNotificationStatus:'niet_verstuurd',
           discordContactSource:'manual_attestation'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});

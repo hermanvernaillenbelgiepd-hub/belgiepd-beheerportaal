@@ -1,6 +1,7 @@
 // Read-only projection used by Activity Center. Verified tracker evidence is
 // kept distinct from the old sheet, manual status decisions and official roster.
 import {assessActivityPings} from './activity-ping-policy.js';
+import {absenceBreakdown} from './activity-absence-policy.js';
 const ID=/^\d{15,22}$/;
 const iso=value=>value?.toDate?.()?.toISOString?.()||
  (value instanceof Date?value.toISOString():typeof value==='string'?value:null);
@@ -41,7 +42,19 @@ export function dossierPingSummary(rows){
 export function enrichActivityRow(row,{verified=null,leaves=[],pings=null,returnCheck=null,
  today,now=new Date()}={}){
  const leave=leaveInformation(leaves,today);
- const enriched={...row,leave,verified:false,verifiedAt:null,
+ const absence=absenceBreakdown(row.lastConnection,leaves,today);
+ const leavePeriods=(leaves||[]).filter(x=>x.status==='approved'&&
+  /^\d{4}-\d{2}-\d{2}$/.test(x.startDate||'')&&
+  /^\d{4}-\d{2}-\d{2}$/.test(x.endDate||'')&&
+  x.startDate<=x.endDate&&x.endDate>=today).sort((a,b)=>
+   a.startDate.localeCompare(b.startDate)).slice(0,30)
+  .map(x=>({startDate:x.startDate,endDate:x.endDate}));
+ const enriched={...row,leave,leavePeriods,
+  calendarInactiveDays:absence.calendarDays,
+  excludedLeaveDays:absence.excludedLeaveDays,
+  effectiveInactiveDays:absence.effectiveDays,
+  activitySourceDate:row.lastCheck||null,
+  verified:false,verifiedAt:null,
   periodLabel:'Sinds reset (oude bron)',pingDossier:pings,
   returnChecking:returnCheck?.status==='CHECKING',
   followupStatus:returnCheck?.status==='CHECKING'?'CHECKING':null,
@@ -57,10 +70,15 @@ export function enrichActivityRow(row,{verified=null,leaves=[],pings=null,return
   const age=now.getTime()-Date.parse(verified.observedAt);
   const fresh=age>=0&&age<=36*3600000;
   enriched.verified=fresh;enriched.verifiedAt=verified.observedAt;
+  enriched.activitySourceDate=verified.observedAt.slice(0,10);
   enriched.periodLabel='Afgesloten maand '+verified.closedMonth;
   enriched.periodPlayHours=rounded(verified.closedMonthPlaySeconds/3600);
   enriched.lastConnection=verified.lastConnectedAt?.slice(0,10)||null;
-  enriched.daysInactive=daysSince(verified.lastConnectedAt,now);
+  const verifiedAbsence=absenceBreakdown(verified.lastConnectedAt,leaves,today);
+  enriched.calendarInactiveDays=verifiedAbsence.calendarDays;
+  enriched.excludedLeaveDays=verifiedAbsence.excludedLeaveDays;
+  enriched.effectiveInactiveDays=verifiedAbsence.effectiveDays;
+  enriched.daysInactive=verifiedAbsence.calendarDays;
   if(returnCheck?.status==='CHECKING')return enriched;
   if(leave.active){
    enriched.kind='verlof_nazien';enriched.reason='Goedgekeurd verlof tot '+leave.endDate+
@@ -69,7 +87,7 @@ export function enrichActivityRow(row,{verified=null,leaves=[],pings=null,return
    enriched.kind='verouderd';enriched.reason='FiveM-meting ouder dan 36 uur: geen betrouwbare automatische beoordeling';
   }else{
    const proposed=assessActivityPings(verified,{joinedAt:verified.joinedAt,leaves},now);
-   if(enriched.daysInactive>=60){
+   if(enriched.effectiveInactiveDays!==null&&enriched.effectiveInactiveDays>=60){
     enriched.kind='beoordelen';enriched.reason='60+ dagen geen connectie: manuele beslissing vereist, geen automatisch ontslag';
    }else if(proposed.length){
     enriched.kind=proposed[0].kind==='INACTIEF'?'inactief':'50/50';

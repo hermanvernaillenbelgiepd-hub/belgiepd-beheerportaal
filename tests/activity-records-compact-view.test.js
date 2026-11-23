@@ -64,3 +64,23 @@ test('read-only historical sheet is loaded server-side and projected only onto a
  assert.match(route,/historicalRecords:historicalRows\.items\.get\(row\.discordId\)\|\|\[\]/);
  assert.doesNotMatch(route,/app\.post\('\/api\/activity-center\/records/);
 });
+
+test('expanded follow-up keeps full rosters, top10, leave periods and truthful portal notification',()=>{
+ const source=readFileSync(new URL('../public/activity-expanded.js',import.meta.url),'utf8');
+ assert.match(html,/id="activityExpandedCounters"/);
+ assert.match(html,/id="activityExpandedFollowup"/);
+ assert.match(html,/id="activityExpandedRankings"/);
+ assert.match(html,/id="activityExpandedNoticeForm"/);
+ assert.match(html,/type="module"/);
+ assert.match(script,/import\('\/activity-expanded\.js'\)/);
+ assert.match(source,/slice\(0,10\)/);
+ assert.match(source,/effectiveInactiveDays/);
+ assert.match(source,/calendarInactiveDays/);
+ assert.match(source,/excludedLeaveDays/);
+ assert.match(source,/leavePeriods/);
+ assert.match(source,/portalNotice:true/);
+ assert.match(source,/discordPingSent:false/);
+ assert.match(source,/Kopieer Discord @mention/);
+ assert.doesNotMatch(source,/discordPingSent:true/);
+ assert.doesNotThrow(()=>new Function(source.replace(/^export\s+/m,'')));
+});

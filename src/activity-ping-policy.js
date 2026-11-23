@@ -1,6 +1,7 @@
 // Verified FiveM activity only. This module produces proposed personal pings,
 // never changes a personnel status and NEVER archives/dismisses a member.
 import {createHash} from 'node:crypto';
+import {absenceBreakdown} from './activity-absence-policy.js';
 
 const ID=/^\d{15,22}$/;
 const ISO=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -50,18 +51,6 @@ const currentLeave=(leaves,today)=>leaves.some(l=>l.status==='approved'&&
  l.startDate<=today&&l.endDate>=today);
 const overlapsMonth=(leaves,month)=>leaves.some(l=>l.status==='approved'&&
  l.startDate<=month+'-31'&&l.endDate>=month+'-01');
-function absenceAnchor(lastConnectedAt,leaves,now){
- let anchor=Date.parse(lastConnectedAt);
- // A completed approved leave interrupts the absence clock. Mid-leave
- // reminders are always suppressed by currentLeave before this function.
- for(const leave of leaves){
-  if(leave.status!=='approved'||!leave.endDate||!leave.startDate)continue;
-  const end=Date.parse(leave.endDate+'T23:59:59Z');
-  if(Number.isFinite(end)&&end>anchor&&end<=now)
-   anchor=end;
- }
- return anchor;
-}
 const proposed=(kind,reason,criterion,incidentKey,evidence)=>({
  kind,reason,criterion,incidentKey,evidence
 });
@@ -92,9 +81,9 @@ export function assessActivityPings(evidence,{joinedAt=null,leaves=[]}={},now=ne
  if(isDate(evidence.lastConnectedAt)){
   const last=Date.parse(evidence.lastConnectedAt);
   if(last<=at){
-   const anchor=absenceAnchor(evidence.lastConnectedAt,leaves,at);
-   const days=(at-anchor)/DAY;
-   const kind=days>=30?'INACTIEF':days>=15?'50/50':null;
+   const absence=absenceBreakdown(evidence.lastConnectedAt,leaves,date);
+   const days=absence.effectiveDays;
+   const kind=days!==null?(days>=30?'INACTIEF':days>=15?'50/50':null):null;
    if(kind){
     const threshold=kind==='INACTIEF'?30:15;
     candidates.push(proposed(kind,
@@ -102,6 +91,7 @@ export function assessActivityPings(evidence,{joinedAt=null,leaves=[]}={},now=ne
      ' dagen. Laatste verbinding: '+evidence.lastConnectedAt+'.',
      'absence',evidence.lastConnectedAt+'_'+threshold,{
       lastConnectedAt:evidence.lastConnectedAt,days:Math.floor(days),
+      calendarDays:absence.calendarDays,excludedLeaveDays:absence.excludedLeaveDays,
       observedAt:evidence.observedAt
      }));
    }
