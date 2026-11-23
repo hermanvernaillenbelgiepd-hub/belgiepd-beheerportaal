@@ -76,6 +76,7 @@ RUN node --test tests/service-scoped-dossier-author.test.js
 RUN node --test tests/roster-header-no-emoji-flash.test.js
 RUN node --test tests/leave-shared-request-history.test.js
 RUN node --test tests/portal-one-login-navigation.test.js
+RUN node --test tests/service-role-hierarchy-instructor.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
