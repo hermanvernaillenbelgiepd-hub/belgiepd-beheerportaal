@@ -158,6 +158,15 @@ html:not([data-bpd-theme="dark"]) .siv-restriction-popup{
 .notification-page .request-decision-inline .actions{display:flex;gap:8px;flex-wrap:wrap}
 .notification-page .request-one-card .request-status{display:inline-block;border:1px solid var(--noti-border);
  background:var(--noti-soft);border-radius:6px;padding:3px 7px;font-size:11px;font-weight:800;margin-top:5px}
+/* Decision outcomes live beside the original application, not as a
+   second case or an unverified Discord delivery. */
+.notification-page .leave-decision-notice{border-left:3px solid #428bc8!important}
+.notification-page .leave-decision-notice[data-decision="approved"]{border-left-color:#28956e!important}
+.notification-page .leave-decision-notice[data-decision="rejected"]{border-left-color:#d16465!important}
+.notification-page .leave-decision-notice[data-unread="true"]{background:var(--noti-soft)!important}
+.notification-page .leave-decision-notice .notice-meta{font-size:11px;color:var(--noti-muted)!important;margin-top:5px}
+.notification-page .leave-decision-notice .notice-reason{white-space:pre-wrap;overflow-wrap:anywhere}
+.notification-page .leave-decision-notice .actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
 </style>
 <style id="notificationDashboardStyle">
 /* Een rubriek blijft zichtbaar, ook als haar lijst leeg is.
@@ -420,6 +429,15 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
  <p>Ontvangen activiteitenpings en leesbevestigingen. Iedere ping heeft één bewijsregistratie in je dossier en het dienstweekrapport.</p>
  <div id="activityPingsList"></div>
 
+ </details>
+</section>
+<section id="leaveDecisionPanel" class="panel notification-tile notification-tile--personal" hidden>
+ <details class="notification-fold" id="leaveDecisionFold" open>
+  <summary>📩 Beslissingen over verlofaanvragen
+   <span id="leaveDecisionUnread" class="pill">0 ongelezen</span></summary>
+  <p>Goedkeuringen en afwijzingen voor je eigen verlof of een aanvraag die je
+   handmatig namens een collega hebt ingediend. Inclusief beslisser en eventuele reden.</p>
+  <div id="leaveDecisionList" aria-live="polite"></div>
  </details>
 </section>
 <section id="personalPanel" class="panel notification-tile notification-tile--personal" hidden>
@@ -959,7 +977,7 @@ async function load(){
   do{
    refreshRequestedAgain=false;
    const loaders=[loadPolicePromotions,loadSivTrainingRestrictions,loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
-     loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave];
+     loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave,loadLeaveDecisionNotices];
    loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));
    syncNotificationJump();
@@ -1064,6 +1082,72 @@ async function loadPolicePromotions(){
     'De lijst is afgekapt; verwerk eerst de getoonde voorstellen.'));
  }catch(error){
   panel.hidden=false;list.textContent='Promotievoorstellen niet beschikbaar: '+error.message;
+ }
+}
+async function loadLeaveDecisionNotices(){
+ const panel=$('leaveDecisionPanel'),root=$('leaveDecisionList');
+ panel.hidden=true;root.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const response=await api('/api/leave/decision-notifications');
+  const notes=Array.isArray(response.notifications)?response.notifications:[];
+  $('leaveDecisionUnread').textContent=String(response.unread||0)+' ongelezen';
+  for(const record of notes){
+   const item=document.createElement('div');
+   item.className='item leave-decision-notice';
+   item.dataset.decision=record.decision;
+   item.dataset.unread=record.readAt?'false':'true';
+   const title=document.createElement('strong');
+   title.textContent=(record.readAt?'':'🔔 NIEUW · ')+
+    (record.decision==='approved'?'GOEDGEKEURD':'AFGEWEZEN')+
+    ' · '+(record.subjectCall||'—')+' · '+(record.subjectName||'Personeelslid');
+   item.append(title);
+   requestDetail(item,'Verlofperiode',
+    displayLeaveDate(record.startDate)+' t/m '+displayLeaveDate(record.endDate));
+   requestDetail(item,'Jouw rol',record.recipientRole==='handmatige_indiener'?
+    'Handmatig ingediend namens deze collega':'Aanvrager');
+   if(record.recipientRole==='handmatige_indiener')
+    requestDetail(item,'Handmatig ingediend door',requestPerson(record.submittedBy));
+   requestDetail(item,record.decision==='approved'?'Goedgekeurd door':'Afgewezen door',
+    requestPerson(record.decidedBy,record.eventKey==='auto_approved'?
+      'Systeem · automatisch':'Niet geregistreerd'));
+   requestDetail(item,'Beslist op',requestTime(record.createdAt)||'Datum onbekend');
+   if(record.decision==='rejected'){
+    const why=document.createElement('p');why.className='notice-reason';
+    const heading=document.createElement('strong');heading.textContent='Afwijsreden: ';
+    why.append(heading,document.createTextNode(record.decisionReason||'Geen reden opgegeven'));
+    item.append(why);
+   }else if(record.decisionReason)requestDetail(item,'Beslissingsmotivering',record.decisionReason);
+   const actions=document.createElement('div');actions.className='actions';
+   const leave=document.createElement('a');leave.href='/verlofbeheer.html';
+   leave.textContent='Verlofbeheer';actions.append(leave);
+   if(!record.readAt){
+    const read=document.createElement('button');read.type='button';read.textContent='GELEZEN';
+    read.onclick=async()=>{
+     read.disabled=true;
+     try{
+      await api('/api/leave/decision-notifications/'+encodeURIComponent(record.id)+'/read',{});
+      window.dispatchEvent(new Event('bpd-notifications-refresh'));
+      await loadLeaveDecisionNotices();
+     }catch(error){feedback('Leesbevestiging niet opgeslagen: '+error.message,true);read.disabled=false}
+    };
+    actions.append(read);
+   }else{
+    const receipt=document.createElement('small');receipt.className='notice-meta';
+    receipt.textContent='✓ Gelezen op '+(requestTime(record.readAt)||'onbekende datum');
+    item.append(receipt);
+   }
+   item.append(actions);root.append(item);
+  }
+  if(response.limited){
+   const warning=document.createElement('p');warning.textContent=
+    'Er zijn meer dan 150 beslissingen; de recente meldingen worden getoond.';
+   root.append(warning);
+  }
+  panel.hidden=!notes.length;
+ }catch(error){
+  panel.hidden=false;
+  root.textContent='Persoonlijke verlofbeslissingen tijdelijk niet beschikbaar: '+error.message;
  }
 }
 async function loadLeave(){

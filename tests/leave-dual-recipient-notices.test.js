@@ -60,3 +60,18 @@ test('all decisions stage two receipts in the same authorized transaction as the
  assert.match(routes,/!needsHigherApproval&&!originalAuthor/);
  assert.match(routes,/eventKey:'auto_approved'/);
 });
+
+test('individual applicant and manual submitter inboxes show reason and read receipts',()=>{
+ const ui=readFileSync(new URL('../public/meldingen.html',import.meta.url),'utf8');
+ const nav=readFileSync(new URL('../public/bpd-navigation.js',import.meta.url),'utf8');
+ assert.match(ui,/id="leaveDecisionPanel"/);
+ assert.match(ui,/id="leaveDecisionUnread"/);
+ assert.match(ui,/async function loadLeaveDecisionNotices\(\)/);
+ assert.match(ui,/requestPerson\(record\.decidedBy/);
+ assert.match(ui,/record\.decisionReason\|\|'Geen reden opgegeven'/);
+ assert.match(ui,/record\.recipientRole==='handmatige_indiener'/);
+ assert.match(ui,/api\('\/api\/leave\/decision-notifications\/'\+encodeURIComponent\(record\.id\)\+'\/read',\{\}\)/);
+ assert.match(ui,/loadLeave,loadLeaveDecisionNotices/);
+ assert.match(nav,/leave-decision:/);
+ assert.match(nav,/\/api\/leave\/decision-notifications/);
+});
