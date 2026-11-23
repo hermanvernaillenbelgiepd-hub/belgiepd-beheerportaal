@@ -182,6 +182,16 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 <button type="button" id="personalReload" class="secondary">↻ Mijn profiel vernieuwen</button>
 </div>
 <p class="muted profile-hint">Bot: actuele Discord-rollen ophalen (maximaal één keer per minuut). Mijn profiel: personeelsgegevens en opleidingen opnieuw laden. Geen van beide wijzigt je bevoegdheden.</p>
+<section id="myBpdHours" class="profile-section leave-box" aria-label="Mijn FiveM- en diensturen">
+<h3>Mijn speeluren en diensturen</h3>
+<p class="muted">Alleen jouw geverifieerde gegevens. Totale FiveM-speeluren staan apart van diensturen; historische RECORDS-peilstanden tellen niet automatisch als diensturen.</p>
+<div class="profile-columns">
+ <section><h3>FiveM · totale speeluren</h3><div id="myBpdTotalHours" class="profile-row">Nog geen gecontroleerde gegevens</div></section>
+ <section><h3>Laatste verbinding</h3><div id="myBpdLastConnection" class="profile-row">Nog geen gecontroleerde gegevens</div></section>
+ <section><h3>Diensturen per hulpdienst</h3><div id="myBpdDutyHours" class="profile-row">Nog niet geverifieerd</div></section>
+</div>
+<p id="myBpdEligibility" class="muted" role="status">Sollicitatievoorwaarden worden na de API-koppeling gecontroleerd.</p>
+</section>
 <section id="personalDetails" class="profile-section" aria-label="Mijn rollen, specialisaties en opleidingen">
 <p id="personalStatus" class="muted" role="status" aria-live="polite">Je gegevens worden opgehaald zodra je bent aangemeld.</p>
 <div class="profile-columns">
@@ -250,6 +260,30 @@ function rows(id,items,render,empty){
     row.append(title,subtitle);root.append(row);
   }
 }
+function renderBpdHours(player,duty){
+ const total=$('myBpdTotalHours'),last=$('myBpdLastConnection'),
+   service=$('myBpdDutyHours'),eligibility=$('myBpdEligibility');
+ const date=value=>value?new Date(value).toLocaleString('nl-BE',{dateStyle:'medium',timeStyle:'short'}):'Onbekend';
+ if(player?.status==='verified_api'){
+  total.textContent=player.playHours.toLocaleString('nl-BE')+
+   ' uur volgens BelgiëPD-API ('+player.playTimeMinutes+' minuten)';
+  last.textContent=date(player.lastConnectionAt);
+  const result=player.solicitation;
+  eligibility.textContent=result?.eligible===true?
+   'Informatieve toets: minstens 10 FiveM-uren en 5 dagen sinds de eerste verbinding zijn bevestigd. Solliciteren is nog niet geactiveerd.':
+   result?.eligible===false?'Informatieve toets: minstens 10 FiveM-uren en 5 dagen sinds de eerste verbinding zijn nog niet allebei bevestigd.':
+   'Sollicitatievoorwaarden zijn nog niet volledig verifieerbaar.';
+ }else{
+  total.textContent=player?.status==='not_configured'?'API-koppeling nog niet ingeschakeld.':
+   'FiveM-speeluren momenteel niet verifieerbaar.';
+  last.textContent='—';
+  eligibility.textContent='Sollicitaties worden nog niet automatisch toegelaten.';
+ }
+ service.textContent=duty?.status==='schema_unverified'?
+  'Diensturenbron bereikbaar; de velden en diensten worden nog gecontroleerd. Er worden geen uren gegokt.':
+  duty?.status==='not_configured'?'Nog niet aangesloten.':
+  'Diensturenbron momenteel niet verifieerbaar.';
+}
 async function loadPersonal(){
   const user=auth?.currentUser;if(!user)return;
   const btn=$('personalReload');btn.disabled=true;$('personalStatus').textContent='Je persoonlijke gegevens ophalen…';
@@ -282,6 +316,7 @@ async function loadPersonal(){
       s.department+': '+(s.rank||'Rang onbekend')+' · '+(s.call||'Geen roepnummer')).join(' | ')||
       'Geen gekoppelde personeelsfiche gevonden. Discord-gegevens zijn wel beschikbaar.';
     if(p.limitedTraining)$('personalStatus').textContent+=' Er kunnen oudere opleidingsresultaten ontbreken.';
+    renderBpdHours(p.bpdHours,p.dutyTimes);
   }catch(e){loadedFor=null;$('personalStatus').textContent='Persoonlijk overzicht niet beschikbaar: '+e.message}
   finally{btn.disabled=false}
 }

@@ -5,6 +5,7 @@ import {recognizeRoles} from './role-catalog.js';
 import {isDiscordId} from './discord-utils.js';
 import {isArchivedTraining} from './training-maintenance.js';
 import {DOSSIER_DEPTS} from './dossier-grants.js';
+import {readPersonalBpdAppHours,inspectOwnDutyTimesShape} from './bpd-app-hours.js';
 
 // All records belong to the authenticated Discord ID. Never accept a target
 // ID, chosen department, or other identity from the browser.
@@ -60,10 +61,17 @@ export function installDiscordPersonalProfileRoutes(app,{getSnapshot}){
           q.docs.map(doc=>({department:dept,subjectDiscordId:id,...doc.data()})))
     )).then(groups=>({records:groups.flat(),unavailable:false}))
       .catch(()=>({records:[],unavailable:true}));
-    const [personnel,trainings]=await Promise.all([rosterCall,trainingCall]);
+    // These calls are strictly for the verified caller's Discord ID.
+    // An unavailable upstream never breaks the existing profile.
+    const [personnel,trainings,hours,dutyTimes]=await Promise.all([
+      rosterCall,trainingCall,
+      readPersonalBpdAppHours(id),
+      inspectOwnDutyTimesShape(id)
+    ]);
     const result=personalProfileView(id,member,personnel.staff,trainings.records);
     return res.json({...result,personnelUnavailable:personnel.unavailable,
       trainingUnavailable:trainings.unavailable,
+      bpdHours:hours,dutyTimes,
       readOnly:true,limitedTraining:trainings.records.length>=200});
   });
 }
