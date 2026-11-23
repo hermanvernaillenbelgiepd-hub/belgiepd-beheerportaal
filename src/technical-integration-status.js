@@ -6,7 +6,8 @@ import {discordBotToken} from './discord-bot-refresh.js';
 import {botTelemetryReady} from './callsign-bot-telemetry.js';
 import {activityTelemetryEnabled} from './activity-telemetry-routes.js';
 import {ACTIVITY_INGEST_EVENTS} from './activity-ping-policy.js';
-import {mayOpenTechnicalCenter} from './technical-center-config.js';
+import {mayOpenTechnicalCenter,mayEditTechnicalSettings} from './technical-center-config.js';
+import {inspectDutySchema} from './bpd-duty-schema.js';
 
 const item=(id,title,state,detail,lastReceivedAt=null)=>({id,title,state,detail,lastReceivedAt});
 const iso=value=>{
@@ -63,8 +64,21 @@ export async function readIntegrations({actor,env=process.env,db=getFirestore(),
  },now);
 }
 export function installTechnicalIntegrationStatusRoutes(app,{
- requireUser,dbFactory=getFirestore,env=process.env,now=Date.now
+ requireUser,dbFactory=getFirestore,env=process.env,now=Date.now,dutyFetchImpl=fetch
 }){
+ app.get('/api/technical-center/bpd-duty-schema',requireUser,async(req,res)=>{
+  res.set('Cache-Control','private, no-store');
+  if(!mayEditTechnicalSettings(req.bpd))
+   return res.status(403).json({error:'Alleen Technisch Beheer mag de API-velden controleren'});
+  try{
+   const [personal,aggregate]=await Promise.all([
+    inspectDutySchema('self',req.bpd.discordId,{env,fetchImpl:dutyFetchImpl}),
+    inspectDutySchema('all',req.bpd.discordId,{env,fetchImpl:dutyFetchImpl})
+   ]);
+   return res.json({readOnly:true,checkedAt:new Date(now()).toISOString(),
+    personal,aggregate,note:'Alleen technische veldnamen en gegevenstypes; geen diensturen.'});
+  }catch{return res.status(503).json({error:'Diensturenstructuur tijdelijk niet beschikbaar'})}
+ });
  app.get('/api/technical-center/integrations',requireUser,async(req,res)=>{
   res.set('Cache-Control','private, no-store');
   if(!mayOpenTechnicalCenter(req.bpd))
