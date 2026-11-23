@@ -22,6 +22,15 @@ section{background:white;border:1px solid #dfe8f3;border-radius:12px;padding:16p
 button.counter{text-align:left;color:inherit;cursor:pointer;font-weight:normal;
  background:#f9fbff;border-color:#dce6f0;width:100%}
 button.counter[aria-pressed="true"]{border-color:#3158cb;outline:2px solid #3158cb;outline-offset:0}
+.activity-data-fold summary{cursor:pointer;font-weight:800;padding:4px 0}
+.activity-data-fold[open] .tablewrap{margin-top:12px}
+.records-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;list-style:none;padding:0}
+.records-top li{padding:11px;border-radius:10px;border:1px solid #dce6f0;background:#f9fbff}
+.records-top strong{display:block;overflow-wrap:anywhere}
+.records-track{height:8px;border-radius:20px;background:#dfe8f3;margin-top:10px;overflow:hidden}
+.records-track span{display:block;height:100%;background:#3158cb}
+html[data-bpd-theme="dark"] body.bpd-shell main .records-top li{background:#192f4b;border-color:#426184;color:#e7f1ff}
+html[data-bpd-theme="dark"] body.bpd-shell main .records-track{background:#364e70}
 @media(max-width:620px){.controls label,.controls input[type="search"]{min-width:0;width:100%}
  .priority-toggle{width:100%}.controls button{flex:1}}
 html[data-bpd-theme="dark"] body.bpd-shell main .activity-stats{border-color:#36516e}
@@ -176,16 +185,30 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
  <div id="statistics" class="counts"></div>
 </details>
 <p class="source-note" id="sourceNote"></p></section>
+<section><details id="recordsPanel" class="activity-data-fold">
+ <summary>📈 Speeluren &amp; RECORDS — bekijk maandwaarden en top 5</summary>
+ <p class="source-note">Alleen recente, geverifieerde uren van de afgesloten kalendermaand binnen je bevoegde dienst of reeks. Historische RECORDS-peilstanden zijn nog niet geïmporteerd.</p>
+ <div id="recordsSummary" class="counts"></div>
+ <p id="recordsStatus" class="source-note"></p>
+ <ol id="recordsTop" class="records-top" aria-label="Top vijf actuele geverifieerde maandmetingen"></ol>
+ <details class="activity-help"><summary>Historische RECORDS en toekomstige botmetingen</summary>
+  <p>De oude RECORDS-tab gebruikt playtime-resetpeildata, waaronder 15/10/2026 en 16/11/2026. Dit zijn niet noodzakelijk volledige kalendermaanden. Oude peilstanden moeten eerst per Discord-ID, bron en periode worden gecontroleerd. Later bewaren bots ondertekende periodieke momentopnames; pas dan zijn correcte historische vergelijkingen mogelijk.</p>
+ </details>
+</details></section>
 <section id="returnPanel" class="activity-warnings" hidden><h2>⚠ Verlof afgelopen · CHECKING <small id="returnCount"></small></h2>
 <p>Nieuwe en nog niet door jou gelezen controles blijven gemarkeerd. Iedere bevoegde leidinggevende bevestigt het lezen individueel; de opvolging blijft open tot iemand een gemotiveerde beslissing registreert.</p>
 <div id="returnList" aria-live="polite"></div></section>
-<section><h2>Personeelsopvolging <small id="resultCount"></small></h2><p class="activity-order-note">Geordend volgens de Personeelslijst: per dienst en binnen Politie per kader en roepnummer.</p><div class="tablewrap"><table>
+<section><details id="personnelDetails" class="activity-data-fold">
+ <summary>Volledige personeelslijst <small id="resultCount"></small></summary>
+ <p class="activity-order-note">Geordend volgens de Personeelslijst. Deze grote tabel wordt pas opgebouwd na openklappen.</p><div class="tablewrap"><table>
 <thead><tr><th>Personeel</th><th>Dienst</th><th>Huidige status</th><th>Opvolging</th><th>Laatste connectie</th><th>Geen connectie</th><th>Speeluren</th><th>Verlof</th><th>Dossierpings</th><th>Advies</th></tr></thead>
-<tbody id="rows"></tbody></table></div></section>
+<tbody id="rows"></tbody></table></div></details></section>
 </div>
 <section id="cadrePanel" hidden aria-labelledby="cadreTitle">
  <h2 id="cadreTitle">Kaderactiviteit en statistieken</h2>
  <p>Administratieve activiteit van het actuele Middenkader. Bij rangwijzigingen volgt de selectie automatisch de actuele personeelslijst. Aantallen zijn geen prestatie- of kwaliteitsbeoordeling.</p>
+ <details id="cadreDetails" class="activity-data-fold">
+  <summary>Open kaderstatistieken en inzage-instellingen</summary>
  <div id="cadreVisibility" hidden>
   <h3>Inzage nevendiensten beheren</h3>
   <p>Politie blijft permanent beschikbaar. Alleen geverifieerd politioneel Officierenkader en Korpsleiding kunnen andere diensten afzonderlijk inschakelen. Dienstleiding ziet alleen haar eigen dienst en uitsluitend na inschakeling.</p>
@@ -209,6 +232,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
  <thead><tr><th>Personeelslid</th><th>Observaties</th><th>Notities</th><th>Sancties</th><th>Opvolgingen</th><th>Overig</th><th>Opleidingsregistraties</th><th>Gegeven lesmomenten</th><th>Deelnames</th><th>Verlofbeslissingen</th><th>Overnames</th><th>Correcties</th><th>Registratiedagen</th></tr></thead>
  <tbody id="cadreRows"></tbody></table></div>
  <p class="source-note" id="cadreNote"></p>
+ </details>
 </section>
 </main>
 <script type="module">
@@ -220,6 +244,34 @@ function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
 const priorityKinds=new Set(['checking','50/50','inactief','beoordelen','verlof_nazien']);
+function renderVerifiedRecords(scoped){
+ const valid=scoped.filter(p=>p.verified===true&&Number.isFinite(p.periodPlayHours)&&p.periodPlayHours>=0);
+ const top=[...valid].sort((a,b)=>b.periodPlayHours-a.periodPlayHours).slice(0,5);
+ const avg=valid.length?valid.reduce((n,p)=>n+p.periodPlayHours,0)/valid.length:null;
+ const summary=$('recordsSummary');summary.replaceChildren();
+ for(const [name,value] of [
+  ['Geverifieerd',valid.length+' / '+scoped.length],
+  ['Gemiddeld',avg===null?'—':avg.toLocaleString('nl-BE',{maximumFractionDigits:1})+' uur'],
+  ['Hoogste maandmeting',top.length?top[0].periodPlayHours.toLocaleString('nl-BE')+' uur':'—']
+ ]){
+  const card=el('div','', 'counter');
+  card.append(el('strong',value),el('small',name));summary.append(card);
+ }
+ $('recordsStatus').textContent=top.length?
+  'Top 5 uit de recente geverifieerde maandmetingen; geen historisch RECORDS-klassement.':
+  'Geen recente geverifieerde maandmetingen. Oude RECORDS-waarden tellen niet als actuele maanduren.';
+ const list=$('recordsTop');list.replaceChildren();
+ const max=top[0]?.periodPlayHours||0;
+ top.forEach((p,i)=>{
+  const li=document.createElement('li');
+  li.append(el('strong',(i+1)+'. '+p.call+' · '+p.name),
+   el('small',p.periodPlayHours.toLocaleString('nl-BE')+' uur · '+(p.periodLabel||'Afgesloten maand')));
+  const track=el('div','', 'records-track');track.setAttribute('aria-hidden','true');
+  const bar=document.createElement('span');
+  bar.style.width=(max>0?Math.round(100*p.periodPlayHours/max):0)+'%';
+  track.append(bar);li.append(track);list.append(li);
+ });
+}
 function render(){
  const dept=$('department').value,kind=$('filter').value,series=$('activitySeries').value;
  const query=$('search').value.trim().toLocaleLowerCase('nl');
@@ -268,7 +320,9 @@ function render(){
    ' · '+(sources?.legacyAvailable?'oude spreadsheet uitsluitend als fallback':'oude spreadsheet niet beschikbaar')+
    '. Dossierpingtellers zijn beperkt tot 100 registraties per persoon.';
  $('resultCount').textContent='· '+visible.length+' van '+scoped.length+' leden';
+ if($('recordsPanel').open)renderVerifiedRecords(scoped);
  const body=$('rows');body.replaceChildren();
+ if(!$('personnelDetails').open)return;
  let previousGroup=null;
  for(const p of visible){
   const group=activityRosterGroup(p);
@@ -421,8 +475,10 @@ async function loadCadreConfig(){
    $('cadreDept').replaceChildren(...available.map(d=>new Option(cadenceLabel[d]||d,d)));
    if(available.includes(selection))$('cadreDept').value=selection;
    syncCadreSettings();
-   if(available.length)await loadCadre();
-   else $('cadreStatus').textContent='Geen ingeschakelde en bevoegde dienst beschikbaar.';
+   if(available.length&&$('cadreDetails').open)await loadCadre();
+   else $('cadreStatus').textContent=available.length?
+    'Open de kaderstatistieken om de detailgegevens op te halen.':
+    'Geen ingeschakelde en bevoegde dienst beschikbaar.';
  }catch(e){
    $('cadrePanel').hidden=true;cadreConfig=null;
    // 403 is expected for non-leadership roles; no list or configuration leak.
@@ -500,6 +556,9 @@ $('cadreSettingSave').onclick=async()=>{
  }catch(e){$('cadreSettingStatus').textContent=e.message}
  finally{button.disabled=false}
 };
+$('cadreDetails').addEventListener('toggle',()=>{
+ if($('cadreDetails').open&&cadreConfig)void loadCadre();
+});
 $('cadreDept').onchange=loadCadre;
 $('cadreDays').onchange=loadCadre;
 $('cadreSearch').oninput=drawCadre;
@@ -518,6 +577,17 @@ function updateActivitySeries(){
  $('activitySeriesLabel').hidden=series.length===0;
 }
 $('department').addEventListener('input',()=>{updateActivitySeries();render()});
+$('personnelDetails').addEventListener('toggle',()=>{
+ if($('content').hidden)return;
+ if($('personnelDetails').open)render();
+ else $('rows').replaceChildren();
+});
+$('recordsPanel').addEventListener('toggle',()=>{
+ if($('recordsPanel').open&&!$('content').hidden)render();
+ else if(!$('recordsPanel').open){
+  $('recordsTop').replaceChildren();$('recordsSummary').replaceChildren();
+ }
+});
 for(const control of ['activitySeries','filter','search','attentionOnly'])$(control).addEventListener('input',render);
 $('resetActivityFilters').addEventListener('click',()=>{
  $('department').value='';$('filter').value='';$('search').value='';
