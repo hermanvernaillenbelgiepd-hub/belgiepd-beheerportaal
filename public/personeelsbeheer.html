@@ -138,6 +138,13 @@ header{padding-inline:clamp(15px,2vw,34px)}
 /* Sorteren blijft compact naast zoeken en filteren, ook op kleinere schermen. */
 .staff-filters{grid-template-columns:minmax(180px,1fr) minmax(240px,1.5fr)}
 @media(max-width:760px){.staff-filters{grid-template-columns:minmax(0,1fr)}}
+/* Kleine, subtiele link op de naam, alleen als canOpenDossier bevestigd is. */
+.staff-roster-table .roster-dossier-name{font:inherit;font-weight:750;color:inherit;
+ text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;
+ text-decoration-color:#7394b680;background:transparent}
+.staff-roster-table .roster-dossier-name:hover,.staff-roster-table .roster-dossier-name:focus-visible{
+ color:#95c7ff;text-decoration-color:currentColor;outline-offset:3px}
+html[data-bpd-theme="light"] .staff-roster-table .roster-dossier-name:hover{color:#2658a3}
 /* Geen openknop of deeplink voor dossiers die alleen in de lijst mogen staan. */
 .roster-protected{display:inline-block;color:#b1c3d7;font-size:11px;font-weight:600;white-space:nowrap}
 /* Compacter CALL, rang, rangnaam, personeelslid en status; extra ruimte voor specialisaties. */
@@ -746,7 +753,7 @@ body.dossier-embed main{max-width:none;margin:0;padding:0}
 body.dossier-embed #panel{max-width:none;width:100%;margin:0;border:0;box-shadow:none;background:#10243e}
 body.dossier-embed #notice{margin:0 0 10px}
 body.dossier-embed #accessHelp{margin:10px 0}
-</style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/dossier-identity-polish.css"><link rel="stylesheet" href="/personnel-compact.css">
+</style><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/roster-name-preview.css"><link rel="stylesheet" href="/dossier-identity-polish.css"><link rel="stylesheet" href="/personnel-compact.css"><link rel="stylesheet" href="/dossier-three-column.css?v=20261122">
 
 <style id="dossier-score-trend-style">
 .dossier-score-trend{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;
@@ -1236,7 +1243,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <div id="staffCaseLinkedField" style="grid-column:1/-1" hidden>
   <label for="staffCaseLinkedColleague">Ook tonen in dossier van collega (optioneel)</label>
   <select id="staffCaseLinkedColleague"><option value="">Niet koppelen</option></select>
-  <small>Eén registratie, ook bij de collega zichtbaar. Geen dubbele weekrapportregel.</small>
+  <small>De oorspronkelijke notitie blijft één registratie; de collega krijgt een leesbare verwijzing zonder extra weekrapportregel.</small>
 </div>
 <div id="staffCaseExtra" class="grid" style="grid-column:1/-1" hidden>
 <div id="staffCourseField" hidden>
@@ -1246,12 +1253,12 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <label for="staffCourseOther">Andere opleiding</label>
 <input id="staffCourseOther" minlength="3" maxlength="150" placeholder="Vul de naam van de opleiding in">
 </div>
-<p class="subtle" id="staffCourseRegisterNote">Wel in het weekrapport; geen geslaagd-status in het opleidingsregister.</p>
+<p class="subtle" id="staffCourseRegisterNote">Deze dossierregistratie komt in het weekrapport. Ze markeert de opleiding niet automatisch als geslaagd in het afzonderlijke opleidingsregister.</p>
 </div>
 <div id="staffActivityPingField" hidden style="grid-column:1/-1">
  <div class="grid">
   <div>
-   <label for="staffActivityStatus">Opvolgstatus</label>
+   <label for="staffActivityStatus">Activiteitenstatus voor dossier en weekrapport</label>
    <select id="staffActivityStatus">
     <option value="">Kies de opvolgstatus…</option>
     <option value="ACTIEF">🟢 Actief</option>
@@ -1265,7 +1272,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
    </select>
   </div>
   <div>
-   <label for="staffActivityDiscordContact">Discord-ping werkelijk verstuurd?</label>
+   <label for="staffActivityDiscordContact">Is deze persoon daadwerkelijk via Discord gepingd?</label>
    <select id="staffActivityDiscordContact">
     <option value="">Kies de werkelijke situatie…</option>
     <option value="ja">Ja, handmatig Discord-bericht verstuurd</option>
@@ -1273,13 +1280,14 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
    </select>
   </div>
   <div id="staffActivityDiscordDateWrap" hidden>
-   <label for="staffActivityDiscordDate">Datum Discord-bericht</label>
+   <label for="staffActivityDiscordDate">Datum van het verstuurde Discord-bericht</label>
    <input id="staffActivityDiscordDate" type="date">
   </div>
  </div>
- <p class="subtle">Bij hercontrole: vermeld de vorige ping en actuele activiteit. Houd rekening met goedgekeurd verlof. Het portaal verstuurt geen Discord-ping. De status van de officiële personeelslijst verandert niet automatisch.</p>
+ <p class="subtle">Gebruik ‘Geen activiteitsverbetering na eerdere ping’ om een hercontrole te loggen als de medewerker na een eerdere Discord-ping nog steeds onvoldoende activiteit toont. Vermeld de eerdere ping en de actuele vaststellingen in de verplichte reden. Deze registratie legt de opvolging en het daadwerkelijke Discord-contact vast; het portaal verstuurt zelf geen Discord-bericht.
+ De status van de officiële personeelslijst verandert niet automatisch. Verwijdering na 60 dagen vereist een afzonderlijke bevoegde beslissing. Goedgekeurd verlof moet in de beoordeling worden meegenomen.</p>
  <button id="archiveFromActivityPing" type="button" class="alt small" hidden>Uitdiensttreding beoordelen en archiveren…</button>
- <small class="subtle">Archiveren vereist een bevoegde beslissing, motivering en bevestiging. Alleen een 60+-controle loggen archiveert niemand.</small>
+ <small class="subtle">Selecteer een verwijderingsreden om onmiddellijk de afzonderlijke archiveringsprocedure te doorlopen. Alleen na motivering én bevestiging worden automatisch de personeelsbeweging en afsluitende activiteitenregistratie opgeslagen. Een losse 60+-controle blijft alleen een opvolgregistratie.</small>
 </div>
 <div id="staffEndDateField" hidden><label for="staffEndDate">Einddatum verlofnotitie</label><input id="staffEndDate" type="date"></div>
 <div id="staffRankField" hidden><label for="staffProposedRank">Voorgestelde rang</label><input id="staffProposedRank" maxlength="140"></div>
@@ -1465,7 +1473,7 @@ import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '
 import {validObservationScore,scoreClass,scoreLabel,observationSummary,seriesNumber,seriesClass,policeDesignation} from '/police-dossier-visuals.js';
 import {threeMonthObservationScore,observationTrendLabel,observationTrendSymbol} from '/observation-score-trend.js';
 import {createObservationScoreBadge,createObservationHeader,createObservationDisclosure} from '/dossier-observation-ui.js';
-import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {attachDossierRecordPreview,dossierAuthorLine,dossierRecordByline} from '/dossier-entry-preview.js';
 import {newestDossierEntries} from '/dossier-entry-order.js';
 import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {effectiveTemporarySanctionStatus} from '/temporary-sanction-state.js';
@@ -1887,11 +1895,11 @@ function displaySelectedRegistration(){
   const trainingDestination=$('trainingDestination');
   trainingDestination.hidden=!['training','case:opleiding','case:inactiviteitsping'].includes(kind);
   if(kind==='training'){
-    trainingDestination.textContent='Opleidingsresultaat komt in dossier, weekrapport en leidingoverzicht. Geen wijziging van rang of Discord-rollen.';
+    trainingDestination.textContent='Opslag: opleidingsregister. Aanwezig, geslaagd, niet geslaagd en onderbroken verschijnen automatisch in het dossier, weekrapport en leidingoverzicht. Rangen en Discord-rollen worden niet aangepast.';
   }else if(kind==='case:opleiding'){
-    trainingDestination.textContent='Dossiernotitie en weekrapport; niet automatisch bij Voltooide opleidingen.';
+    trainingDestination.textContent='Opslag: dossiernotitie en weekrapport. Dit is geen resultaatregistratie: de opleiding verschijnt hierdoor niet automatisch bij Voltooide opleidingen.';
   }else if(kind==='case:inactiviteitsping'){
-    trainingDestination.textContent='Activiteitenping wordt gelogd in dossier en weekrapport. Het portaal verstuurt geen Discord-bericht en wijzigt de personeelsstatus niet.';
+    trainingDestination.textContent='Registreer een opvolgstatus (Actief / 50/50 / Inactief / verwijdering beoordelen / geen verbetering na eerdere ping) en bevestig afzonderlijk of een Discord-ping écht handmatig is verstuurd. De gegevens komen in het dossier en weekrapport. Er wordt niet automatisch een Discord-bericht verstuurd; dit formulier verandert ook de officiële personeelsstatus niet.';
   }
   // Niet per ongeluk een eerder gewijzigde sanctie/opleiding overschrijven
   // wanneer de gebruiker naar een ander registratietype omschakelt.
@@ -2022,11 +2030,12 @@ function setupDossierTabs(){
       <div><small>Status</small><strong id="sheetStatus">—</strong></div>
       <div class="dossier-dcid-cell"><small>DC-ID</small><strong id="sheetDiscordId">—</strong>
         <div class="dossier-id-buttons">
-          <button type="button" id="sheetCopyDcId" aria-label="DC-ID kopiëren">Kopieer DC-ID</button>
-          <button type="button" id="sheetCopyDiscordPing" aria-label="Discord-ping kopiëren">Kopieer @ ping</button>
+          <button type="button" id="sheetCopyDcId">Kopiëren</button>
+          <button type="button" id="sheetCopyDiscordPing">Ping kopiëren</button>
         </div>
         <span id="sheetCopyFeedback" class="subtle" role="status" aria-live="polite"></span>
       </div>
+      <div id="sheetHeaderSpecialties" class="dossier-header-specialties"></div>
     </div>
     <details class="fiche-editor" id="ficheEditor" hidden><summary>Algemene personeelsgegevens aanpassen</summary></details>
     <p class="sheet-intro">Dossiergegevens uit de actuele personeels- en kaderregistraties. Wijzigingen worden afzonderlijk geaudit.</p>
@@ -2056,11 +2065,7 @@ function setupDossierTabs(){
       <div id="sheetObservations" class="sheet-records">Observaties laden…</div>
     </section>
     <section class="landscape-cell" data-sheet-tile="training">
-      <h3>Voltooide opleidingen</h3>
-      <nav class="training-overview-links" aria-label="Opleidingenoverzichten">
-        <a href="/voltooide-opleidingen.html" class="training-register-link" title="Overzicht van afgeronde opleidingen voor bevoegd hoger kader">Dienstoverzicht ↗</a>
-        <a id="sheetTrainingRegisterLink" class="training-register-link" href="/rollen-opleidingen.html" title="Open opleidingen voor dit personeelslid">Opleidingsregister ↗</a>
-      </nav>
+      <h3>Voltooide opleidingen <a href="/voltooide-opleidingen.html" class="training-register-link" title="Overzicht van afgeronde opleidingen voor bevoegd hoger kader">Dienstoverzicht ↗</a> <a id="sheetTrainingRegisterLink" class="training-register-link" href="/rollen-opleidingen.html" title="Open opleidingen voor dit personeelslid">Opleidingsregister ↗</a></h3>
       <div id="sheetTraining" class="sheet-records">Opleidingen laden…</div>
       <h4>Stage- en koppelritevaluaties</h4><div id="sheetCheckrides" class="sheet-records">Evaluaties laden…</div>
     </section>
@@ -2098,7 +2103,7 @@ function setupDossierTabs(){
             <option value="">Bevoegdheden controleren…</option>
           </select>
         </label>
-        <p id="registrationKindHint" role="status">Enkel categorieën waarvoor je bevoegd bent.</p>
+        <p id="registrationKindHint" role="status">De beschikbare categorieën worden bepaald door je goedgekeurde rol binnen deze hulpdienst.</p>
         <p id="registrationAccessHint" class="registration-access-hint" role="status" aria-live="polite"></p>
       </div>
       <p id="trainingDestination" class="training-destination" role="status" aria-live="polite" hidden></p>
@@ -2120,23 +2125,32 @@ function setupDossierTabs(){
   // ook bereikbaar wanneer de gebruiker verlof registreert.
   $('formalInlineArea').querySelector('.registration-hub-heading')
     .after($('historicalMigrationManage'));
-  // Drie kolommen met twee rijen; rechts drie compacte samenvattingen.
+  // Bestaande, server-bevoegde dossierpanelen herschikken: geen nieuwe logs.
   const summaryGrid=sheet.querySelector('.landscape-grid');
   const makeTile=key=>summaryGrid.querySelector('[data-sheet-tile="'+key+'"]');
   $('ficheEditor').append(makeTile('gegevens'));
-  const upper=document.createElement('div');upper.className='dossier-main-row';
-  const right=document.createElement('div');right.className='dossier-right-column';
-  right.append(makeTile('specialisaties'),makeTile('movements'),makeTile('training'),makeTile('activityPings'));
-  upper.append(makeTile('leave'),makeTile('notes'),right);
-  const lower=document.createElement('div');lower.className='dossier-lower-row';
-  lower.append(makeTile('basisNotes'),makeTile('observations'),makeTile('sanctions'));
-  summaryGrid.replaceChildren(upper,lower);
+  $('sheetHeaderSpecialties').append(makeTile('specialisaties'));
+  const overview=document.createElement('div');overview.className='dossier-three-column';
+  const makeColumn=(name,keys)=>{
+    const col=document.createElement('div');
+    col.className='dossier-column dossier-column--'+name;
+    for(const key of keys)col.append(makeTile(key));
+    return col;
+  };
+  overview.append(
+    makeColumn('left',['leave','basisNotes']),
+    makeColumn('middle',['notes','observations']),
+    makeColumn('right',['movements','activityPings','sanctions'])
+  );
+  const extra=document.createElement('div');extra.className='dossier-training-footer';
+  extra.append(makeTile('training'));
+  summaryGrid.replaceChildren(overview,extra);
   $('registerImportantNoteQuick').onclick=()=>choosePersonnelRegistration('case:notitie',true);
   $('registerActivityPingQuick').onclick=()=>choosePersonnelRegistration('case:inactiviteitsping',true);
   const copyHeaderValue=async mode=>{
     const id=$('sheetDiscordId').textContent.trim();
     const feedback=$('sheetCopyFeedback');
-    if(!/^[0-9]{15,22}$/.test(id)){feedback.textContent='Geen geldig DC-ID';return}
+    if(!/^[0-9]{15,22}$/.test(id)){feedback.textContent='Ongeldig DC-ID';return}
     const value=mode==='ping'?'<@'+id+'>':id;
     try{
       if(!navigator.clipboard?.writeText)throw Error('Klembord niet beschikbaar');
@@ -2676,7 +2690,13 @@ function render(){
       }
     }
     const nameCol=document.createElement('td');
-    const name=document.createElement('strong');name.textContent=person.name;
+    const name=document.createElement(person.canOpenDossier===true?'a':'strong');
+    name.textContent=person.name;
+    if(person.canOpenDossier===true){
+      name.href=ficheUrl(person);name.className='roster-dossier-name';
+      name.title='Open beveiligd dossier van '+person.name;
+      name.setAttribute('aria-label','Open dossier van '+person.name);
+    }
     attachRosterNamePreview(name,{...person,
       status:activeLeaveRosterIds.has(person.discordId)?'Verlof':person.status});
     const source=document.createElement('small');source.className='roster-dept';
@@ -3998,10 +4018,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
         title:(row.eventDate||'Datum onbekend')+' · '+(row.linked?'Gekoppelde observatie':'Observatie'),
         score:row.score,
         details:row.details??row.description??'Geen omschrijving',
-        attribution:(row.historicalImport?'Oorspronkelijke observator: ':'Door ')+
-          dossierAuthorLine(row).replace(/^(Oorspronkelijke invoerder: |Door )/,'')+
-          (row.historicalImport&&row.submittedByActor?.name?
-          ' · Overgenomen door '+row.submittedByActor.name:'')
+        attribution:dossierRecordByline(row)||dossierAuthorLine(row)
       });
       attachObservationEditButton(content,row);
       attachAdministrativeCaseCorrection(content,row);
@@ -4019,7 +4036,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       body.className='general-note-body';
       body.textContent=String(row.details||'—');
       const author=document.createElement('span');author.className='subtle';
-      author.textContent='Door '+sheetWho(row);
+      author.textContent=dossierRecordByline(row)||'Door '+sheetWho(row);
       item.append(heading,body,author);
       attachDossierRecordPreview(item,{row,title:heading.textContent,
         text:row.details||'—',bodyNode:body,metaNode:author,
@@ -4057,7 +4074,7 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
       const body=document.createElement('p');body.className='general-note-body';
       body.textContent=row.details||'—';
       const meta=document.createElement('span');
-      meta.textContent='Door '+(row._noteAuthor||'Onbekend');
+      meta.textContent=dossierRecordByline(row)||'Door '+(row._noteAuthor||'Onbekend');
       item.append(heading,body,meta);
       attachDossierRecordPreview(item,{row,title:heading.textContent,
         text:row.details||'—',bodyNode:body,metaNode:meta,
@@ -4074,10 +4091,16 @@ function sheetSetRows(group,rows,toCells,empty='Geen registraties gevonden.',lim
     const meta=document.createElement('span');
     const fullMeta=cells.slice(2).filter(value=>value&&value!=='—').join(' · ');
     meta.textContent=fullMeta;
+    const byline=dossierRecordByline(row);
+    const logged=document.createElement('small');
+    logged.className='dossier-entry-byline';
+    logged.textContent=byline;
+    logged.hidden=!byline;
     const score=['formal','observations'].includes(group)&&row.type==='observatie'?
       makeScoreBadge(row.score):null;
     if(score)item.append(heading,score,meta);
     else item.append(heading,meta);
+    if(byline)item.append(logged);
     if(!['formal','sanctions','movements'].includes(group))
       attachExpandableDossierText(item,meta,fullMeta,{label:'Lees volledige registratie'});
     if(['formal','sanctions','movements'].includes(group)){
@@ -4358,7 +4381,7 @@ function renderDossierImportantNotes(){
     const body=document.createElement('p');body.className='general-note-body';
     body.textContent=String(row.details||'—');
     const author=document.createElement('span');author.className='subtle';
-    author.textContent='Door '+sheetWho(row);
+    author.textContent=dossierRecordByline(row)||'Door '+sheetWho(row);
     item.append(title,body,author);
     attachDossierRecordPreview(item,{row,title:title.textContent,
       text:row.details||'—',bodyNode:body,metaNode:author,

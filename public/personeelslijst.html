@@ -388,6 +388,7 @@ import {loadRosterLayout,logoutRosterLayout} from '/member-roster-layout.js?v=20
 const $=id=>document.getElementById(id);
 let auth=null,people=[],discordSearchRows=[],discordSearchId='';
 let rosterCopyIds=new Map();
+let rosterDossierShortcuts=new Map();
 let sivRestrictedCalls=new Set();
 let rosterSeriesFilter='all';
 const seriesNumber=value=>{
@@ -409,6 +410,30 @@ if(directoryEmbedded){
 }
 const idToken=()=>auth?.currentUser?.uid?.startsWith('discord:')?auth.currentUser.getIdToken():null;
 const rosterCopyKey=p=>JSON.stringify([String(p.call||'').trim(),String(p.name||'').trim()]);
+const dossierKey=p=>JSON.stringify([String(p.call||'').trim().toLocaleLowerCase('nl-BE'),
+  String(p.name||'').trim().toLocaleLowerCase('nl-BE')]);
+async function loadRosterDossierShortcuts(token){
+ rosterDossierShortcuts=new Map();
+ if(!token)return;
+ const viewer=auth?.currentUser;
+ try{
+  const response=await fetch('/api/personnel/dossier-shortcuts',{
+   headers:{Authorization:'Bearer '+token},cache:'no-store'});
+  if(!response.ok)return;
+  const data=await response.json();
+  if(auth?.currentUser!==viewer)return;
+  const records=Array.isArray(data.records)?data.records:[];
+  const unique=new Map(),duplicates=new Set();
+  for(const p of records){
+   if(p.dept!=='politie'||!/^\d{15,22}$/.test(String(p.discordId||'')))continue;
+   const key=dossierKey(p);
+   if(unique.has(key)){unique.delete(key);duplicates.add(key)}
+   if(!duplicates.has(key))unique.set(key,p.discordId);
+  }
+  rosterDossierShortcuts=unique;
+ }catch{rosterDossierShortcuts=new Map()}
+ render();
+}
 function reportEmbeddedRosterHeight(){
  if(!directoryEmbedded||window.parent===window)return;
  const main=document.querySelector('main');
@@ -455,6 +480,14 @@ async function copyDirectoryMention(person,mode,button){
 
 function openRosterProfile(person){
  if(!auth?.currentUser)return;
+ const permittedId=rosterDossierShortcuts.get(dossierKey(person));
+ if(permittedId&&/^\d{15,22}$/.test(permittedId)){
+  const href='/personeelsbeheer.html?'+new URLSearchParams({
+   fiche:'1',dept:'politie',discordId:permittedId}).toString();
+  if(directoryEmbedded&&window.parent!==window)window.parent.location.assign(href);
+  else window.location.assign(href);
+  return;
+ }
  if(directoryEmbedded&&window.parent!==window){
   const call=String(person?.call||'').trim(),name=String(person?.name||'').trim();
   if(!call||!name)return;
@@ -753,6 +786,7 @@ async function load(){
    await loadRosterLayout(token);
    await rosterColumnLoad(token);
    await loadRosterCopyIds(token);
+   await loadRosterDossierShortcuts(token);
   }
   if(data.stale)$('message').textContent+=' · Let op: brongegevens momenteel niet actueel';
  }catch(error){$('message').textContent='Personeelslijst niet beschikbaar: '+error.message}
@@ -790,7 +824,7 @@ try{
   if(user?.uid?.startsWith('discord:'))load();
   else {clearTimeout(discordSearchTimeout);discordSearchRequest++;
    discordSearchId='';discordSearchRows=[];
-   logoutRosterLayout();rosterColumnClear();rosterCopyIds=new Map();setPublicRosterSpecialties([]);sivRestrictedCalls=new Set();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
+   logoutRosterLayout();rosterColumnClear();rosterCopyIds=new Map();rosterDossierShortcuts=new Map();setPublicRosterSpecialties([]);sivRestrictedCalls=new Set();people=[];$('rows').replaceChildren();$('discordLogin').hidden=false;$('message').textContent='Log in met je BelgiëPD Discord-account om de personeelslijst te zien. Een vast roepnummer of personeelsdossier is niet nodig.';}
  });
 }catch(error){$('message').textContent=error.message}
 </script><script defer src="/bpd-navigation.js"></script></body></html>
