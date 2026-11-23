@@ -9,6 +9,7 @@ import {activeLeaveCollision,planLeaveExtension} from './leave-extension-policy.
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
+import {leaveRequestWorkflow} from './leave-request-provenance.js';
 import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
  historicalMigrationSettings,historicalMigrationAllowed,canManageHistoricalObservationImport,validateHistoricalActorSelection}
@@ -39,6 +40,7 @@ const item=(doc,showNote=false)=>{
     extensionOf:d.extensionOf||null,totalPeriodDays:d.totalPeriodDays||null,
     periodStartDate:d.periodStartDate||null,
     createdAt:iso(d.createdAt),decidedAt:iso(d.decidedAt),withdrawnAt:iso(d.withdrawnAt),
+    workflow:leaveRequestWorkflow(d),
     ...(showNote?{note:d.note||''}:{})};
 };
 const personRecords=(rows,id)=>rows.filter(p=>p.personId===id);
@@ -378,6 +380,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
             subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
             status,autoApproved,approvalReason:autoApproved?'duur_1_tot_7_dagen':null,
             submittedByUid:req.bpd.uid,submittedByDiscordId:id,
+            submittedByActor:actorFromPersonnel(req.bpd,records)||{
+              discordId:id,name:subjectName,call:subjectCall
+            },
             ...(original.exists?{previousAttemptId:latest.id}:{}),
             ...(autoApproved?{decidedAt:FieldValue.serverTimestamp(),decidedBy:'system'}:{}),
             createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
@@ -451,6 +456,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           subjectRole:req.bpd.portalTechnicalMode===true?req.bpd.operationalRole:req.bpd.role,
           status:'pending',autoApproved:false,
           submittedByUid:req.bpd.uid,submittedByDiscordId:personId,
+          submittedByActor:actorFromPersonnel(req.bpd,records)||{
+            discordId:personId,name:request.subjectName,call:request.subjectCall
+          },
           createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
         tx.create(target,request);
         writeLeaveEvent(tx,{requestRef:target,request,action:'extension_submitted',
@@ -564,6 +572,10 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
     try{
       const board=await verifiedBoardFor(req.bpd);
       if(!board)await context(req);
+      const source=await getSnapshot();
+      const decisionActor=actorFromPersonnel(req.bpd,source.data||[])||{
+        discordId:req.bpd.discordId,name:'Bevoegd kaderlid',call:''
+      };
       const ref=db().collection(coll).doc(req.params.id);
       const canonical=db().collection(grants).doc(req.bpd.discordId);
       const legacy=req.bpd.uid===req.bpd.discordId?null:db().collection(grants).doc(req.bpd.uid);
@@ -603,9 +615,10 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         if(!mayApproveLeave(req.bpd,board?d:await resolveApplicantRoles(d),grant,yyyyMmDd(),board))
           throw rejection('Geen bevoegdheid om dit verlof goed te keuren',403);
         tx.update(ref,{status:decision,decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+          decidedByActor:decisionActor,
           decidedAt:FieldValue.serverTimestamp(),decisionNote:note.trim(),updatedAt:FieldValue.serverTimestamp()});
         writeLeaveEvent(tx,{requestRef:ref,request:d,action:decision,
-          actor:{discordId:req.bpd.discordId,name:'Bevoegd kaderlid',call:''},
+          actor:decisionActor,
           actorUid:req.bpd.uid,eventDate:yyyyMmDd(),from:'pending',to:decision,note:note.trim()});
       });
       return res.json({ok:true,status:decision});
@@ -622,6 +635,10 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
       return res.status(400).json({error:'Een gemotiveerde bestuursbeslissing van 10 tot 300 tekens is verplicht'});
     try{
       if(!await verifiedBoardFor(req.bpd))throw rejection('Alleen geverifieerd Bestuur mag eerdere beslissingen overrulen',403);
+      const source=await getSnapshot();
+      const decisionActor=actorFromPersonnel(req.bpd,source.data||[])||{
+        discordId:req.bpd.discordId,name:'Bestuur',call:''
+      };
       const ref=db().collection(coll).doc(req.params.id);
       await db().runTransaction(async tx=>{
         const doc=await tx.get(ref);
@@ -633,11 +650,12 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         if(previous.status===req.body.decision)throw rejection('Deze beslissing is al van kracht',409);
         tx.update(ref,{status:req.body.decision,
           decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+          decidedByActor:decisionActor,
           decidedAt:FieldValue.serverTimestamp(),decisionNote:reason,
           overriddenFrom:previous.status,overriddenAt:FieldValue.serverTimestamp(),
           updatedAt:FieldValue.serverTimestamp()});
         writeLeaveEvent(tx,{requestRef:ref,request:previous,action:'board_override',
-          actor:{discordId:req.bpd.discordId,name:'Bestuur',call:''},
+          actor:decisionActor,
           actorUid:req.bpd.uid,eventDate:yyyyMmDd(),
           from:previous.status,to:req.body.decision,note:reason});
       });
@@ -746,6 +764,7 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           submittedByUid:req.bpd.uid,submittedByDiscordId:req.bpd.discordId,
           ...(!needsHigherApproval?{
             decidedByUid:req.bpd.uid,decidedByDiscordId:req.bpd.discordId,
+            decidedByActor:manualActor,
             decidedAt:FieldValue.serverTimestamp()
           }:{}),
           createdAt:FieldValue.serverTimestamp(),

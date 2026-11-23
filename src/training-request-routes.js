@@ -189,7 +189,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
   });
   const exposed=x=>({
     id:x.id,department:x.department,courseName:x.courseName,
-    note:x.note||'',applicantDiscordId:x.applicantDiscordId,
+    note:x.note||'',submittedByActor:x.submittedByActor||null,applicantDiscordId:x.applicantDiscordId,
     applicantName:x.applicantName,applicantCall:x.applicantCall,
     applicantTier:x.applicantTier||null,series:x.series||null,
     status:x.status,createdAt:iso(x.createdAt),updatedAt:iso(x.updatedAt),
@@ -269,7 +269,7 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
           applicantCall:String(person.call||'').slice(0,30),
           applicantTier:tier,series:personSeries(person),
           courseName:form.courseName,isVaria:form.isVaria,
-          note:form.note,status:'nieuw',createdAt:stamp,updatedAt:stamp
+          note:form.note,status:'nieuw',submittedByActor:actor,createdAt:stamp,updatedAt:stamp
         });
         tx.create(ref.collection('audit').doc(),{
           action:'aangevraagd',previousStatus:null,nextStatus:'nieuw',
@@ -311,8 +311,8 @@ export function installTrainingRequestRoutes(app,{getSnapshot,accessList}){
     }
     if(action==='afgewezen'){
       reason=typeof body.reason==='string'?body.reason.trim():'';
-      if(reason.length<5||reason.length>400)
-        return res.status(400).json({error:'Motivatie afwijzing: 5 tot 400 tekens'});
+      if(reason.length>400)
+        return res.status(400).json({error:'Een optionele afwijsreden mag maximaal 400 tekens bevatten'});
     }
     if(action==='uitgevoerd'&&body.attendanceConfirmed!==true)
       return res.status(400).json({error:'Bevestig eerst de effectieve deelname'});

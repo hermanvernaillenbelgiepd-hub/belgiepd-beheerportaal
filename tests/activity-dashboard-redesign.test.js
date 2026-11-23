@@ -40,3 +40,15 @@ test('Police Middenkader retains scoped read access, no higher cadre or foreign 
  assert.equal(canReadPersonnelSubject(actor,person('930','Commissaris')),false);
  assert.equal(canReadPersonnelSubject(actor,{dept:'ambulance',personId:'333333333333333333',call:'AMB',rank:'Ambulancier'}),false);
 });
+
+test('three accessible tabs group already-authorized activity sections',()=>{
+ const ui=read('public/activity-dashboard.js'),css=read('public/activity-dashboard.css');
+ assert.match(ui,/DASHBOARD_TABS=\[\['overview','Overzicht'\],\['followup','Opvolging'\],\['history','Historiek'\]\]/);
+ assert.match(ui,/role','tab'/);
+ assert.match(ui,/role','tabpanel'/);
+ assert.match(ui,/root\.append\(tabs\.overview,tabs\.followup,tabs\.history\)/);
+ assert.match(ui,/tabs\.history\.append\(records\)/);
+ assert.match(ui,/selectTab\('followup'\);onSelect\(\)/);
+ assert.match(css,/\.activity-tab-panel\[hidden\]/);
+ assert.match(css,/aria-selected=true/);
+});

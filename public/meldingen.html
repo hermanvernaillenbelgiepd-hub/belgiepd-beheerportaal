@@ -140,6 +140,25 @@ html:not([data-bpd-theme="dark"]) .siv-restriction-popup{
 .notification-fold #reviewCount,.notification-fold #trainingCount{padding:2px 7px;font-size:11px}
 @media(prefers-reduced-motion:reduce){.notification-fold>summary::before{transition:none}}
 </style><link rel="stylesheet" href="/bpd-navigation.css">
+<style id="requestWorkflowDesign">
+/* One cohesive application history per visible notification */
+.notification-page .request-one-card{border:1px solid var(--noti-border)!important;
+ margin:8px 0 12px;padding:12px!important;border-radius:11px;background:var(--noti-surface)!important}
+.notification-page .request-one-card>strong{display:block;font-size:13px;line-height:1.4}
+.notification-page .request-one-card .request-workflow{margin-top:10px;border-top:1px solid var(--noti-border);padding-top:10px}
+.notification-page .request-workflow p{margin:3px 0!important;color:var(--noti-muted)!important;
+ font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.notification-page .request-workflow p strong{display:inline;font-size:12px;color:var(--noti-text)}
+.notification-page .request-workflow .request-workflow-time{font-size:11px}
+.notification-page .request-one-card .request-decision-inline{display:grid;gap:8px;
+ padding:11px;background:var(--noti-soft);border:1px solid var(--noti-border);border-radius:9px}
+.notification-page .request-decision-inline textarea{width:100%;min-height:64px;resize:vertical;
+ background:var(--noti-surface);color:var(--noti-text);border:1px solid var(--noti-border);border-radius:7px}
+.notification-page .request-decision-inline label{font-size:12px;font-weight:700;color:var(--noti-text)}
+.notification-page .request-decision-inline .actions{display:flex;gap:8px;flex-wrap:wrap}
+.notification-page .request-one-card .request-status{display:inline-block;border:1px solid var(--noti-border);
+ background:var(--noti-soft);border-radius:6px;padding:3px 7px;font-size:11px;font-weight:800;margin-top:5px}
+</style>
 <style id="notificationDashboardStyle">
 /* Een rubriek blijft zichtbaar, ook als haar lijst leeg is.
    Bij nul resultaten is de inhoud leeg, zonder nutteloze witruimte. */
@@ -478,6 +497,64 @@ async function api(url,body){
 }
 const displayLeaveDate=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?
  value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4):value||'—';
+function requestTime(value){
+ const time=Date.parse(value||'');
+ return Number.isFinite(time)?new Date(time).toLocaleString('nl-BE',{timeZone:'Europe/Brussels'}):null;
+}
+function requestPerson(actor,alternative='Niet geregistreerd'){
+ if(!actor||typeof actor!=='object')return alternative;
+ const name=String(actor.name||'').trim(),call=String(actor.call||'').trim();
+ if(name)return (call?call+' · ':'')+name;
+ return actor.discordId?'Discord-ID '+String(actor.discordId):alternative;
+}
+function requestDetail(root,label,value){
+ if(!value)return;
+ const line=document.createElement('p'),heading=document.createElement('strong');
+ heading.textContent=label+': ';line.append(heading,document.createTextNode(String(value)));root.append(line);
+}
+function leaveWorkflowCard(row,record){
+ const x=record.workflow||{};
+ const panel=document.createElement('div');panel.className='request-workflow';
+ requestDetail(panel,'Aanvrager',requestPerson(x.applicant,
+  (record.subjectCall?record.subjectCall+' · ':'')+(record.subjectName||'Personeelslid')));
+ requestDetail(panel,x.submittedOnBehalf?'Handmatig ingevoerd door':'Ingediend door',
+  requestPerson(x.submittedBy,x.manual?'Historische invoerder niet geregistreerd':'Aanvrager zelf'));
+ if(x.originalRecorder)requestDetail(panel,'Oorspronkelijke registrator',requestPerson(x.originalRecorder));
+ requestDetail(panel,'Ingediend op',requestTime(record.createdAt)||'Niet geregistreerd (historische aanvraag)');
+ const status={pending:'In behandeling',approved:'Goedgekeurd',
+  rejected:'Afgewezen',withdrawn:'Ingetrokken'}[record.status]||record.status;
+ requestDetail(panel,'Huidige beslissing',status);
+ if(['approved','rejected'].includes(record.status)){
+  requestDetail(panel,record.status==='rejected'?'Afgewezen door':'Goedgekeurd door',
+   requestPerson(x.decidedBy,record.autoApproved?'Systeem (automatisch)':'Beslisser niet geregistreerd'));
+  requestDetail(panel,'Beslist op',requestTime(record.decidedAt)||'Historische datum onbekend');
+  if(x.decisionNote)requestDetail(panel,record.status==='rejected'?'Afwijsreden':'Beslissingsmotivering',x.decisionNote);
+  else if(record.status==='rejected')requestDetail(panel,'Afwijsreden','Geen reden opgegeven');
+ }
+ if(record.extensionOf)requestDetail(panel,'Verlenging van aanvraag',record.extensionOf);
+ row.classList.add('request-one-card');row.append(panel);
+}
+function trainingWorkflowCard(row,record){
+ const panel=document.createElement('div');panel.className='request-workflow';
+ requestDetail(panel,'Aanvrager',(record.applicantCall?record.applicantCall+' · ':'')+
+  (record.applicantName||'Personeelslid'));
+ requestDetail(panel,'Ingediend door',requestPerson(record.submittedByActor,
+  record.applicantName||'Aanvrager zelf'));
+ requestDetail(panel,'Ingediend op',requestTime(record.createdAt)||'Niet geregistreerd');
+ const actions=[
+  ['Gelezen door',record.reviewedBy,record.reviewedAt],
+  ['Gepland door',record.plannedBy,record.plannedAt],
+  ['Afgewezen door',record.rejectedBy,record.rejectedAt],
+  ['Uitgevoerd door',record.executedBy,record.executedAt]
+ ];
+ for(const [label,actor,at] of actions){
+  if(!actor)continue;
+  requestDetail(panel,label,requestPerson(actor)+(at&&requestTime(at)?' · '+requestTime(at):''));
+ }
+ if(record.status==='afgewezen')
+  requestDetail(panel,'Afwijsreden',record.rejectionReason||'Geen reden opgegeven');
+ row.classList.add('request-one-card');row.append(panel);
+}
 function manualLeaveInformation(x){
  const row=document.createElement('div');row.className='item';
  const heading=document.createElement('strong');
@@ -492,7 +569,7 @@ function manualLeaveInformation(x){
  reason.textContent='Reden: '+(x.note?.trim()||'Niet vermeld');
  const info=document.createElement('small');
  info.textContent='Ter informatie. Goedkeuren/afwijzen kan alleen via de bevoegde beslissingslijst.';
- row.append(heading,detail,reason,info);
+ row.append(heading,detail,reason,info);leaveWorkflowCard(row,x);
  return row;
 }
 function item(x,override=false){
@@ -510,23 +587,59 @@ function item(x,override=false){
  const reason=document.createElement('p');
  reason.textContent='Reden: '+(x.note?.trim()||'Niet geregistreerd (oude verlofperiode)');
  row.append(reason);
+ leaveWorkflowCard(row,x);
  if(writesEnabled){
   const buttons=document.createElement('div');buttons.className='actions';
   for(const [decision,label] of [['approved','Goedkeuren'],['rejected','Afwijzen']]){
    const b=document.createElement('button');b.textContent=label;
    if(decision==='approved')b.className='primary';
    if(override&&decision===x.status)continue;
-   b.onclick=async()=>{
-    if(!confirm('Verlofaanvraag '+(override?'via Bestuur ':'')+label.toLowerCase()+'?'))return;
-    const reason=override?prompt('Reden voor de bestuurs-overrule (minimaal 10 tekens):',''):'';
-    if(override&&reason===null)return;
+   const submitDecision=async note=>{
     b.disabled=true;
     try{
      await api('/api/leave/requests/'+encodeURIComponent(x.id)+(override?'/override':'/decision'),
-       override?{decision,reason}:{decision});
-     feedback('Beslissing geregistreerd en gelogd.');await load();
+       override?{decision,reason:note}:{decision,note});
+     feedback('Beslissing bij dezelfde aanvraag geregistreerd en gelogd.');await load();
     }catch(e){feedback('Beslissing niet opgeslagen: '+e.message,true)}
     finally{b.disabled=false}
+   };
+   b.onclick=async()=>{
+    if(override){
+     const reason=prompt('Reden voor de bestuurs-overrule (minimaal 10 tekens):','');
+     if(reason===null)return;
+     if(reason.trim().length<10||reason.trim().length>300)
+      return feedback('Een bestuursherziening vereist 10 tot 300 tekens.',true);
+     if(confirm('Bestuursbeslissing herzien?'))await submitDecision(reason.trim());
+     return;
+    }
+    if(decision==='approved'){
+     if(confirm('Verlofaanvraag goedkeuren?'))await submitDecision('');
+     return;
+    }
+    // Optional reason appears inside this same request card, not in a
+    // second notification or a mandatory browser prompt.
+    const prior=row.querySelector('.request-decision-inline');
+    if(prior){prior.remove();return}
+    const form=document.createElement('form');form.className='request-decision-inline';
+    const reasonLabel=document.createElement('label');
+    reasonLabel.textContent='Reden van afwijzing (optioneel, maximaal 300 tekens)';
+    const textarea=document.createElement('textarea');textarea.maxLength=300;textarea.rows=2;
+    textarea.placeholder='Eventuele toelichting voor de aanvrager';
+    reasonLabel.append(textarea);
+    const controls=document.createElement('div');controls.className='actions';
+    const send=document.createElement('button');send.type='submit';
+    send.textContent='Afwijzing registreren';send.className='primary';
+    const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annuleren';
+    cancel.onclick=()=>form.remove();
+    controls.append(send,cancel);form.append(reasonLabel,controls);
+    form.onsubmit=async event=>{
+     event.preventDefault();
+     if(!confirm('Verlofaanvraag afwijzen'+(textarea.value.trim()?' met toelichting':' zonder reden')+'?'))return;
+     send.disabled=true;
+     await submitDecision(textarea.value.trim());
+     send.disabled=false;
+    };
+    row.append(form);textarea.focus();
    };buttons.append(b);
   }
   row.append(buttons);
@@ -972,7 +1085,7 @@ async function loadLeave(){
       const heading=document.createElement('strong');
       heading.textContent=displayLeaveDate(record.startDate)+' t/m '+
         displayLeaveDate(record.endDate)+' · '+(names[record.status]||'Status onbekend');
-      entry.append(heading);root.append(entry);
+      entry.append(heading);leaveWorkflowCard(entry,record);root.append(entry);
     }
     $('personalPanel').hidden=false;
   }
@@ -1065,7 +1178,7 @@ async function loadTraining(){
   for(const r of info.mine||[]){
    const row=document.createElement('div');row.className='item';
    const title=document.createElement('strong');title.textContent=r.courseName+' · '+r.department;
-   row.append(title);const message=document.createElement('p');
+   row.append(title);trainingWorkflowCard(row,r);const message=document.createElement('p');
    message.textContent=trainingStateText(r);
    row.append(message);own.append(row);
   }
@@ -1112,7 +1225,7 @@ async function loadTraining(){
       };
       actions.append(b);
     }
-    row.append(title,note,status,actions);target.append(row);
+    row.append(title,note,status,actions);trainingWorkflowCard(row,r);target.append(row);
   }
   $('trainingReviewPanel').hidden=info.canReviewTraining!==true;
  }catch(e){
