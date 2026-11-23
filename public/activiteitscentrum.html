@@ -298,7 +298,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 </main>
 <script type="module">
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel,matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-roster-order.js';
-import {renderActivityDashboard,activityStatusTileMatch} from '/activity-dashboard.js';
+
 const $=id=>document.getElementById(id);
 let auth,authSdk,records=[],asOf='',sources=null;
 let cadreConfig=null,cadreData=null;
@@ -306,6 +306,11 @@ function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
 const priorityKinds=new Set(['checking','50/50','inactief','beoordelen','verlof_nazien']);
+let activityDashboardModule=null;
+void import('/activity-dashboard.js').then(mod=>{
+ activityDashboardModule=mod;
+ if(records.length)render();
+}).catch(()=>{});
 function belgianHistoricalDate(iso){
  const [year,month,day]=String(iso||'').split('-');
  return year&&month&&day?day+'/'+month+'/'+year:String(iso||'');
@@ -384,14 +389,14 @@ function render(){
  const scoped=records.filter(p=>(!dept||p.department===dept)&&
   matchesActivityPoliceSeries(p,series)&&
   (!query||[p.name,p.call,p.discordId].some(x=>String(x||'').toLocaleLowerCase('nl').includes(query))));
- renderActivityDashboard(scoped,sources,()=>{
+ if(activityDashboardModule)activityDashboardModule.renderActivityDashboard(scoped,sources,()=>{
   $('filter').value='';$('attentionOnly').checked=false;
   $('personnelDetails').open=true;render();
   $('personnelDetails').scrollIntoView({block:'start'});
  });
  const visible=sortActivityLikePersonnel(scoped.filter(p=>
   (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))&&
-  activityStatusTileMatch(p)));
+  (!activityDashboardModule||activityDashboardModule.activityStatusTileMatch(p))));
  $('counts').replaceChildren();
  for(const key of ['checking','beoordelen','inactief','50/50','verlof_nazien','verouderd','geen_data','ok']){
   const button=el('button','', 'counter');
