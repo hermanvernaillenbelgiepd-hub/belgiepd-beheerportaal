@@ -53,7 +53,8 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
   // Technical profile is a signed, allowlisted, authenticated Discord session.
   // When its owner has no separate personnel record, audit using their verified
   // Discord ID instead of blocking the approved technical report operation.
-  const reportAuditActor=(request,roster)=>actorFromPersonnel(request.bpd,roster)||
+  const reportAuditActor=(request,roster,service=null)=>
+    actorFromPersonnel(request.bpd,roster,service)||
     (isVerifiedReportTechnicalAdmin(request.bpd)?{
       discordId:request.bpd.discordId,name:'Technisch Beheer',
       call:'—',rank:'Technisch beheer',dept:'algemeen'}:null);
@@ -157,7 +158,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       if(snapshot.stale)return res.status(503).json({error:'Personeelsbron niet actueel'});
       const subject=uniqueSubject(snapshot.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelslid niet gevonden'});
-      const actor=actorFromPersonnel(req.bpd,snapshot.data);
+      const actor=actorFromPersonnel(req.bpd,snapshot.data,dept);
       if(!actor||!canReadServiceDossier(req.bpd,dept))
         return res.status(403).json({error:'Niet bevoegd voor deze dossiercorrectie'});
       const store=db(),entries=store.collection('bpd_cases')
@@ -299,7 +300,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         linkedColleague=verifiedColleagueLink(req.body?.linkedColleagueId,
           dept,id,snap.data,req.bpd,type);
       }catch(e){return res.status(400).json({error:e.message})}
-      const actor=reportAuditActor(req,snap.data);
+      const actor=reportAuditActor(req,snap.data,dept);
       if(!actor)return res.status(403).json({error:'Koppel je eigen account eerst aan een personeelsfiche'});
       const representedId=asString(req.body?.onBehalfOfDiscordId);
       // Manual activity follow-up needs an explicit status and truthful
@@ -395,7 +396,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       if(snapshot.stale)return res.status(503).json({error:'Personeelsgegevens zijn niet actueel'});
       const subject=uniqueSubject(snapshot.data,dept,id);
       if(!subject)return res.status(404).json({error:'Personeelslid niet gevonden'});
-      const actor=actorFromPersonnel(req.bpd,snapshot.data);
+      const actor=actorFromPersonnel(req.bpd,snapshot.data,dept);
       if(!actor)return res.status(403).json({error:'Eigen identiteit is niet geverifieerd'});
       if(!canRetireDossierRecord(req.bpd,subject))
         return res.status(403).json({error:'Alleen bevoegd Officierenkader of Korpsleiding mag registraties van ondergeschikten corrigeren'});
@@ -637,7 +638,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
     try{
       const snap=await getSnapshot();
       if(!uniqueSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelsfiche niet eenduidig gevonden'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      const actor=actorFromPersonnel(req.bpd,snap.data,dept);
       if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is nog niet gekoppeld'});
       const entryRef=db().collection('bpd_cases').doc(caseId(dept,id)).collection('entries').doc(entryId);
       const auditRef=entryRef.collection('audit').doc();
@@ -701,7 +702,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         !canReadServiceDossier(req.bpd,r.dept)||
         !mayReadFortnightReport(req.bpd,r.dept,snap.data))
         return res.status(403).json({error:'Geen rapportrechten voor deze hulpdienst'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      const actor=actorFromPersonnel(req.bpd,snap.data,r.dept);
       if(!actor)return res.status(403).json({error:'Koppel het ingelogde account eerst aan een personeelsfiche'});
       const d=db().collection('bpd_weekreports').doc();
       await d.create({...r,createdBy:actor,createdByUid:req.bpd.uid,createdAt:FieldValue.serverTimestamp()});
@@ -728,7 +729,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
         year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if(isCurrentAutomaticReport(report,today))
         return res.status(409).json({error:'Het lopende automatische weekrapport kan niet gewist worden. Het wordt dagelijks uit dossiergegevens opgebouwd.'});
-      const actor=reportAuditActor(req,snap.data);
+      const actor=reportAuditActor(req,snap.data,report.dept);
       if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
       const marker=db().collection('bpd_weekreport_removals').doc(id);
       try{
@@ -770,7 +771,7 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
       if(!canReadServiceDossier(req.bpd,report.dept)||
          !mayRemoveWeekReport(req.bpd,report.dept,snap.data))
         return res.status(403).json({error:'Alleen bevoegd Politie-Officierenkader, Korpsleiding of geverifieerd Technisch Beheer mag dit rapport herstarten'});
-      const actor=reportAuditActor(req,snap.data);
+      const actor=reportAuditActor(req,snap.data,report.dept);
       if(!actor)return res.status(403).json({error:'Eigen personeelsfiche is niet gekoppeld'});
       const ref=db().collection('bpd_weekreport_restarts').doc(id);
       const audit=ref.collection('events').doc();

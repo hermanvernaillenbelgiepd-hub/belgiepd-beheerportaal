@@ -9,10 +9,11 @@ test('desktop full specialization matrix remains available at ordinary laptop wi
  assert.doesNotMatch(css,/@media\(min-width:1025px\) and \(max-width:1800px\)/);
  assert.match(css,/\.mr-scroll > \.mr-table\{display:none!important\}/);
  const html=read('public/personeelslijst.html');
- assert.match(html,/@media\(min-width:1451px\) and \(max-width:1900px\)/);
+ assert.match(html,/@media\(min-width:768px\) and \(max-width:2200px\)/);
  assert.match(html,/table-layout:fixed!important/);
  assert.match(html,/colgroup col\{\s*width:auto!important/);
  assert.match(html,/overflow-x:clip!important/);
+ assert.match(html,/@media\(min-width:768px\) and \(max-width:1024px\)/);
  assert.match(html,/mr-col-toolbar,[\s\S]*mr-col-handle\{\s*display:none!important/);
 });
 test('small-screen roster keeps all specialization values accessible in expandable detail rows',()=>{

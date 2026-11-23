@@ -277,7 +277,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       if(type==='sanctie'&&(id===req.bpd.discordId||
           !canReadPersonnelSubject(req.bpd,target)))
         return res.status(403).json({error:'Geen sanctierechten op dit personeelsdossier of deze rang'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      const actor=actorFromPersonnel(req.bpd,snap.data,dept);
       if(!actor)return res.status(403).json({error:'Koppel je ingelogde Google-account eerst aan je eigen Discord ID in de serverconfiguratie'});
       // Ook oudere formulieren of directe API-aanroepen kunnen deze
       // beperkingen niet omzeilen: Basiskader uitsluitend naar lagere rangen.
@@ -350,7 +350,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
       const subject=matches[0];
       if(!canRetireDossierRecord(req.bpd,subject))
         return res.status(403).json({error:'Geen bevoegdheid om deze observatie te wijzigen'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      const actor=actorFromPersonnel(req.bpd,snap.data,dept);
       if(!actor)return res.status(403).json({error:'Eigen identiteit niet geverifieerd'});
       const store=db(),collection=store.collection('bpd_cases').doc(docId(dept,id)).collection('entries');
       const ref=collection.doc(entryId),audit=ref.collection('audit').doc(),report=collection.doc();
@@ -434,7 +434,7 @@ export function installRegistrationRoutes(app,{requireUser,getSnapshot}){
         return res.status(403).json({error:'Geen bevoegdheid voor deze sanctiemaatregel of ernst. Degradatie en schorsing vereisen Officierenkader; ontslag en blacklisting uitsluitend Korpsleiding.'});
       const snap=await getSnapshot();
       if(!safeSubject(snap.data,dept,id))return res.status(404).json({error:'Personeelslid niet gevonden'});
-      const actor=actorFromPersonnel(req.bpd,snap.data);
+      const actor=actorFromPersonnel(req.bpd,snap.data,dept);
       if(!actor)return res.status(403).json({error:'Koppel je ingelogde account eerst aan je eigen Discord ID'});
       const entries=db().collection('bpd_cases').doc(docId(dept,id)).collection('entries');
       const ref=entries.doc(entryId),audit=ref.collection('audit').doc(),
