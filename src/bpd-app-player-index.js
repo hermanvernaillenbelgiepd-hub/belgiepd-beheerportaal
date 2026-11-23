@@ -35,7 +35,7 @@ async function readPages({env,fetchImpl,now}){
   for(const row of data.data){
    const id=row?.discord_id;
    if(id===null||id===undefined)continue; // some players are not linked to Discord
-   if(typeof id!=='string'||!/^\\d{17,20}$/.test(id))
+   if(typeof id!=='string'||!/^\d{17,20}$/.test(id))
     return {status:'invalid_response'}; // never round numeric Discord snowflakes
    const player=normalizedServerPlayer(row,id);
    if(!player)return {status:'invalid_response'};
