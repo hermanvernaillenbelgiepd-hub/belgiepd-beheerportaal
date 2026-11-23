@@ -187,12 +187,19 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <p class="source-note" id="sourceNote"></p></section>
 <section><details id="recordsPanel" class="activity-data-fold">
  <summary>📈 Speeluren &amp; RECORDS — bekijk maandwaarden en top 5</summary>
- <p class="source-note">Alleen recente, geverifieerde uren van de afgesloten kalendermaand binnen je bevoegde dienst of reeks. Historische RECORDS-peilstanden zijn nog niet geïmporteerd.</p>
+ <p class="source-note">Actuele maanduren worden alleen als geverifieerd getoond bij een recente FiveM-meting. Historische RECORDS-peilstanden staan afzonderlijk, uitsluitend ter inzage.</p>
  <div id="recordsSummary" class="counts"></div>
  <p id="recordsStatus" class="source-note"></p>
  <ol id="recordsTop" class="records-top" aria-label="Top vijf actuele geverifieerde maandmetingen"></ol>
+ <div id="recordsHistorical" hidden>
+  <h3>Historische RECORDS-peilstanden</h3>
+  <div class="controls"><label>Peildatum<select id="recordsDate" aria-label="Historische RECORDS-peildatum"></select></label></div>
+  <div id="recordsHistoricalSummary" class="counts"></div>
+  <p id="recordsHistoricalStatus" class="source-note"></p>
+  <ol id="recordsHistoricalTop" class="records-top" aria-label="Top vijf historische RECORDS-peilstanden"></ol>
+ </div>
  <details class="activity-help"><summary>Historische RECORDS en toekomstige botmetingen</summary>
-  <p>De oude RECORDS-tab gebruikt playtime-resetpeildata, waaronder 15/10/2026 en 16/11/2026. Dit zijn niet noodzakelijk volledige kalendermaanden. Oude peilstanden moeten eerst per Discord-ID, bron en periode worden gecontroleerd. Later bewaren bots ondertekende periodieke momentopnames; pas dan zijn correcte historische vergelijkingen mogelijk.</p>
+  <p>De oude RECORDS-tab gebruikt playtime-resetpeildata, waaronder 15/10/2026 en 16/11/2026. Dit zijn niet noodzakelijk volledige kalendermaanden. Alleen waarden met een ondubbelzinnig overeenkomende Discord-ID zijn zichtbaar; ze dienen nooit als automatisch bewijs voor pings. De toekomstige bot bewaart apart geverifieerde metingen.</p>
  </details>
 </details></section>
 <section id="returnPanel" class="activity-warnings" hidden><h2>⚠ Verlof afgelopen · CHECKING <small id="returnCount"></small></h2>
@@ -244,6 +251,49 @@ function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+
  verlof_nazien:'Verlof nazien',verouderd:'Bron verouderd',geen_data:'Geen gegevens',ok:'Geen actie'})[kind]||kind}
 function el(tag,text,className){const n=document.createElement(tag);n.textContent=String(text??'—');if(className)n.className=className;return n}
 const priorityKinds=new Set(['checking','50/50','inactief','beoordelen','verlof_nazien']);
+function belgianHistoricalDate(iso){
+ const [year,month,day]=String(iso||'').split('-');
+ return year&&month&&day?day+'/'+month+'/'+year:String(iso||'');
+}
+function renderHistoricalRecords(scoped){
+ const records=scoped.flatMap(p=>(p.historicalRecords||[]).map(item=>({
+  date:item.date,hours:item.hours,call:p.call,name:p.name
+ }))).filter(p=>Number.isFinite(p.hours));
+ const dates=[...new Set(records.map(x=>x.date))].sort().reverse();
+ const panel=$('recordsHistorical');
+ panel.hidden=!dates.length;
+ if(!dates.length)return;
+ const select=$('recordsDate'),previous=select.value;
+ select.replaceChildren();
+ for(const date of dates)select.add(new Option(belgianHistoricalDate(date),date));
+ select.value=dates.includes(previous)?previous:dates[0];
+ const selected=records.filter(p=>p.date===select.value);
+ const top=[...selected].sort((a,b)=>b.hours-a.hours).slice(0,5);
+ const average=selected.length?selected.reduce((sum,p)=>sum+p.hours,0)/selected.length:null;
+ const summary=$('recordsHistoricalSummary');summary.replaceChildren();
+ for(const [name,value] of [
+  ['Leden met peilstand',selected.length+' / '+scoped.length],
+  ['Gemiddelde peilstand',average===null?'—':average.toLocaleString('nl-BE',{maximumFractionDigits:1})+' uur'],
+  ['Hoogste peilstand',top.length?top[0].hours.toLocaleString('nl-BE')+' uur':'—']
+ ]){
+  const card=el('div','', 'counter');
+  card.append(el('strong',value),el('small',name));summary.append(card);
+ }
+ $('recordsHistoricalStatus').textContent=
+  'RECORDS-peilstand '+belgianHistoricalDate(select.value)+
+  ' · historische resetmeting, geen afgeronde maand en geen bewijs voor automatische pings.';
+ const list=$('recordsHistoricalTop');list.replaceChildren();
+ const max=top[0]?.hours||0;
+ top.forEach((p,i)=>{
+  const li=document.createElement('li');
+  li.append(el('strong',(i+1)+'. '+p.call+' · '+p.name),
+   el('small',p.hours.toLocaleString('nl-BE')+' uur · historische peilstand'));
+  const track=el('div','', 'records-track');track.setAttribute('aria-hidden','true');
+  const bar=document.createElement('span');
+  bar.style.width=(max>0?Math.round(100*p.hours/max):0)+'%';
+  track.append(bar);li.append(track);list.append(li);
+ });
+}
 function renderVerifiedRecords(scoped){
  const valid=scoped.filter(p=>p.verified===true&&Number.isFinite(p.periodPlayHours)&&p.periodPlayHours>=0);
  const top=[...valid].sort((a,b)=>b.periodPlayHours-a.periodPlayHours).slice(0,5);
@@ -271,6 +321,7 @@ function renderVerifiedRecords(scoped){
   bar.style.width=(max>0?Math.round(100*p.periodPlayHours/max):0)+'%';
   track.append(bar);li.append(track);list.append(li);
  });
+ renderHistoricalRecords(scoped);
 }
 function render(){
  const dept=$('department').value,kind=$('filter').value,series=$('activitySeries').value;
@@ -318,6 +369,7 @@ function render(){
    ' · '+(sources?.approvedLeaveComplete?'goedgekeurd verlof gecontroleerd':'verlofcontrole onvolledig')+
    ' · '+(sources?.dossierPingsAvailable?'Firebase-dossierpings':'dossierpings niet beschikbaar')+
    ' · '+(sources?.legacyAvailable?'oude spreadsheet uitsluitend als fallback':'oude spreadsheet niet beschikbaar')+
+   ' · '+(sources?.legacyRecordsAvailable?'historische RECORDS-bron ingelezen':'historische RECORDS-bron niet beschikbaar')+
    '. Dossierpingtellers zijn beperkt tot 100 registraties per persoon.';
  $('resultCount').textContent='· '+visible.length+' van '+scoped.length+' leden';
  if($('recordsPanel').open)renderVerifiedRecords(scoped);
@@ -347,7 +399,10 @@ function render(){
   row.append(el('td',p.lastConnection||'Geen gegevens'));
   row.append(el('td',p.daysInactive===null?'—':p.daysInactive+' dagen'));
   const hours=el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur');
-  hours.append(el('small',p.verified?'✓ Geverifieerd · '+p.periodLabel:p.periodLabel||'Oude bron'));row.append(hours);
+  hours.append(el('small',p.verified?'✓ Geverifieerd · '+p.periodLabel:p.periodLabel||'Oude bron'));
+  const lastHistorical=p.historicalRecords?.at(-1);
+  if(lastHistorical)hours.append(el('small','RECORDS '+belgianHistoricalDate(lastHistorical.date)+': '+lastHistorical.hours+' uur (peilstand)'));
+  row.append(hours);
   const leave=el('td',p.leave?.active?'Verlof tot '+p.leave.endDate:
    p.leave?.lastEnded?'Einde '+p.leave.lastEnded:'—');
   if(p.leave?.nextStart)leave.append(el('small','Volgend: '+p.leave.nextStart+' → '+p.leave.nextEnd));
@@ -582,6 +637,7 @@ $('personnelDetails').addEventListener('toggle',()=>{
  if($('personnelDetails').open)render();
  else $('rows').replaceChildren();
 });
+$('recordsDate').addEventListener('change',render);
 $('recordsPanel').addEventListener('toggle',()=>{
  if($('recordsPanel').open&&!$('content').hidden)render();
  else if(!$('recordsPanel').open){
