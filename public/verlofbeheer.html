@@ -304,7 +304,7 @@ function countDays(a,b){if(!a||!b)return 0;return (Date.parse(b+'T00:00:00Z')-Da
 function updateCount(){const n=countDays(el('start').value,el('end').value);el('dayCount').textContent=n>0?`${n} kalenderdag(en) — ${n<=7?'automatisch goedgekeurd':n<=30?'behandeling door bevoegd kader vereist':'goedkeuring door officierenkader, korpsleiding of Bestuur vereist'}`:'Selecteer een geldige begin- en einddatum.'}
 for(const x of ['start','end'])el(x).addEventListener('change',updateCount);
 async function request(url,options={}){
-  if(!firebaseAuth?.currentUser)throw new Error('Meld eerst aan via Google');
+  if(!firebaseAuth?.currentUser)throw new Error('Meld je eerst aan met Discord.');
   const token=await firebaseAuth.currentUser.getIdToken();
   const r=await fetch(url,{...options,headers:{Authorization:`Bearer ${token}`,...(options.body?{'Content-Type':'application/json'}:{}),...options.headers},cache:'no-store'});
   const data=await r.json().catch(()=>({}));
@@ -481,10 +481,39 @@ el('requestForm').addEventListener('submit',async e=>{
  }catch(err){tell('De aanvraag werd niet opgeslagen.',true);showError(err.message,'Verlofaanvraag niet ingediend')}
  finally{button.disabled=!me?.writesEnabled}
 });
-async function init(){try{const r=await fetch('/api/client-config',{cache:'no-store'}),c=await r.json();if(!c.enabled)throw new Error('Firebase is niet geconfigureerd');const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');firebaseFns=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');firebaseAuth=firebaseFns.getAuth(a.initializeApp(c.firebaseConfig));
-  // Alle pagina's delen de onthouden Firebase-sessie; Discord is de primaire aanmelding.
-  firebaseFns.onAuthStateChanged(firebaseAuth,async user=>{el('login').textContent=user?'Afmelden':'Google aanmelden';el('authRequired').classList.toggle('hidden',Boolean(user));el('content').classList.add('hidden');me=null;if(user){tell('Bevoegdheden controleren…');try{await refresh();tell('Aangemeld: persoonlijke en gemachtigde verlofgegevens geladen.')}catch(e){tell(e.message,true)}}else tell('Meld aan om je verlofgegevens te bekijken.');});const {setupPortalLogin}=await import('/portal-login.js');setupPortalLogin({button:el('login'),auth:firebaseAuth,authModule:firebaseFns,config:c,onError:e=>tell('Aanmelding mislukt: '+e.message,true)});
-}catch(err){tell('Aanmelding niet beschikbaar: '+err.message,true)}}
+async function init(){
+ try{
+  const r=await fetch('/api/client-config',{cache:'no-store'}),c=await r.json();
+  if(!c.enabled)throw new Error('Firebase is niet geconfigureerd');
+  const a=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  firebaseFns=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=a.getApps().length?a.getApp():a.initializeApp(c.firebaseConfig);
+  firebaseAuth=firebaseFns.getAuth(app);
+  // Eén gedeelde login bepaalt de knoptekst; verlofbeheer mag niet kortstondig
+  // 'Google aanmelden' tonen terwijl Discord de primaire login is.
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:el('login'),auth:firebaseAuth,authModule:firebaseFns,
+    config:c,onError:e=>tell('Aanmelding mislukt: '+e.message,true)});
+  firebaseFns.onAuthStateChanged(firebaseAuth,async user=>{
+   el('authRequired').classList.toggle('hidden',Boolean(user));
+   el('content').classList.add('hidden');
+   me=null;
+   if(!user){
+    tell('Meld je eenmalig aan met Discord om je verlofgegevens te bekijken.');
+    return;
+   }
+   tell('Verlofgegevens laden…');
+   try{
+    await refresh();
+    // Alleen acties, beperkingen en echte fouten vragen een blijvende melding.
+    if(el('feedback').textContent==='Verlofgegevens laden…'){
+      el('feedback').textContent='';
+      el('feedback').className='hidden';
+    }
+   }catch(e){tell(e.message,true)}
+  });
+ }catch(err){tell('Aanmelding niet beschikbaar: '+err.message,true)}
+}
 init();
 </script>
 <script defer src="/bpd-navigation.js"></script>

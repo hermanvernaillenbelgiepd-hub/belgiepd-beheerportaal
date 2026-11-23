@@ -39,10 +39,13 @@ export function canSeeDashboardManagement(actor){
   if(!actor||typeof actor!=='object')return false;
   if(isFireZoneDashboard(actor))return false;
   if(ambulanceDashboardTier(actor))return false;
-  if(actor.role==='beheerder'||actor.boardPersonnelAdmin===true||
-    actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true)return true;
-  if(HIGHER.has(actor.role))return true;
-  return Object.values(actor.departmentRoles||{}).some(role=>HIGHER.has(role));
+  if(actor.boardPersonnelAdmin===true)return true;
+  if(actor.role==='beheerder'&&actor.portalTechnicalMode===true&&
+     actor.profileTechnicalAvailable===true&&
+     actor.uid==='discord:'+actor.discordId)return true;
+  // General role administration belongs to verified Police command, not
+  // to someone who is only a senior officer in another service.
+  return HIGHER.has(actor.role)&&HIGHER.has(roleForDepartment(actor,'politie'));
 }
 
 // Daily-work dashboard is different from managing roles: Middenkader may
