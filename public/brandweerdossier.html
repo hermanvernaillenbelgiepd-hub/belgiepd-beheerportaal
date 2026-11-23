@@ -46,7 +46,7 @@ html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-up{color:#137044}
 html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-down{color:#a32b38}
 html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-stable{color:#806711}
 html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-insufficient{color:#607083}
-</style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/dossier-identity-polish.css">
+</style><link rel="stylesheet" href="/bpd-navigation.css"><link rel="stylesheet" href="/personnel-onepage-test.css"><link rel="stylesheet" href="/bpd-dossier-shared.css"><link rel="stylesheet" href="/dossier-identity-polish.css"><link rel="stylesheet" href="/dossier-three-column.css?v=20261123-restored">
 </head><body class="bpd-unified-dossier dossier-onepage dossier-fire-sheet">
 <header><strong>🚒 BelgiëPD · Brandweerdossier</strong><nav class="buttons"><a href="/dossiercentrum.html">← Dossiercentrum</a><a href="/">Home</a><button id="refresh" class="alt" type="button">Vernieuwen</button><button id="login" class="alt">Aanmelden</button></nav></header>
 <main>
@@ -62,10 +62,10 @@ html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-insufficient{color:#60
 <div><small>REEKS</small><strong id="series">—</strong></div>
 <div><small>VERLOF-/PERSONEELSSTATUS</small><strong id="status">—</strong></div>
 <div class="dossier-dcid-cell"><small>DC-ID</small><strong id="discord">—</strong>
-<div class="dossier-id-buttons">
-<button id="fireCopyDcId" type="button" aria-label="DC-ID kopiëren">Kopieer DC-ID</button>
-<button id="fireCopyDiscordPing" type="button" aria-label="Discord-ping kopiëren">Kopieer @ ping</button>
-</div><span id="fireCopyFeedback" role="status" aria-live="polite" class="muted"></span></div>
+<div class="dossier-id-buttons"><button id="fireCopyDcId" type="button">Kopiëren</button>
+<button id="fireCopyDiscordPing" type="button">Ping kopiëren</button></div>
+<span id="fireCopyFeedback" role="status" class="muted"></span></div>
+<div id="fireHeaderSpecialties" class="dossier-header-specialties"></div>
 </div><p class="muted" id="access"></p>
 <details id="fireProfileEditor" class="fiche-editor" hidden><summary>Algemene personeelsgegevens bekijken</summary><div id="fireProfileSummary" class="sheet-rows"></div></details>
 <nav id="dossierTabBar" class="dossier-tabbar" role="tablist" aria-label="Onderdelen van Brandweerdossier" hidden>
@@ -242,10 +242,25 @@ import {renderDossierStatus} from '/dossier-identity-presentation.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
 import {createObservationDisclosure} from '/dossier-observation-ui.js';
-import {attachDossierRecordPreview,dossierAuthorLine} from '/dossier-entry-preview.js';
+import {attachDossierRecordPreview,dossierAuthorLine,dossierRecordByline,dossierPreviewText} from '/dossier-entry-preview.js';
 import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-recent-entries.js';
 import {threeMonthObservationScore,observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 const $=id=>document.getElementById(id);
+(function arrangeFireOverview(){
+ const sheet=$('overviewSection').querySelector('.landscape-grid');
+ const tile=key=>sheet.querySelector('[data-sheet-tile="'+key+'"]');
+ $('fireHeaderSpecialties').append(tile('specialisaties'));
+ const overview=document.createElement('div');overview.className='dossier-three-column';
+ const column=(key,names)=>{
+   const el=document.createElement('div');el.className='dossier-column dossier-column--'+key;
+   for(const name of names)el.append(tile(name));
+   return el;
+ };
+ overview.append(column('left',['leave','basisNotes']),column('middle',['notes','observations']),
+   column('right',['movements','sanctions','promotions','training']));
+ // Same three-column dossier system as Police; avoid the full-width empty footer.
+ sheet.replaceChildren(overview);
+})();
 const copyFireHeader=async mode=>{
  const id=String($('discord').textContent||'').trim();
  const state=$('fireCopyFeedback');
@@ -256,8 +271,7 @@ const copyFireHeader=async mode=>{
   await navigator.clipboard.writeText(value);
   state.textContent=mode==='ping'?'Discord-vermelding gekopieerd':'DC-ID gekopieerd';
  }catch{
-  window.prompt('Kopieer de waarde:',value);
-  state.textContent='Handmatig kopiëren uit venster';
+  window.prompt('Kopieer de waarde:',value);state.textContent='Handmatig kopiëren uit venster';
  }
 };
 $('fireCopyDcId').onclick=()=>void copyFireHeader('id');
@@ -402,9 +416,7 @@ function cards(root,items,heading,text,metadata){
       title:heading(item),
       score:item.score,
       details:text(item)||'—',
-      attribution:dossierAuthorLine(item)+
-        (item.registeredRank?' · '+item.registeredRank:'')+
-        (item.createdAt?' · geregistreerd '+item.createdAt:'')
+      attribution:dossierRecordByline(item)||dossierAuthorLine(item)
     });
     addFireRetireControl(disclosure.content,item,root.id);
     mount.append(disclosure.element);
@@ -413,7 +425,8 @@ function cards(root,items,heading,text,metadata){
   const card=document.createElement('div');card.className='record';
   const title=document.createElement('h3');title.textContent=heading(item);
   const details=document.createElement('p');details.textContent=text(item)||'—';
-  const meta=document.createElement('small');meta.textContent=metadata(item)||'';
+  const meta=document.createElement('small');
+  meta.textContent=[dossierRecordByline(item),metadata(item)||''].filter(Boolean).join(' · ');
   card.append(title,details,meta);
   // The original service-verified metadata remains the sole source of detail.
   attachExpandableDossierText(card,meta,meta.textContent,{label:'Lees volledige gegevens'});
@@ -430,6 +443,22 @@ function cards(root,items,heading,text,metadata){
   mount.append(card);
  },{empty:'Geen registraties beschikbaar.',
    noun:root.id==='leavePeriods'?'verlofperiodes':'registraties'});
+}
+function fireOverviewRows(targetId,records,title,description,empty='Geen registraties'){
+ const target=$(targetId);
+ if(!target)return;
+ renderRecentDossierEntries(target,records,(mount,row)=>{
+   const item=document.createElement('div');item.className='overview-preview';
+   const heading=document.createElement('strong');heading.textContent=String(title(row)||'Registratie');
+   const body=document.createElement('p');body.textContent=String(description(row)||'—');
+   const meta=document.createElement('small');meta.className='dossier-entry-byline';
+   meta.textContent=dossierRecordByline(row);
+   item.append(heading,body,meta);
+   attachDossierRecordPreview(item,{row,title:heading.textContent,
+     text:body.textContent,bodyNode:body,metaNode:meta,
+     authorText:dossierRecordByline(row)||dossierAuthorLine(row)});
+   mount.append(item);
+ },{empty,noun:'registraties'});
 }
 function displayFirePromotionProposals(data){
  const root=$('promotionRecords');
@@ -494,8 +523,6 @@ function setAvailableTabs(data){
  if(data.visibility==='leadership'||data.visibility==='full')
   for(const tab of ['specialisaties','observaties','basisnotities','notities','sancties','opleidingen','historiek'])
    allowedTabs.add(tab);
- if(data.visibility==='identity')
-  for(const tab of ['observaties','basisnotities','notities'])allowedTabs.add(tab);
  if(Array.isArray(data.canWrite)&&data.canWrite.length)allowedTabs.add('nieuw');
  for(const button of $('dossierTabBar').querySelectorAll('[data-tab]')){
   button.hidden=!allowedTabs.has(button.dataset.tab);
@@ -540,12 +567,11 @@ async function load(){
   $('fireManualLeaveForm').hidden=data.canLogManualLeave!==true;
   $('discord').textContent=p.discordId;
   const advanced=data.visibility==='leadership'||data.visibility==='full';
-  const middleView=data.visibility==='identity',canSeeNotes=advanced||middleView;
   document.querySelector('[data-sheet-tile="promotions"]').hidden=
    !(data.canProposePromotion===true||data.canAdvisePromotion===true||
       (data.promotionProposals||[]).length);
   const scopes={
-   identity:'Brandweer Middenkader: basisgegevens, observaties, notities en promotievoorstellen voor Basiskader en stagiairs.',
+   identity:'Brandweer Middenkader: basisgegevens, goedgekeurde verlofperiodes en observaties. Vertrouwelijke registraties zijn niet beschikbaar.',
    leadership:'Brandweerleiding: uitgebreide dossierinzage bij de toegelaten personeelsleden.',
    full:'ZONE of afzonderlijk gemachtigd beheer: uitgebreide dossierinzage.'};
   $('access').textContent=scopes[data.visibility]||'';
@@ -557,17 +583,17 @@ async function load(){
   // Basic notes can be summarized only from the server-authorized response.
   const basicEntries=(data.entries||[]).filter(x=>x.type==='notitie'&&x.noteKind==='basis');
   const oldBasicNotes=(data.olderNotes||[]).filter(x=>x.type==='begeleiding'||x.type==='evaluatie');
-  $('overviewBasicNotes').textContent=canSeeNotes?
+  $('overviewBasicNotes').textContent=advanced?
     [...basicEntries.map(x=>({title:'Basisnotitie',details:x.details})),...oldBasicNotes]
       .slice(0,5).map(x=>(x.title||x.type)+': '+(x.details||'').slice(0,90))
       .join(' | ')||'Geen basisnotities geregistreerd'
     :'Afgeschermd voor jouw Brandweerfunctie.';
-  rows($('profile'),[...identity,...(canSeeNotes?[
+  rows($('profile'),[...identity,...(advanced?[
    ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
    ['Functie of opdracht',profile.functionTitle]
   ]:[])]);
   $('fireProfileEditor').hidden=false;
-  rows($('fireProfileSummary'),[...identity,...(canSeeNotes?[
+  rows($('fireProfileSummary'),[...identity,...(advanced?[
     ['Aanstellingsdatum',profile.startDate],['Eenheid of ploeg',profile.unit],
     ['Functie of opdracht',profile.functionTitle]
   ]:[])]);
@@ -577,6 +603,10 @@ async function load(){
     ?data.leave.slice(0,5).map(x=>formatBelgianLeaveDate(x.startDate)+' t/m '+
       formatBelgianLeaveDate(x.endDate)).join(' | ')
     :shownStatus;
+  fireOverviewRows('overviewLeave',data.leave||[],
+    x=>'Verlof · '+formatBelgianLeaveDate(x.startDate)+' – '+formatBelgianLeaveDate(x.endDate),
+    x=>formatBelgianLeaveDate(x.startDate)+' t/m '+formatBelgianLeaveDate(x.endDate),
+    'Geen geregistreerde verlofperiodes');
   // Alle Brandweerleden met dossierleesrecht zien de verlofperiode;
   // enkel volledig bevoegde dossierraadplegers krijgen de motivering.
   cards($('leavePeriods'),data.leave||[],
@@ -587,19 +617,10 @@ async function load(){
 
   $('overviewQuals').hidden=!advanced;
   $('overviewActivity').hidden=!advanced;
-  for(const tile of ['overviewObservationTile','overviewNotesTile'])
-    $(tile).hidden=!canSeeNotes;
-  for(const tile of ['overviewSanctionsTile','overviewTrainingTile','overviewHistoryTile'])
+  for(const tile of ['overviewObservationTile','overviewNotesTile',
+    'overviewSanctionsTile','overviewTrainingTile','overviewHistoryTile'])
     $(tile).hidden=!advanced;
-  for(const [tile,visible] of [
-    ['notes',canSeeNotes],['observations',canSeeNotes],
-    ['specialisaties',advanced],['movements',advanced],
-    ['training',advanced],['sanctions',advanced]
-  ]){
-    const redacted=document.querySelector('[data-sheet-tile="'+tile+'"] .fire-redacted');
-    if(redacted)redacted.hidden=visible;
-  }
-  if(canSeeNotes){
+  if(advanced){
    const qualifiers=data.specialties||[];
    renderFireSpecialties($('specialties'),qualifiers);
    renderFireSpecialties($('overviewSpecialties'),qualifiers,{compact:true});
@@ -621,6 +642,27 @@ async function load(){
    $('overviewRecent').textContent=entries.slice(0,5)
      .map(x=>(label[x.type]||x.type)+' · '+(x.eventDate||'—')).join(' | ')
      ||'Geen recente registraties';
+   // Bestaande server-bevoegde registraties: vijf recentste en oudere openklapbaar.
+   fireOverviewRows('overviewBasicNotes',[...basicEntries,...oldBasicNotes],
+      x=>x.title||'Algemene notitie',x=>x.details||'—','Geen algemene notities');
+   fireOverviewRows('overviewNotesCount',[
+      ...entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis'),
+      ...(data.olderNotes||[]).filter(x=>!['begeleiding','evaluatie'].includes(x.type))
+    ],x=>x.title||'Belangrijke notitie',x=>x.details||'—','Geen belangrijke notities');
+   fireOverviewRows('overviewObservationCount',entries.filter(x=>x.type==='observatie'),
+      x=>'Observatie · '+(x.eventDate||'—'),x=>x.details||'—','Geen observaties');
+   fireOverviewRows('overviewSanctionsCount',entries.filter(x=>x.type==='sanctie'),
+      x=>x.sanctionType||'Sanctie',x=>x.details||'—','Geen sancties');
+   fireOverviewRows('overviewTrainingCount',data.trainings||[],
+      x=>x.courseName||'Opleiding',x=>x.result||'—','Geen opleidingen');
+   fireOverviewRows('overviewRecent',entries.filter(x=>x.type==='personeelsbeweging'),
+      x=>x.movement||'Personeelsbeweging',x=>x.details||'—','Geen personeelsbewegingen');
+   fireOverviewRows('overviewHistoryCount',data.dossierHistory||[],
+      x=>x.action||'Administratieve wijziging',x=>x.details||x.reason||'—',
+      'Geen administratieve wijzigingen');
+   fireOverviewRows('overviewPromotionCount',data.promotionProposals||[],
+      x=>'Promotievoorstel · '+(x.proposedRank||''),x=>x.reason||x.details||'—',
+      'Geen promotievoorstellen');
    const meta=x=>(x.eventDate||'—')+' · '+(x.registeredBy||'')+
      (x.registeredRank?' · '+x.registeredRank:'')+
      (x.registeredCall?' ('+x.registeredCall+')':'');
@@ -629,7 +671,7 @@ async function load(){
    const score=threeMonthObservationScore(entries,{limited:entries.length>=120});
    const scoreDisplay=$('fireScoreSummary');
    scoreDisplay.replaceChildren();
-   if(canSeeNotes){
+   if(advanced){
      const value=document.createElement('strong');
      value.textContent='Gem. observatiescore · 3 maanden: '+
        (score.average===null?'Geen scores':
@@ -645,7 +687,7 @@ async function load(){
      scoreDisplay.title='Trend vergelijkt de eerdere met de recentere score binnen drie maanden. '+
        'RP wordt meegerekend via de bestaande observatiescore, niet apart gescoord.';
    }
-   scoreDisplay.hidden=!canSeeNotes;
+   scoreDisplay.hidden=!advanced;
    const notes=entries.filter(x=>x.type==='notitie'&&x.noteKind!=='basis');
    cards($('basicNotes'),[...basicEntries,...oldBasicNotes],
      x=>x.title||'Basisnotitie',x=>x.details,
@@ -674,7 +716,7 @@ async function load(){
      x=>x.eventDate||((x.at||'').slice(0,16)+' · '+(x.byDiscordId||'')));
    $('trainingLink').href='/rollen-opleidingen.html?department=brandweer&discordId='+
      encodeURIComponent(id);
-   if(advanced)void loadFireCheckrides();
+   void loadFireCheckrides();
   }
   $('specialtyEdit').hidden=true;
   if(data.canEditSpecialties){

@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {renderRecentDossierEntries,attachExpandableDossierText,DOSSIER_RECENT_COUNT}
  from '../public/dossier-recent-entries.js';
 
+import {dossierRecordByline} from '../public/dossier-entry-preview.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 
 class MockElement{
@@ -124,4 +125,42 @@ test('Alle vijf dossiers delen de vijf-regelregel, zonder wijziging aan toegangs
  assert.match(citizen,/\$\('saveStatus'\)\.textContent/);
  assert.match(citizen,/<\/script><script defer src="\/bpd-navigation\.js"><\/script>/);
  assert.match(citizen,/<\/body><\/html>/);
+});
+
+test('Nieuwe drie-kolommenfiche behoudt identiteiten, registratiehub, audits en details',()=>{
+ const police=read('public/personeelsbeheer.html');
+ const fire=read('public/brandweerdossier.html');
+ const style=read('public/dossier-three-column.css');
+ assert.match(police,/className='dossier-three-column'/);
+ assert.match(police,/makeColumn\('left',\['leave','basisNotes'\]\)/);
+ assert.match(police,/makeColumn\('middle',\['notes','observations'\]\)/);
+ assert.match(police,/makeColumn\('right',\['movements','activityPings','sanctions','training'\]\)/);
+ assert.match(police,/sheetHeaderSpecialties/);
+ assert.match(police,/sheetCopyDcId/);
+ assert.match(police,/sheetCopyDiscordPing/);
+ assert.match(police,/historicalCaseCheck/);
+ assert.match(police,/registrationKind/);
+ assert.match(police,/formalInlineArea/);
+ assert.match(fire,/className='dossier-three-column'/);
+ assert.match(fire,/column\('right',\['movements','sanctions','promotions','training'\]\)/);
+ assert.match(fire,/fireHeaderSpecialties/);
+ assert.match(fire,/fireOverviewRows/);
+ assert.match(fire,/renderRecentDossierEntries/);
+ assert.match(style,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+ assert.match(style,/@media\(max-width:800px\)/);
+});
+test('Elke registratie onderscheidt Belgische logtijd, werkelijke registrator en oorspronkelijke auteur',()=>{
+ const original={historicalImport:true,
+   registeredBy:{name:'Anvar',rank:'Inspecteur',call:'710'},
+   submittedByActor:{name:'Unemi',rank:'Aspirant Hoofdinspecteur',call:'620'},
+   eventDate:'2026-11-21',createdAt:'2026-11-22T09:30:00Z'};
+ const label=dossierRecordByline(original);
+ assert.match(label,/22\/11\/2026.*10:30/);
+ assert.match(label,/Door Unemi · 620/);
+ assert.match(label,/Namens Anvar · 710/);
+ assert.doesNotMatch(label,/Door Anvar/);
+ const regular=dossierRecordByline({registeredBy:{name:'Jones',call:'700'},
+   createdAt:'2026-11-22T09:30:00Z'});
+ assert.match(regular,/Door Jones · 700/);
+ assert.doesNotMatch(regular,/Namens/);
 });
