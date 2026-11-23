@@ -135,6 +135,16 @@ html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
  <p class="muted" id="integrationMessage" role="status" aria-live="polite">Status wordt geladen…</p>
  <div id="integrationGrid" class="integration-grid" aria-label="Status van koppelingen"></div>
  <p class="muted">Vaste-roepnummer-speeluren en maandelijkse FiveM-activiteit zijn twee onafhankelijke koppelingen. Dit scherm is uitsluitend ter inzage.</p>
+ <div id="dutySchemaInspector" hidden>
+  <div class="row"><div><h3>BelgiëPD API · diensturen</h3>
+   <p class="muted">Alleen Technisch Beheer. Deze controle toont uitsluitend veldnamen en types; geen medewerkersgegevens, uren of sleutel.</p></div>
+   <button type="button" class="secondary" id="dutySchemaCheck">Controleer API-velden</button></div>
+  <p id="dutySchemaMessage" class="muted" role="status" aria-live="polite">Nog niet gecontroleerd.</p>
+  <details id="dutySchemaFields" hidden>
+   <summary>Technische velden bekijken</summary>
+   <pre id="dutySchemaOutput" style="font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+  </details>
+ </div>
 </section>
 <section id="visualDesign" class="card" hidden aria-labelledby="visualDesignTitle">
  <div class="row"><div><p><a href="/vormgeving.html">Open de uitgebreide vormgevingseditor per pagina en per kader →</a></p><h2 id="visualDesignTitle">🎨 Vormgeving · centrale standaard</h2>
@@ -506,6 +516,27 @@ async function loadIntegrations(){
  }
 }
 $('integrationReload').addEventListener('click',loadIntegrations);
+$('dutySchemaCheck').addEventListener('click',async()=>{
+ const button=$('dutySchemaCheck'),status=$('dutySchemaMessage'),
+  panel=$('dutySchemaFields');
+ button.disabled=true;panel.hidden=true;status.textContent='Diensturenvelden controleren…';
+ try{
+  const result=await api('/api/technical-center/bpd-duty-schema');
+  if(!context?.canEdit)throw Error('Niet bevoegd');
+  const summary=source=>{
+   const render=list=>(list||[]).map(x=>x.field+' ('+x.type+')').join(', ')||'Geen velden';
+   return 'Status: '+String(source?.status||'onbekend')+
+    '\nRespons: '+String(source?.rootType||'onbekend')+
+    '\nVelden antwoord: '+render(source?.rootFields)+
+    '\nVelden registratie: '+render(source?.recordFields);
+  };
+  $('dutySchemaOutput').textContent='Eigen diensturen\n'+summary(result.personal)+
+    '\n\nGlobaal overzicht\n'+summary(result.aggregate);
+  panel.hidden=false;
+  status.textContent='Controle uitgevoerd. Veldnamen zijn nog geen bevestigde diensturen.';
+ }catch(error){status.textContent='Controle niet beschikbaar: '+error.message;}
+ finally{button.disabled=false}
+});
 async function load(){
  if(!auth?.currentUser){
   context=null;aeHasAccess=false;aePeople=[];integrationRequest++;
@@ -517,6 +548,7 @@ async function load(){
   const next=await api('/api/technical-center/context');
   context=next;
   $('integrations').hidden=false;
+  $('dutySchemaInspector').hidden=!next.canEdit;
   void loadIntegrations();
   void loadPersonnelManagement();
   $('overview').hidden=false;$('automation').hidden=false;
