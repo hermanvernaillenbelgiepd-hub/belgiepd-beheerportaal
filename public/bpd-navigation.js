@@ -696,7 +696,8 @@
         const token=await authenticated.getIdToken();
         const paths=['/api/activity-return/checks','/api/leave/requests',
           '/api/leave/series-notifications','/api/training-requests',
-          '/api/personnel-return-review','/api/management/pings/mine'];
+          '/api/personnel-return-review','/api/management/pings/mine',
+          '/api/leave/decision-notifications'];
         const responses=await Promise.all(paths.map(async path=>{
           try{
             const response=await fetch(path,{cache:'no-store',
@@ -705,7 +706,7 @@
           }catch{return null}
         }));
         if(seq!==requestSeq||!authenticated||responses.every(x=>!x))return;
-        const [returns,leave,series,training,identity,pings]=responses;
+        const [returns,leave,series,training,identity,pings,decisions]=responses;
         const queue=new Set();let personalUnread=0;
         for(const x of returns?.checks||[]){
           if(!x.readAt){queue.add('return:'+x.id);personalUnread++}
@@ -721,6 +722,9 @@
         for(const x of identity?.rows||[])queue.add('identity:'+(x.alertId||x.discordId));
         for(const x of pings?.pings||[])if(x.status!=='read'){
           queue.add('ping:'+x.id);personalUnread++;
+        }
+        for(const x of decisions?.notifications||[])if(!x.readAt){
+          queue.add('leave-decision:'+x.id);personalUnread++;
         }
         count=queue.size;unread=personalUnread;mark();
         setTimeout(mark,500);
