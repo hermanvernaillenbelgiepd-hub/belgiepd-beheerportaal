@@ -37,8 +37,8 @@ function description(p,extra=''){
 }
 function actions(p,li){
  const div=el('div','', 'activity-row-actions'),a=document.createElement('a');
- a.href='/personeelsbeheer.html?'+new URLSearchParams({
-  fiche:'1',dept:p.department,discordId:p.discordId}).toString();
+ a.href='/dossiercentrum.html?'+new URLSearchParams({
+  dept:p.department,discordId:p.discordId}).toString();
  a.textContent='Open dossier';
  const ping=el('button','Kopieer Discord @mention');ping.type='button';
  ping.onclick=async()=>{

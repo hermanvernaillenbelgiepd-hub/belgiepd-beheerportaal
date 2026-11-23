@@ -1735,6 +1735,10 @@ if(ficheMode){
   $('ficheBackLink').href=initialQuery.get('from')==='dossiercentrum'?'/dossiercentrum.html':'/personeelsbeheer.html';
   $('close').textContent='Terug naar de lijst';
 }
+// External name and 'Open' links target the protected dossier centre.
+const dossierDirectUrl=p=>'/dossiercentrum.html?'+new URLSearchParams({
+  dept:p.dept,discordId:p.discordId
+}).toString();
 const ficheUrl=p=>'/personeelsbeheer.html?'+new URLSearchParams({
   fiche:'1',dept:p.dept,discordId:p.discordId,
   ...(initialQuery.get('from')==='dossiercentrum'?{from:'dossiercentrum'}:{})
@@ -2693,7 +2697,7 @@ function render(){
     const name=document.createElement(person.canOpenDossier===true?'a':'strong');
     name.textContent=person.name;
     if(person.canOpenDossier===true){
-      name.href=ficheUrl(person);name.className='roster-dossier-name';
+      name.href=dossierDirectUrl(person);name.className='roster-dossier-name';
       name.title='Open beveiligd dossier van '+person.name;
       name.setAttribute('aria-label','Open dossier van '+person.name);
     }
@@ -2761,7 +2765,7 @@ function render(){
       const action=document.createElement('button');action.type='button';
       action.className='alt roster-open';action.textContent='Open';
       action.title='Open personeelsfiche van '+person.name;
-      action.onclick=()=>window.location.assign(ficheUrl(person));
+      action.onclick=()=>window.location.assign(dossierDirectUrl(person));
       cell.append(action);
     }else{
       const restricted=document.createElement('span');
