@@ -83,6 +83,7 @@ RUN node --test tests/activity-center-triage-ui.test.js
 RUN node --test tests/activity-records-compact-view.test.js
 RUN node --test tests/activity-leave-exclusion.test.js
 RUN node --test tests/activity-charts.test.js
+RUN node --test tests/activity-dashboard-redesign.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
