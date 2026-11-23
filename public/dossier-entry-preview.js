@@ -61,17 +61,6 @@ export function dossierRecordByline(row={}){
     parts.push('Namens '+facts.name+(facts.call?' · '+facts.call:''));
   return parts.filter(Boolean).join(' · ');
 }
-// Compact attribution used in all the personnel dossier sections. Its
-// export is required at module link time: omitting it prevents the entire
-// personnel page, including Firebase login, from starting.
-export function dossierRecordByline(row={}){
-  if(!row||typeof row!=='object')return '';
-  const facts=dossierAuthorFacts(row);
-  if(facts.name==='Niet geregistreerd'&&!facts.rank&&!facts.call)return '';
-  const attribution=dossierAuthorLine(row);
-  const moment=[facts.date,facts.time].filter(Boolean).join(' ');
-  return attribution+(moment?' · '+moment:'');
-}
 function field(content,label,value){
  if(!value)return;
  const row=document.createElement('div');row.className='bpd-record-fact';

@@ -93,12 +93,13 @@ test('dossier author byline exists as a real ESM export and does not invent attr
  assert.equal(dossierRecordByline({
   eventDate:'2026-11-23',eventTime:'19:15',
   registeredBy:{name:'Unemi',call:'620',rank:'Hoofdinspecteur'}
- }), 'Door Unemi · Hoofdinspecteur · 620 · 2026-11-23 19:15');
- assert.equal(dossierRecordByline({}), '');
+ }), 'Gebeurtenis 23/11/2026 19:15 · Door Unemi · 620');
+ assert.match(dossierRecordByline({}), /Door Niet geregistreerd/);
  assert.match(dossierRecordByline({
   historicalImport:true,
+  submittedByActor:{name:'Importer',call:'930'},
   registeredBy:{name:'Yassine',call:'207'}
- }), /^Oorspronkelijke invoerder: Yassine · 207$/);
+ }), /Namens Yassine · 207/);
 });
 test('personnel page imports only exports that exist, preventing a stuck login screen',()=>{
  const html=source('public/personeelsbeheer.html');
