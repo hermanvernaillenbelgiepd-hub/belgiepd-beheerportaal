@@ -482,8 +482,9 @@ function openRosterProfile(person){
  if(!auth?.currentUser)return;
  const permittedId=rosterDossierShortcuts.get(dossierKey(person));
  if(permittedId&&/^\d{15,22}$/.test(permittedId)){
-  const href='/personeelsbeheer.html?'+new URLSearchParams({
-   fiche:'1',dept:'politie',discordId:permittedId}).toString();
+  // Dossiercentrum opens the actual secured dossier after canOpen checks.
+  const href='/dossiercentrum.html?'+new URLSearchParams({
+   dept:'politie',discordId:permittedId}).toString();
   if(directoryEmbedded&&window.parent!==window)window.parent.location.assign(href);
   else window.location.assign(href);
   return;

@@ -25,7 +25,8 @@ test('server generates viewer-specific links only after checking subject read pe
 test('management names are links only when the source says dossier is allowed',()=>{
  const src=read('public/personeelsbeheer.html');
  assert.match(src,/createElement\(person\.canOpenDossier===true\?'a':'strong'\)/);
- assert.match(src,/name\.href=ficheUrl\(person\)/);
+ assert.match(src,/name\.href=dossierDirectUrl\(person\)/);
+ assert.match(src,/action\.onclick=\(\)=>window\.location\.assign\(dossierDirectUrl\(person\)\)/);
  assert.match(src,/roster-dossier-name/);
 });
 test('public directory falls back to personnel-card preview, does not infer role from name',()=>{
@@ -34,10 +35,25 @@ test('public directory falls back to personnel-card preview, does not infer role
  assert.match(src,/const permittedId=rosterDossierShortcuts\.get\(dossierKey\(person\)\)/);
  assert.match(src,/duplicates\.add\(key\)/);
  assert.match(src,/window\.parent\.location\.assign\(href\)/);
+ assert.match(src,/const href='\/dossiercentrum\.html\?'/);
  assert.match(src,/window\.parent\.postMessage\(\{type:'bpd-directory-profile-open'/);
  assert.match(src,/rosterDossierShortcuts=new Map\(\)/);
  // The pre-existing directory inline module contains browser-only syntax;
  // compare its original render and new branch without compiling it as a function.
  assert.match(src,/function openRosterProfile\(person\)/);
  assert.match(src,/function render\(\)/);
+});
+
+test('all external dossier actions use an existing canOpen-checked Dossiercentrum deeplink',()=>{
+ const manager=read('public/personeelsbeheer.html');
+ const directory=read('public/personeelslijst.html');
+ const activity=read('public/activity-expanded.js');
+ const centre=read('public/dossiercentrum.html');
+ assert.match(manager,/const dossierDirectUrl=p=>'\/dossiercentrum\.html\?'/);
+ assert.match(directory,/const href='\/dossiercentrum\.html\?'/);
+ assert.match(activity,/a\.href='\/dossiercentrum\.html\?'/);
+ assert.match(centre,/const targetDept=deep\.get\('dept'\),targetId=deep\.get\('discordId'\)/);
+ assert.match(centre,/p\.personnel===true&&p\.canOpen===true/);
+ assert.match(centre,/void openDossier\(record,\{syncUrl:false\}\)/);
+ assert.doesNotMatch(activity,/fiche:'1'/);
 });
