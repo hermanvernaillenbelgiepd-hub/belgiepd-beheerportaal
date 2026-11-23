@@ -6,6 +6,8 @@ import {activityOverview} from './activity-center-model.js';
 import {parseHistoricalRecords} from './activity-records-model.js';
 import {getFirestore} from 'firebase-admin/firestore';
 import {ACTIVITY_COLLECTION} from './activity-ping-policy.js';
+import {loadAppActivityIndex} from './bpd-app-player-index.js';
+import {absenceBreakdown} from './activity-absence-policy.js';
 import {RETURN_CHECK_COLLECTION} from './activity-return-policy.js';
 import {enrichActivityRow,dossierPingSummary,activityCenterStatistics}
  from './activity-center-details.js';
@@ -97,7 +99,12 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
   const scopes=DEPTS.filter(dept=>canViewPersonnel(req.bpd,dept));
   if(!scopes.length)return res.status(403).json({error:'Geen toegang tot activiteitsopvolging'});
   try{
-   const [snapshot,legacy,historical]=await Promise.all([getSnapshot(),loadOptionalSheet(readSheet),loadOptionalSheet(readRecords)]);
+   // API is the primary activity source when explicitly enabled.
+   // The spreadsheet is read ONLY when the API cannot deliver the full roster.
+   const [snapshot,appApi,historical]=await Promise.all([
+     getSnapshot(),loadAppActivityIndex(),loadOptionalSheet(readRecords)]);
+   const usingApi=appApi.status==='ok';
+   const legacy=usingApi?{rows:[],available:false}:await loadOptionalSheet(readSheet);
    if(snapshot.stale||!Array.isArray(snapshot.data))
     return res.status(503).json({error:'Actuele personeelsbron tijdelijk niet controleerbaar'});
    const allowed=snapshot.data.filter(person=>scopes.includes(person.dept)&&
@@ -158,7 +165,39 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
      }
     }
     if(!item)return null;
-    return {...copy,historicalRecords:historicalRows.items.get(row.discordId)||[]};
+    const apiPlayer=usingApi?appApi.players.get(row.discordId):null;
+    const apiProjection=usingApi?{
+      // API's play_time_minutes is cumulative, NOT a completed month's hours.
+      totalPlayHours:apiPlayer?.playHours??null,
+      // Leave-safe read-only display; never turns a lifetime total into a ping.
+      lastConnection:apiPlayer?.lastConnectionAt?.slice(0,10)||null,
+      lastCheck:apiPlayer?appApi.fetchedAt.slice(0,10):null,
+      apiTotalHours:apiPlayer?.playHours??null,
+      apiFirstConnectionAt:apiPlayer?.firstConnectionAt||null,
+      apiLastConnectionAt:apiPlayer?.lastConnectionAt||null,
+      apiTotalSource:apiPlayer?'bpd_app_api':'not_linked',
+      apiRetrievedAt:apiPlayer?appApi.fetchedAt:null,
+      periodPlayHours:copy.verified?copy.periodPlayHours:null,
+      periodLabel:copy.verified?copy.periodLabel:'Geen geverifieerde maanduren',
+      ...(copy.verified||copy.returnChecking||copy.leave?.active?{}:{
+        kind:apiPlayer?'geen_maandmeting':'geen_data',
+        reason:apiPlayer?
+          'BelgiëPD-API totaal beschikbaar; afgesloten maanduren ontbreken: geen automatische ping':
+          'Geen overeenkomstig Discord-ID in de BelgiëPD-API; geen automatische ping'
+      }),
+      ...(!apiPlayer?.lastConnectionAt?{}:(()=>{
+        const absence=absenceBreakdown(apiPlayer.lastConnectionAt,
+          leaveComplete?leaves.get(row.discordId)||[]:[],today);
+        return leaveComplete?{
+          daysInactive:absence.calendarDays,
+          calendarInactiveDays:absence.calendarDays,
+          excludedLeaveDays:absence.excludedLeaveDays,
+          effectiveInactiveDays:absence.effectiveDays
+        }:{};
+      })())
+    }:{};
+    return {...copy,...apiProjection,
+      historicalRecords:historicalRows.items.get(row.discordId)||[]};
    }).filter(Boolean);
    res.set('Cache-Control','private, no-store');
    const counts=Object.create(null);
@@ -168,6 +207,9 @@ export function installActivityCenterRoutes(app,{requireUser,getSnapshot,readShe
     departments:[...new Set(allowed.map(p=>p.dept))],
     source:{...summary.source,legacyAvailable:legacy.available,
      legacyRecordsAvailable:historical.available,
+     bpdAppApiStatus:appApi.status,bpdAppApiPrimary:usingApi,
+     bpdAppApiMatched:usingApi?people.filter(p=>p.apiTotalSource==='bpd_app_api').length:0,
+     activityBackupUsed:!usingApi&&legacy.available,
      approvedLeaveComplete:leaveComplete,verifiedAvailable:verifiedResult.status==='fulfilled',
      dossierPingsAvailable:pingsResult.status==='fulfilled',
      leaveReturnChecksAvailable:checkingResult.status==='fulfilled'}});

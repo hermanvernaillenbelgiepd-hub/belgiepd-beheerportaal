@@ -428,6 +428,11 @@ function render(){
   el('small',name));$('statistics').append(card)}
  const measured=scoped.filter(p=>p.verified===true).length;
  $('sourceNote').textContent='Bronnen: personeelslijst · '+
+   (sources?.bpdAppApiPrimary?
+     'BelgiëPD-API primair: '+sources.bpdAppApiMatched+
+     ' gekoppelde leden met totale speeluren en laatste verbinding (geen maanduren) · ':
+     sources?.bpdAppApiStatus&&sources.bpdAppApiStatus!=='disabled'?
+     'BelgiëPD-API niet beschikbaar ('+sources.bpdAppApiStatus+'); spreadsheet als terugval · ':'')+
    (sources?.verifiedAvailable?
     measured+' recente geverifieerde FiveM-metingen binnen deze selectie; '+ 
     (measured?'gegevens gecontroleerd':'geen actuele metingen aangetroffen'):
@@ -473,6 +478,9 @@ function render(){
   row.append(el('td',p.effectiveInactiveDays===null?'—':p.effectiveInactiveDays+' dagen · '+p.excludedLeaveDays+' verlof'));
   const hours=el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur');
   hours.append(el('small',p.verified?'✓ Geverifieerd · '+p.periodLabel:p.periodLabel||'Oude bron'));
+  if(p.apiTotalSource==='bpd_app_api'&&Number.isFinite(p.apiTotalHours))
+    hours.append(el('small','BelgiëPD-API totaal: '+p.apiTotalHours.toLocaleString('nl-BE')+
+      ' uur · niet de huidige maand'));
   const lastHistorical=p.historicalRecords?.at(-1);
   if(lastHistorical)hours.append(el('small','RECORDS '+belgianHistoricalDate(lastHistorical.date)+': '+lastHistorical.hours+' uur (peilstand)'));
   row.append(hours);

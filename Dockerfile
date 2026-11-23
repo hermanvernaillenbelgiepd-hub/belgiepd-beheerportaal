@@ -89,6 +89,7 @@ RUN node --test tests/leave-dual-recipient-notices.test.js
 RUN node --test tests/personnel-name-dossier-shortcuts.test.js
 RUN node --test tests/dossier-three-column-presentation.test.js
 RUN node --test tests/bpd-app-hours-readonly.test.js
+RUN node --test tests/bpd-app-activity-primary.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
