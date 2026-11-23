@@ -39,6 +39,7 @@ import {projectLeaveReturnChecking} from './personnel-return-status-projection.j
 import {installCallsignSelfServiceRoutes} from './callsign-selfservice-routes.js';
 import {installMemberDashboardRoutes} from './member-dashboard-routes.js';
 import {canSeeDashboardManagement,canSeeAdvancedDashboard,isFireZoneDashboard,ambulanceDashboardTier} from './dashboard-admin-policy.js';
+import {portalNavigationCapabilities} from './portal-navigation-policy.js';
 import {mayReadFortnightReport} from './fortnight-report-policy.js';
 import { installManagementRoutes } from './management-routes.js';
 import { installDiscordOAuth } from './discord-oauth.js';
@@ -822,14 +823,17 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     const id=req.bpd?.discordId;
     const valid=/^\d{15,22}$/.test(String(id||''));
     const db=getFirestore();
-    const [snapshot,member,appointment,grants,tester]=await Promise.all([
+    const [snapshot,member,appointment,grants,tester,toNavigationGrant]=await Promise.all([
       getSnapshot(),
       valid?db.collection('bpd_discord_auth').doc(id).get():Promise.resolve(null),
       valid?db.collection('bpd_board_appointments').doc(id).get():Promise.resolve(null),
       valid?Promise.all(DOSSIER_DEPTS.map(d=>db.collection(DOSSIER_GRANT_COLLECTION)
         .doc(dossierGrantKey(d,id)).get())):Promise.resolve([]),
       valid&&process.env.FIREBASE_PROJECT_ID==='belgiepd-test'
-        ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null)
+        ?db.collection('bpd_dossier_testers').doc(id).get():Promise.resolve(null),
+      valid&&req.bpd?.uid==='discord:'+id&&
+        req.path==='/api/dashboard/admin-visibility'
+        ?cachedAuthDoc('bpd_to_access',id):Promise.resolve(null)
     ]);
     // Restrict exceptional cross-service dossier WRITES if the official roster is stale.
     req.bpd.dossierSourceFresh=snapshot.stale!==true;
@@ -884,6 +888,16 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     req.bpd.dossierManageDepartments=scope.manageDepartments;
     req.bpd.dossierFullDepartments=scope.fullDepartments;
     req.bpd.dossierTester=scope.tester;
+    // Sidebar-only scope, based on the same fully verified actor as the API.
+    // A revoked TO document overrides legacy allowlist entries.
+    if(req.path==='/api/dashboard/admin-visibility'){
+      if(toNavigationGrant?.exists){
+        const grant=toNavigationGrant.data();
+        req.bpd.toAccessLevel=grant?.status==='active'&&
+          ['read','operate'].includes(grant?.level)?grant.level:'revoked';
+      }
+      req.bpd.portalNavigation=portalNavigationCapabilities(req.bpd,roster);
+    }
     // Read only after dossier scopes are resolved; a foreign service-leader
     // role must never promote the holder's Police Basiskader permissions.
     req.bpd.basicObservationCanReview=mayReadBasicInbox(req.bpd);
@@ -1041,6 +1055,7 @@ app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.json({visible:canSeeDashboardManagement(req.bpd),
     technicalCenterVisible:mayOpenTechnicalCenter(req.bpd),
     showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
+    navigationCapabilities:req.bpd.portalNavigation||{},
     dashboardProfile:isFireZoneDashboard(req.bpd)?'brandweer-zone':
       ambulanceDashboardTier(req.bpd)?'ambulance-azls':null,
     zoneVerified:req.bpd.fireZoneChief===true,
