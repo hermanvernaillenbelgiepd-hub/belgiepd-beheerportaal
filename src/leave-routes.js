@@ -10,6 +10,7 @@ import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {activeBoardAppointment} from './board-appointment-policy.js';
 import {leaveCanWithdraw,leaveCanReapply,writeLeaveEvent} from './leave-event-log.js';
 import {leaveRequestWorkflow} from './leave-request-provenance.js';
+import {PERSONAL_LEAVE_DECISIONS,leaveDecisionRecipients,stageLeaveDecisionNotifications,validPersonalLeaveDecisionId,publicLeaveDecision} from './leave-decision-notifications.js';
 import {actorFromPersonnel,representativeFromPersonnel} from './registrations.js';
 import {HISTORICAL_OBSERVATION_SETTINGS,HISTORICAL_OBSERVATION_DOC,
  historicalMigrationSettings,historicalMigrationAllowed,canManageHistoricalObservationImport,validateHistoricalActorSelection}
@@ -248,6 +249,42 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           informational.length>=100||overrides.length>=250});
     }catch(e){return jsonError(res,e)}
   });
+  // Authenticated users see only notices addressed to their verified Discord ID.
+  // This independent inbox also reaches the kaderlid who submitted on behalf
+  // of a colleague, without granting them access to that colleague's dossier.
+  app.get('/api/leave/decision-notifications',requireUser,async(req,res)=>{
+    const recipient=req.bpd?.discordId;
+    if(!validDiscordId(recipient))return res.status(403).json({error:'Discord-identiteit niet geverifieerd'});
+    try{
+      const result=await db().collection(PERSONAL_LEAVE_DECISIONS)
+       .where('recipientDiscordId','==',recipient).limit(151).get();
+      const sorted=result.docs.slice(0,150).sort((a,b)=>{
+       const time=x=>x.get('createdAt')?.toMillis?.()||0;
+       return time(b)-time(a)||b.id.localeCompare(a.id);
+      });
+      res.set('Cache-Control','private, no-store');
+      return res.json({notifications:sorted.map(publicLeaveDecision),
+        unread:sorted.filter(doc=>!doc.get('readAt')).length,
+        limited:result.size>150});
+    }catch(e){return jsonError(res,e)}
+  });
+  app.post('/api/leave/decision-notifications/:id/read',requireUser,async(req,res)=>{
+    const recipient=req.bpd?.discordId,id=String(req.params.id||'');
+    if(!validDiscordId(recipient)||!validPersonalLeaveDecisionId(id)||
+       !id.startsWith(recipient+'_'))
+      return res.status(403).json({error:'Geen toegang tot deze persoonlijke melding'});
+    try{
+      const ref=db().collection(PERSONAL_LEAVE_DECISIONS).doc(id);
+      await db().runTransaction(async tx=>{
+        const snap=await tx.get(ref);
+        if(!snap.exists||snap.get('recipientDiscordId')!==recipient)
+          throw rejection('Melding niet gevonden',404);
+        if(!snap.get('readAt'))tx.update(ref,{readAt:FieldValue.serverTimestamp()});
+      });
+      res.set('Cache-Control','private, no-store');
+      return res.json({ok:true,read:true});
+    }catch(e){return jsonError(res,e)}
+  });
   // Dossierweergave: reden uitsluitend na bestaande dossier-/dienstautorisatie.
   // Nooit via de publieke personeelslijst. Een medewerker mag eigen verlof zien.
   // Only current, APPROVED leave is shown in the roster. Date boundaries
@@ -393,9 +430,15 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           };
           writeLeaveEvent(tx,{requestRef:target,request:historyBase,action:'submitted',
             actor:submitter,actorUid:req.bpd.uid,eventDate:yyyyMmDd(),to:'pending'});
-          if(autoApproved)writeLeaveEvent(tx,{requestRef:target,request:historyBase,
-            action:'automatic_approved',
-            actor:null,actorUid:null,eventDate:yyyyMmDd(),from:'pending',to:'approved'});
+          if(autoApproved){
+            writeLeaveEvent(tx,{requestRef:target,request:historyBase,
+              action:'automatic_approved',
+              actor:null,actorUid:null,eventDate:yyyyMmDd(),from:'pending',to:'approved'});
+            stageLeaveDecisionNotifications(tx,{db:db(),requestRef:target,
+              request:{...historyBase,manual:false,submittedByDiscordId:id},
+              decision:'approved',decidedBy:{name:'Systeem · automatische goedkeuring'},
+              eventKey:'auto_approved'});
+          }
           createdId=target.id;
         });
       }catch(e){
@@ -620,6 +663,8 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
         writeLeaveEvent(tx,{requestRef:ref,request:d,action:decision,
           actor:decisionActor,
           actorUid:req.bpd.uid,eventDate:yyyyMmDd(),from:'pending',to:decision,note:note.trim()});
+        stageLeaveDecisionNotifications(tx,{db:db(),requestRef:ref,request:d,
+          decision,decidedBy:decisionActor,note:note.trim(),eventKey:'decision'});
       });
       return res.json({ok:true,status:decision});
     }catch(e){return jsonError(res,e)}
@@ -658,6 +703,9 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           actor:decisionActor,
           actorUid:req.bpd.uid,eventDate:yyyyMmDd(),
           from:previous.status,to:req.body.decision,note:reason});
+        stageLeaveDecisionNotifications(tx,{db:db(),requestRef:ref,request:previous,
+          decision:req.body.decision,decidedBy:decisionActor,note:reason,
+          eventKey:'override_'+ref.collection('audit').doc().id});
       });
       return res.json({ok:true,status:req.body.decision,overridden:true});
     }catch(e){return jsonError(res,e)}
@@ -778,6 +826,12 @@ export function installLeaveRoutes(app,{requireUser,requireDossierUser=requireUs
           // Ordinary manual decisions still retain today's decision date.
           eventDate:originalAuthor?details.startDate:yyyyMmDd(),
           to:status,note:details.note});
+        if(!needsHigherApproval&&!originalAuthor)
+          stageLeaveDecisionNotifications(tx,{db:db(),requestRef:ref,
+            request:{...details,personDiscordId:personId,subjectName:subject.name,
+              subjectCall:subject.call,submittedByDiscordId:req.bpd.discordId,
+              submittedByActor:manualActor,manual:true},
+            decision:'approved',decidedBy:manualActor,eventKey:'manual_approved'});
       });
       return res.status(201).json({id:uniqueId,status,
         days:details.days,manual:true,departments,
