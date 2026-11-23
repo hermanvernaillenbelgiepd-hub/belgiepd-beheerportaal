@@ -71,6 +71,8 @@ RUN node --test tests/general-personnel-roster-actions.test.js
 RUN node --test tests/activity-police-series-filter.test.js
 RUN node --test tests/personnel-ping-scope-policy.test.js
 RUN node --test tests/activity-roster-adaptive.test.js
+RUN node --test tests/personnel-roster-responsive-consistency.test.js
+RUN node --test tests/service-scoped-dossier-author.test.js
 ENV PORT=8080
 EXPOSE 8080
 USER node
