@@ -45,6 +45,23 @@ export function activityReviewForNewPing({dept,discordId,entryId,actor,subject,d
   discordPingDate:data.discordPingSent?data.discordPingDate||null:null,
   readBy:{},createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
 }
+// Automated alerts are always informational. They can never become a
+// personnel ACTIEF proposal based solely on hours or days without login.
+export function activityReviewForAutomaticPing(person,ping,entryId){
+ if(person?.dept!=='politie'||!ID.test(String(person.personId||''))||
+  !ENTRY.test(entryId)||!['50/50','INACTIEF'].includes(ping?.kind))
+  throw Error('Ongeldige automatische activiteitenopvolging');
+ return {type:'activity_ping',dept:'politie',entryId,
+  caseId:'politie_'+person.personId,targetDiscordId:person.personId,
+  subjectName:trim(person.name),subjectCall:trim(person.call,24),
+  previousStatus:upper(person.status),activityStatus:ping.kind,
+  proposedStatus:null,state:'information',checkingReturnId:null,
+  statusBeforeChecking:null,
+  reporterName:'BelgiumPD activiteitscontrole',reporterCall:'—',
+  reporterDiscordId:null,discordPingSent:false,discordPingDate:null,
+  source:'automatic_fivem_activity',readBy:{},
+  createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
+}
 export function publicActivityReview(id,data,subject,actor){
  if(!ENTRY.test(id)||data?.type!=='activity_ping'||data.dept!=='politie'||!subject||
   !canReviewPoliceActivity(actor)||!canReadPersonnelSubject(actor,subject))return null;
