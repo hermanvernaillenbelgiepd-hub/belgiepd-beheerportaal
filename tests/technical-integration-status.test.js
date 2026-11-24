@@ -76,3 +76,37 @@ test('Beheercentrum reveals the panel only after center authorization',()=>{
  assert.match(p,/const next=await api\('\/api\/technical-center\/context'\)/);
  assert.match(server,/installTechnicalIntegrationStatusRoutes\(app,\{requireUser\}\)/);
 });
+
+test('readiness pinpoints absent Discord bot independently of BelgiumPD API',()=>{
+ const data=integrationsSummary(actor,{
+  BPD_DISCORD_USERS_API_TOKEN:'secret-api-token-must-not-be-exposed',
+  DISCORD_GUILD_ID:'123456789012345670'
+ },{
+  firebase:{status:'fulfilled',value:null},
+  hours:{status:'fulfilled',value:null},activity:{status:'fulfilled',value:null}
+ },now);
+ assert.equal(data.activityReadiness.checkedMonth,'2026-10');
+ assert.equal(data.activityReadiness.canConfirmSafeAutomation,false);
+ assert.equal(data.activityReadiness.steps.find(x=>x.id==='discord-bot').state,'missing');
+ assert.equal(data.activityReadiness.steps.find(x=>x.id==='automatic').state,'off');
+ assert.match(data.activityReadiness.nextAction,/BPD_DISCORD_BOT_TOKEN/);
+ assert.doesNotMatch(JSON.stringify(data),/secret-api-token-must-not-be-exposed/);
+});
+test('one recent event never proves monthly coverage or enables auto alerts',()=>{
+ const report=integrationsSummary(actor,env,{
+  firebase:{status:'fulfilled',value:null},
+  hours:{status:'fulfilled',value:event(now-600000)},
+  activity:{status:'fulfilled',value:event(now-600000)}
+ },now).activityReadiness;
+ assert.equal(report.steps.find(x=>x.id==='received').state,'ok');
+ assert.equal(report.steps.find(x=>x.id==='coverage').state,'pending');
+ assert.equal(report.coverageVerified,false);
+ assert.equal(report.canConfirmSafeAutomation,false);
+ assert.match(report.nextAction,/offline/);
+});
+test('Technical Center can display the readiness report without exposing secrets',()=>{
+ const ui=readFileSync(new URL('../public/beheercentrum.html',import.meta.url),'utf8');
+ assert.match(ui,/id="activityReadinessPanel"[^>]+hidden/);
+ assert.match(ui,/data\.activityReadiness/);
+ assert.match(ui,/readiness\.nextAction/);
+});

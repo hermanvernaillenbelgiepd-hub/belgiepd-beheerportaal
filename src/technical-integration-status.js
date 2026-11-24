@@ -5,7 +5,7 @@ import {discordConfig,isDiscordId} from './discord-utils.js';
 import {discordBotToken} from './discord-bot-refresh.js';
 import {botTelemetryReady} from './callsign-bot-telemetry.js';
 import {activityTelemetryEnabled} from './activity-telemetry-routes.js';
-import {ACTIVITY_INGEST_EVENTS} from './activity-ping-policy.js';
+import {ACTIVITY_INGEST_EVENTS,previousCompleteMonth} from './activity-ping-policy.js';
 import {mayOpenTechnicalCenter,mayEditTechnicalSettings} from './technical-center-config.js';
 import {inspectDutySchema} from './bpd-duty-schema.js';
 
@@ -25,6 +25,48 @@ function measurement(id,title,enabled,result,now,freshMs){
    age>=0&&age<=freshMs?'Recent een ondertekende meting ontvangen; geen garantie op een live verbinding.':
      'Een eerdere meting bestaat, maar is niet meer recent.',stamp);
 }
+// Read-only non-secret preflight; one signed event never establishes full staff coverage.
+export function activityIngestReadiness(env,bot,activityItem,now=Date.now()){
+ const secret=String(env.BPD_CALLSIGN_BOT_WEBHOOK_SECRET||'');
+ const signed=Buffer.byteLength(secret,'utf8')>=32&&
+  !/^(CHANGE_ME|PLACEHOLDER|YOUR_|JOUW_)/i.test(secret);
+ const ingest=env.BPD_ENABLE_ACTIVITY_TELEMETRY==='true',
+  automatic=env.BPD_ENABLE_ACTIVITY_AUTO_PINGS==='true',
+  recent=activityItem?.state==='connected';
+ const steps=[
+  {id:'discord-bot',state:bot?'ok':'missing',
+   label:'Discord-bot voor lidmaatschapscontrole',
+   detail:bot?'Token en server-ID ingesteld, live lidcontrole nog niet getest.':
+    'Discord-bot-token ontbreekt of is ongeldig. De BelgiëPD-API-token is een afzonderlijke sleutel.'},
+  {id:'signature',state:signed?'ok':'missing',
+   label:'Ondertekening van FiveM-metingen',
+   detail:signed?'Webhooksecret ingesteld, nog geen garantie op een correcte handtekening.':
+    'BPD_CALLSIGN_BOT_WEBHOOK_SECRET moet minimaal 32 bytes zijn.'},
+  {id:'ingest',state:ingest?'ok':'missing',
+   label:'Ontvangst van ondertekende activiteit',
+   detail:ingest?'BPD_ENABLE_ACTIVITY_TELEMETRY ingeschakeld.':
+    'De ingest staat nog uit; eerst een echte vertrouwde botbron voorzien.'},
+  {id:'received',state:recent?'ok':'pending',
+   label:'Recent binnengekomen ondertekende meting',
+   detail:recent?'Ten minste één recente meting. Dit bewijst geen volledige maand of rosterdekking.':
+    'Geen ondertekende activiteitsmeting van de laatste 36 uur geverifieerd.'},
+  {id:'coverage',state:'pending',
+   label:'Volledige maand, ook voor offline medewerkers',
+   detail:'Controle van alle Discord-ID’s en de afgesloten kalendermaand moet nog afzonderlijk gebeuren.'},
+  {id:'automatic',state:automatic?'warning':'off',
+   label:'Automatische 50/50- en INACTIEF-portaalmeldingen',
+   detail:automatic?'Schakelaar staat aan: controle van dekking en bron vereist.':
+    'Schakelaar staat uit: geen automatische activiteitenpings.'}
+ ];
+ const nextAction=!bot?'Stel BPD_DISCORD_BOT_TOKEN of DISCORD_BOT_TOKEN in via de privé-omgeving van Render; deel de sleutel niet in de chat.':
+  !signed?'Configureer de HMAC-secret BPD_CALLSIGN_BOT_WEBHOOK_SECRET in Render en de vertrouwde bot.':
+  !ingest?'Verifieer de bron en activeer daarna uitsluitend BPD_ENABLE_ACTIVITY_TELEMETRY.':
+  !recent?'Laat de bot een echte ondertekende meting naar POST /api/activity/bot/telemetry versturen.':
+  'Controleer volledige dekking, ook offline personeel, en de afgesloten maand vóór automatische pings.';
+ return {checkedMonth:previousCompleteMonth(new Date(now)),
+  source:'signed-fivem-bot',coverageVerified:false,
+  autoPingsConfigured:automatic,canConfirmSafeAutomation:false,steps,nextAction};
+}
 export function integrationsSummary(actor,env,checks,now=Date.now()){
  const bot=Boolean(discordBotToken(env)&&isDiscordId(env.DISCORD_GUILD_ID));
  const oauth=env.BPD_ENABLE_DISCORD_PORTAL_LOGIN==='true'&&discordConfig(env).ready;
@@ -32,7 +74,8 @@ export function integrationsSummary(actor,env,checks,now=Date.now()){
  const token=String(env.BPD_DISCORD_USERS_API_TOKEN||'').trim();
  const rolesApi=token.length>=8&&!/^(YOUR_|JOUW_|PLACEHOLDER|CHANGE_ME)/i.test(token);
  const hours=bot&&botTelemetryReady(env),activity=bot&&activityTelemetryEnabled(env);
- return {checkedAt:new Date(now).toISOString(),integrations:[
+ const activityItem=measurement('activity','FiveM-activiteit · maanduren',activity,checks.activity,now,36*3600000);
+ return {checkedAt:new Date(now).toISOString(),activityReadiness:activityIngestReadiness(env,bot,activityItem,now),integrations:[
   item('discord','Discord-aanmelding',oauth&&signed?'connected':'disabled',
     oauth&&signed?'Huidige sessie is door het portaal geverifieerd.':
       'Discord-aanmelding is niet volledig geconfigureerd of deze sessie gebruikt geen Discord.'),
@@ -43,7 +86,7 @@ export function integrationsSummary(actor,env,checks,now=Date.now()){
     rolesApi?'Afzonderlijke leden-API ingesteld; verbinding niet live gecontroleerd.':
       'De afzonderlijke Discord-leden-API is niet ingesteld.'),
   measurement('hours','FiveM-speeluren · vast roepnummer',hours,checks.hours,now,7*86400000),
-  measurement('activity','FiveM-activiteit · maanduren',activity,checks.activity,now,36*3600000),
+  activityItem,
   item('firebase','Firebase / Firestore',checks.firebase.status==='fulfilled'?'connected':'error',
     checks.firebase.status==='fulfilled'?'Databaseantwoord ontvangen bij deze controle.':
       'De databasecontrole is mislukt.')
