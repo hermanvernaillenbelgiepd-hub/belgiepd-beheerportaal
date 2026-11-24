@@ -61,6 +61,28 @@
     adaptive.href='/bpd-adaptive-layout.css';
     document.head.append(adaptive);
   }
+  if(!document.getElementById('bpdInterFont')){
+    const font=document.createElement('link');
+    font.id='bpdInterFont';font.rel='stylesheet';
+    font.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap';
+    document.head.append(font);
+  }
+  if(!document.getElementById('bpdEmojiIcons')){
+    const icons=document.createElement('script');
+    icons.id='bpdEmojiIcons';icons.src='/bpd-icons.js?v=20261124';icons.defer=true;
+    document.head.append(icons);
+  }
+  if(!document.getElementById('bpdModernStyles')){
+    const modern=document.createElement('link');
+    modern.id='bpdModernStyles';modern.rel='stylesheet';
+    modern.href='/bpd-modern.css?v=20261124';
+    document.head.append(modern);
+  }
+  if(!document.getElementById('bpdLightSurfaces')){
+    const ls=document.createElement('script');
+    ls.id='bpdLightSurfaces';ls.src='/bpd-light-surfaces.js?v=20261124';ls.defer=true;
+    document.head.append(ls);
+  }
   if(!document.querySelector('script[data-bpd-visual-design]')){
     const design=document.createElement('script');
     design.src='/bpd-visual-design.js';

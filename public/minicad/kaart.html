@@ -1,0 +1,2155 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>TO-MINICAD – Kaart</title>
+<style>
+/* =====================================================================
+   kaart.html — de kaart van TO-MINICAD
+
+   Deze pagina wordt op twee manieren gebruikt:
+   1. in een venster binnen de app (een iframe in index.html)
+   2. als los venster (Tauri-venster "kaart", zie kaart.rs)
+
+   Ze praat met index.html via localStorage (beide pagina's delen die):
+     dispatchKaartState  index.html → kaart : pins, "plaatsen"-modus, focus
+     dispatchKaartCmd    kaart → index.html : plaats / annuleer / toon
+     dispatchKaartAlive  kaart (los venster) → tijdstip, om te weten dat ze open is
+   De kaartafbeelding is "kaart.png" (of anders "kaart.jpg") naast dit bestand.
+   ===================================================================== */
+:root{
+    --bg:#070e1c;
+    --raised:#142a4d;
+    --raised-hover:#1b3764;
+    --line:#27437a;
+    --text:#eaf1ff;
+    --muted:#8da3c7;
+    --primary:#2f6df6;
+}
+
+*{ box-sizing:border-box; }
+
+html, body{
+    margin:0;
+    height:100%;
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+#box{
+    position:fixed;
+    inset:0;
+    overflow:hidden;
+    touch-action:none;
+    cursor:grab;
+}
+#box.sleept{ cursor:grabbing; }
+#box.plaatst{ cursor:crosshair; }
+
+#img{
+    position:absolute;
+    left:0; top:0;
+    max-width:none;
+    width:auto;
+    transform-origin:0 0;
+    user-select:none;
+    -webkit-user-drag:none;
+    pointer-events:none;
+}
+
+/* ---- Pins ---------------------------------------------------------- */
+#pins{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+}
+
+.pin{
+    position:absolute;
+    left:0; top:0;
+    pointer-events:auto;
+    cursor:pointer;
+    will-change:transform;
+}
+
+.pin .bol{
+    min-width:44px;
+    height:36px;
+    padding:0 10px;
+    display:grid;
+    place-items:center;
+    border-radius:18px;
+    background:var(--k, #ffb347);
+    border:3px solid #fff;
+    color:#111;
+    font-size:18px;
+    font-weight:900;
+    letter-spacing:0.01em;
+    box-shadow:0 0 0 2px rgba(0,0,0,0.75), 0 3px 10px rgba(0,0,0,0.7);
+}
+
+/* Het puntje onder de pin: dit staat op de exacte plek */
+.pin::after{
+    content:"";
+    display:block;
+    width:0; height:0;
+    margin:-1px auto 0;
+    border-left:8px solid transparent;
+    border-right:8px solid transparent;
+    border-top:12px solid #fff;
+}
+
+.pin:hover .bol{ filter:brightness(1.15); }
+
+/* ---- Knoppen ------------------------------------------------------- */
+.knoppen{
+    position:absolute;
+    top:10px; right:10px;
+    display:flex;
+    gap:6px;
+    z-index:3;
+}
+
+button{
+    width:36px;
+    height:36px;
+    margin:0;
+    padding:0;
+    font-size:18px;
+    line-height:1;
+    font-family:inherit;
+    font-weight:600;
+    color:var(--text);
+    background:var(--raised);
+    border:1px solid var(--line);
+    border-radius:8px;
+    cursor:pointer;
+}
+button:hover{ background:var(--raised-hover); }
+body.pinsLos .pin{ cursor:grab; }
+.knoppenOnder{
+    position:absolute;
+    right:10px; bottom:10px;
+    z-index:3;
+}
+#btnSlot.open{ background:#e8590c; border-color:#ffb27a; color:#fff; box-shadow:0 0 0 3px rgba(232,89,12,.35); }
+#btnSlot.open:hover{ background:#f76707; }
+button:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
+
+/* ---- Banner in "plaatsen"-modus ------------------------------------ */
+#banner{
+    position:absolute;
+    top:10px; left:10px;
+    right:180px;
+    z-index:3;
+    display:none;
+    align-items:center;
+    gap:10px;
+    padding:8px 12px;
+    border-radius:10px;
+    background:rgba(90,143,255,0.92);
+    color:#fff;
+    font-size:14px;
+    font-weight:600;
+    box-shadow:0 2px 10px rgba(0,0,0,0.5);
+}
+#banner span{ flex:1; }
+#banner button{
+    width:auto;
+    height:28px;
+    padding:0 10px;
+    font-size:13px;
+}
+
+/* ---- Tekeningen (perimeters, zones, markers) ----------------------- */
+#svg{
+    position:absolute;
+    left:0; top:0;
+    width:100%; height:100%;
+    overflow:visible;
+    pointer-events:none;
+}
+
+#vormEls{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+}
+
+.vlabel, .marker{
+    position:absolute;
+    left:0; top:0;
+    pointer-events:auto;
+    cursor:pointer;
+    will-change:transform;
+    user-select:none;
+}
+
+/* Greepjes om een gekozen tekening te verplaatsen of van vorm te veranderen */
+.handvat{
+    position:absolute;
+    left:0; top:0;
+    width:18px; height:18px;
+    border-radius:50%;
+    background:#fff;
+    border:3px solid var(--k, #5a8fff);
+    box-shadow:0 0 0 2px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.6);
+    pointer-events:auto;
+    cursor:move;
+    touch-action:none;
+    will-change:transform;
+    user-select:none;
+}
+.handvat.midden{
+    width:28px; height:28px;
+    display:grid; place-items:center;
+    font-size:16px; line-height:1; color:#111;
+}
+.handvat.straal{ cursor:ew-resize; }
+
+.vlabel{
+    cursor:grab;
+    touch-action:none;
+    max-width:220px;
+    padding:2px 8px;
+    border-radius:6px;
+    background:rgba(0,0,0,0.72);
+    border:1px solid var(--k, #fff);
+    color:#fff;
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.marker .bol{
+    width:32px;
+    height:32px;
+    display:grid;
+    place-items:center;
+    border-radius:50%;
+    background:rgba(0,0,0,0.78);
+    border:3px solid var(--k, #fff);
+    font-size:17px;
+    line-height:1;
+    box-shadow:0 2px 6px rgba(0,0,0,0.6);
+}
+
+.marker img{
+    pointer-events:none;
+    -webkit-user-drag:none;
+}
+
+.marker .naam{
+    margin-top:3px;
+    padding:1px 6px;
+    border-radius:5px;
+    background:rgba(0,0,0,0.72);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    text-align:center;
+    white-space:nowrap;
+}
+
+.marker.gekozen .bol,
+.vlabel.gekozen{
+    box-shadow:0 0 0 3px #fff;
+}
+
+/* ---- Paneel linksonder: tekenen en gekozen tekening ----------------- */
+.paneel{
+    position:absolute;
+    left:10px;
+    bottom:10px;
+    z-index:3;
+    width:min(300px, calc(100% - 20px));
+    max-height:calc(100% - 20px);
+    overflow:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.paneel button, .paneel select, .paneel input{
+    font-family:inherit;
+}
+
+.paneelKnop{
+    width:auto;
+    align-self:flex-start;
+    padding:0 12px;
+    font-size:14px;
+}
+
+.kaartje{
+    display:none;
+    flex-direction:column;
+    gap:8px;
+    padding:10px;
+    border-radius:10px;
+    background:rgba(24,27,31,0.95);
+    border:1px solid var(--line);
+    box-shadow:0 4px 16px rgba(0,0,0,0.55);
+    font-size:13px;
+}
+
+.kaartje.open{ display:flex; }
+
+.kaartje label{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    color:var(--muted);
+    font-size:12px;
+}
+
+.kaartje select, .kaartje input[type="text"]{
+    width:100%;
+    height:32px;
+    padding:0 8px;
+    font-size:13px;
+    color:var(--text);
+    background:#0e1c36;
+    border:1px solid var(--line);
+    border-radius:6px;
+}
+
+.rij{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    align-items:center;
+}
+
+.kaartje .rij button{
+    width:auto;
+    height:30px;
+    padding:0 10px;
+    font-size:13px;
+}
+
+.kaartje .rij button.aan{
+    background:rgba(90,143,255,0.3);
+    border-color:var(--primary);
+}
+
+.kaartje .wis{
+    background:rgba(255,107,107,0.12);
+    border-color:rgba(255,107,107,0.5);
+    color:#ff9aa3;
+}
+
+.kleurRij button{
+    width:26px !important;
+    height:26px !important;
+    padding:0 !important;
+    border-radius:50%;
+    border:2px solid transparent;
+}
+
+.kleurRij button.aan{
+    border-color:#fff;
+    box-shadow:0 0 0 2px rgba(255,255,255,0.35);
+}
+
+.hint{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.35;
+}
+
+#melding{
+    position:absolute;
+    inset:0;
+    display:none;
+    place-items:center;
+    padding:24px;
+    text-align:center;
+    color:var(--muted);
+}
+#pinVraag{
+    display:none; position:absolute; z-index:60;
+    left:50%; top:16px; transform:translateX(-50%);
+    align-items:center; gap:10px; padding:10px 14px; max-width:min(92vw, 640px); flex-wrap:wrap; justify-content:center; text-align:center;
+    background:rgba(14,28,54,0.97); color:var(--text);
+    border:1px solid var(--primary); border-radius:12px;
+    box-shadow:0 6px 24px rgba(0,0,0,0.6); font-size:14px; font-weight:600;
+}
+#pinVraag button{ width:auto; height:32px; margin:0; padding:0 14px; font-size:13px; border-radius:8px; cursor:pointer; }
+#pinVraag .ja{ background:var(--primary); border-color:var(--primary); color:#fff; }
+</style>
+</head>
+<body>
+
+<div id="box">
+    <img id="img" alt="Kaart" draggable="false">
+
+    <!-- Tekeningen: vlakken in een SVG (in kaartpunten), labels en markers als gewone elementen -->
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+        <g id="g"></g>
+        <g id="voorbeeld"></g>
+    </svg>
+    <div id="vormEls"></div>
+
+    <div id="pins"></div>
+
+    <div id="melding">
+        De kaart is niet gevonden.<br>
+        Zet het bestand "kaart.png" (of "kaart.jpg") naast kaart.html.
+    </div>
+
+    <div id="pinVraag" role="alertdialog" aria-live="assertive">
+        <span id="pinVraagTekst"></span>
+        <button id="pinVraagJa" class="ja">Ja, verplaatsen</button>
+        <button id="pinVraagNee">Annuleren</button>
+    </div>
+
+    <div id="banner">
+        <span id="bannerTekst"></span>
+        <button id="btnAnnuleer" title="Annuleren (Esc)">Annuleren</button>
+    </div>
+
+    <div class="paneel" id="paneel">
+
+        <!-- Een gekozen tekening wijzigen of verwijderen -->
+        <div class="kaartje" id="vormPaneel">
+            <div class="rij" style="justify-content:space-between">
+                <b id="vormTitel"></b>
+                <button id="vormSluit" title="Sluiten" aria-label="Sluiten"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+            </div>
+            <label id="vormLabelRij">Label
+                <input type="text" id="vormLabel" maxlength="60" placeholder="Label">
+            </label>
+            <div class="rij kleurRij" id="vormKleuren"></div>
+            <div class="rij"><button class="wis" id="vormWis">Verwijderen</button></div>
+        </div>
+
+        <!-- Nieuwe tekening maken -->
+        <div class="kaartje" id="tekenPaneel">
+            <label>Voor incident
+                <select id="selInc"></select>
+            </label>
+            <div class="rij">
+                <button data-tool="cirkel" title="Perimeter: sleep van het midden naar de rand">Cirkel</button>
+                <button data-tool="vlak" title="Zone: klik de hoekpunten">Vlak</button>
+                <button data-tool="lijn" title="Afgesloten weg: klik punten langs de weg">Weg</button>
+                <button data-tool="marker" title="Marker: klik op de plek">Marker</button>
+                <button data-tool="ploeg" title="Ploeg van dit incident op de kaart zetten">Ploeg</button>
+            </div>
+            <label id="markerRij" style="display:none">Soort marker
+                <select id="selMarker"></select>
+            </label>
+            <label id="ploegRij" style="display:none">Ploeg
+                <select id="selPloeg"></select>
+            </label>
+            <div class="rij kleurRij" id="kleuren"></div>
+            <label id="labelRij">Label (optioneel)
+                <input type="text" id="inpLabel" maxlength="60" placeholder="bv. Perimeter, Commandopost">
+            </label>
+            <div class="hint" id="tekenHint"></div>
+            <div class="rij">
+                <button id="btnKlaar" style="display:none">Klaar</button>
+                <button id="btnStop" style="display:none">Stoppen</button>
+            </div>
+        </div>
+
+        <button class="paneelKnop" id="btnTekenen" title="Perimeters, zones en markers tekenen">Tekenen</button>
+    </div>
+
+    <div class="knoppenOnder">
+        <button id="btnSlot" title="Pins vergrendeld: klik om te ontgrendelen" aria-label="Pins vergrendeld" aria-pressed="true"><svg id="slotDicht" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><svg id="slotOpen" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg></button>
+    </div>
+
+    <div class="knoppen">
+        <button id="btnIn"  title="Inzoomen"  aria-label="Inzoomen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button id="btnUit" title="Uitzoomen" aria-label="Uitzoomen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button id="btnPas" title="Hele kaart tonen" aria-label="Hele kaart tonen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+        <button id="btnIncidenten" title="Alle incidenten in beeld" aria-label="Alle incidenten in beeld"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg></button>
+        <button id="btnLos" title="Los venster (naast de app)" aria-label="Los venster" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="12" height="12" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2"/></svg></button>
+        <button id="btnSluit" title="Kaart inklappen (M)" aria-label="Kaart inklappen" style="display:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
+    </div>
+</div>
+
+<script>
+
+/* ---- TO en DISPATCH zijn twee afzonderlijke systemen ----
+   Alles wat bewaard wordt (ploegen, logboek, incidenten, kaart, meldingen,
+   instellingen) krijgt in DISPATCH een eigen naam ("D_" ervoor). TO gebruikt de
+   gewone namen, dus bestaande TO-gegevens blijven gewoon bestaan. Alleen de
+   keuze van de modus zelf ("dispatchModus") is voor beide gelijk.
+   Staat bovenaan het script, zodat alles hieronder al de juiste namen krijgt. */
+(function(){
+
+    let voorvoegsel = "";
+
+    try{
+        const g = localStorage.getItem("dispatchModus");
+        voorvoegsel = g === "dispatch" ? "D_" : "";
+    }catch(e){}
+
+    window.MODUS_PREFIX = voorvoegsel;
+
+    if(!voorvoegsel) return;
+
+    const naam = (k) => (typeof k === "string" && k.indexOf("dispatch") === 0 && k !== "dispatchModus") ? voorvoegsel + k : k;
+
+    const P = Storage.prototype;
+    const lees = P.getItem, schrijf = P.setItem, wis = P.removeItem;
+
+    P.getItem    = function(k){ return lees.call(this, this === localStorage ? naam(k) : k); };
+    P.setItem    = function(k, v){ return schrijf.call(this, this === localStorage ? naam(k) : k, v); };
+    P.removeItem = function(k){ return wis.call(this, this === localStorage ? naam(k) : k); };
+})();
+
+/* Los kaartvenster: wisselt de app van modus, dan ook deze kaart herladen */
+window.addEventListener("storage", (e) => { if(e.key === "dispatchModus") location.reload(); });
+(function(){
+
+    "use strict";
+
+    const IN_KADER = window.parent !== window;     /* in index.html, of los venster? */
+
+    const SLEUTEL_STAND  = "dispatchKaartState";
+    const SLEUTEL_OPDRACHT = "dispatchKaartCmd";
+    const SLEUTEL_LEVEND = "dispatchKaartAlive";
+
+    const box = document.getElementById("box");
+    const img = document.getElementById("img");
+    const pinsEl = document.getElementById("pins");
+    const vormEls = document.getElementById("vormEls");
+    const melding = document.getElementById("melding");
+    const banner = document.getElementById("banner");
+    const bannerTekst = document.getElementById("bannerTekst");
+
+    const k = { s: 1, x: 0, y: 0, min: 0.05, max: 4, fit: 1, geladen: false };
+
+    let stand = { pins: [], plaatsen: null, focus: null, vormen: [], open: [] };
+    let laatsteFocus = 0;
+    let wachtendeFocus = null;
+    let laatsteFocusTijd = 0;
+
+    /* ---- Praten met index.html ------------------------------------- */
+
+    function stuur(opdracht){
+
+        opdracht.t = Date.now() + "_" + Math.random();
+
+        try{ localStorage.setItem(SLEUTEL_OPDRACHT, JSON.stringify(opdracht)); }catch(e){}
+    }
+
+    function leesStand(){
+
+        try{
+            const tekst = localStorage.getItem(SLEUTEL_STAND);
+            return tekst ? JSON.parse(tekst) : null;
+        }catch(e){
+            return null;
+        }
+    }
+
+    /* ---- Tekenen ----------------------------------------------------- */
+
+    function pasToe(){
+
+        img.style.transform = `translate(${k.x}px, ${k.y}px) scale(${k.s})`;
+
+        /* De SVG werkt in kaartpunten: zelfde verschuiving en zoom als de kaart */
+        const t = `translate(${k.x} ${k.y}) scale(${k.s})`;
+        document.getElementById("g").setAttribute("transform", t);
+        document.getElementById("voorbeeld").setAttribute("transform", t);
+
+        zetPins();
+    }
+
+    function zetPins(){
+
+        if(!k.geladen) return;
+
+        [pinsEl, vormEls].forEach(houder => {
+
+            Array.from(houder.children).forEach(el => {
+
+                const px = el._x * img.naturalWidth  * k.s + k.x;
+                const py = el._y * img.naturalHeight * k.s + k.y;
+
+                el.style.transform =
+                    `translate(${px + (el._off || 0)}px, ${py}px) ${el._anker || "translate(-50%, -100%)"}`;
+            });
+        });
+    }
+
+    /* Een kleine bevestigingsvraag boven op de kaart (Enter = ja, Esc = nee) */
+    function vraagBevestiging(tekst, jaTekst, ja, nee){
+
+        const vraag = document.getElementById("pinVraag");
+        document.getElementById("pinVraagTekst").textContent = tekst;
+        const bJa = document.getElementById("pinVraagJa");
+        const bNee = document.getElementById("pinVraagNee");
+        bJa.textContent = jaTekst;
+
+        const sluit = (gedaan) => {
+            vraag.style.display = "none";
+            document.removeEventListener("keydown", toets, true);
+            bJa.onclick = bNee.onclick = null;
+            (gedaan ? ja : nee)();
+        };
+
+        const toets = (e) => {
+            if(e.key === "Enter"){ e.preventDefault(); e.stopPropagation(); sluit(true); }
+            else if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); sluit(false); }
+        };
+
+        bJa.onclick = () => sluit(true);
+        bNee.onclick = () => sluit(false);
+        document.addEventListener("keydown", toets, true);
+
+        vraag.style.display = "flex";
+        bJa.focus();
+    }
+
+    /* Pins zijn standaard vergrendeld, zodat ze niet per ongeluk verschuiven */
+    let pinsVast = true;
+
+    function maakPinSleepbaar(d, p){
+
+        let greep = null;
+        let versleept = false;
+
+        d.addEventListener("dragstart", (e) => e.preventDefault());
+
+        d.addEventListener("pointerdown", (e) => {
+
+            /* Tijdens tekenen of plaatsen blijft een pin gewoon een pin */
+            if(bezigMetTekenen() || stand.plaatsen) return;
+
+            /* Vergrendeld: een pin laat zich niet verslepen (klikken blijft werken) */
+            if(pinsVast) return;
+
+            e.stopPropagation();
+
+            const q = naarBeeld(e);
+
+            greep = { px: q.x, py: q.y, x: d._x, y: d._y };
+            versleept = false;
+            d.setPointerCapture(e.pointerId);
+        });
+
+        d.addEventListener("pointermove", (e) => {
+
+            if(!greep) return;
+
+            const q = naarBeeld(e);
+            const dx = (q.x - greep.px) * img.naturalWidth  * k.s;
+            const dy = (q.y - greep.py) * img.naturalHeight * k.s;
+
+            if(!versleept && Math.abs(dx) + Math.abs(dy) < 4) return;
+
+            versleept = true;
+
+            d._x = Math.min(1, Math.max(0, greep.x + (q.x - greep.px)));
+            d._y = Math.min(1, Math.max(0, greep.y + (q.y - greep.py)));
+            d._off = 0;
+
+            zetPins();
+        });
+
+        d.addEventListener("pointerup", () => {
+
+            if(!greep) return;
+
+            const van = { x: greep.x, y: greep.y };
+            greep = null;
+
+            if(versleept){
+
+                /* Eerst bevestigen: zo staat een pin niet per ongeluk op een andere plek */
+                const pc = p.postcode || "";
+                const wat = !pc ? 'pin #' + p.nr
+                    : /^[A-Za-z]$/.test(pc) ? 'knooppunt "' + pc.toUpperCase() + '"'
+                    : 'postcode "' + pc + '"';
+
+                vraagBevestiging(
+                    pc
+                        ? "Ben je zeker dat je " + wat + " permanent wilt verplaatsen naar de nieuwe locatie?"
+                        : "Ben je zeker dat je " + wat + " naar de nieuwe locatie wilt verplaatsen?",
+                    "Ja, verplaatsen",
+                    () => stuur({ type: "plaats", id: p.id, x: d._x, y: d._y, stil: true }),
+                    () => { d._x = van.x; d._y = van.y; zetPins(); }
+                );
+            }
+        });
+
+        d.addEventListener("click", (e) => {
+
+            e.stopPropagation();
+
+            if(versleept){ versleept = false; return; }
+
+            stuur({ type: "toon", id: p.id });
+        });
+    }
+
+    function tekenPins(){
+
+        pinsEl.innerHTML = "";
+
+        /* Pins op (bijna) dezelfde plek, bv. dezelfde postcode: naast elkaar
+           uitwaaieren, zodat er geen enkele achter een andere verdwijnt */
+        const groepen = {};
+
+        stand.pins.forEach(p => {
+            const sleutel = p.x.toFixed(4) + "_" + p.y.toFixed(4);
+            (groepen[sleutel] = groepen[sleutel] || []).push(p);
+        });
+
+        stand.pins.forEach(p => {
+
+            const d = document.createElement("div");
+            d.className = "pin";
+            d.dataset.id = p.id;
+            d.style.setProperty("--k", p.kleur || "#ffb347");
+            d.title = p.tekst || ("#" + p.nr);
+            d._x = p.x;
+            d._y = p.y;
+
+            const groep = groepen[p.x.toFixed(4) + "_" + p.y.toFixed(4)];
+            d._off = (groep.indexOf(p) - (groep.length - 1) / 2) * 54;
+
+            const bol = document.createElement("div");
+            bol.className = "bol";
+            bol.textContent = "#" + p.nr;
+            d.appendChild(bol);
+
+            /* Klik op een pin = dat incident tonen in de app.
+               Slepen = de pin verplaatsen (dit onthoudt ook de plek van de postcode) */
+            maakPinSleepbaar(d, p);
+
+            pinsEl.appendChild(d);
+        });
+
+        zetPins();
+    }
+
+    function zetBanner(){
+
+        if(stand.plaatsen){
+
+            bannerTekst.textContent =
+                "Klik op de kaart om incident #" + stand.plaatsen.nr +
+                (stand.plaatsen.tekst ? " (" + stand.plaatsen.tekst + ")" : "") +
+                " te plaatsen";
+
+            banner.style.display = "flex";
+            box.classList.add("plaatst");
+
+        }else{
+
+            banner.style.display = "none";
+            box.classList.remove("plaatst");
+        }
+    }
+
+    /* ---- Zoomen en schuiven ------------------------------------------ */
+
+    function passen(){
+
+        const r = box.getBoundingClientRect();
+
+        if(!img.naturalWidth) return;
+
+        k.fit = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+        k.s = k.fit;
+        k.min = k.fit * 0.8;
+        k.x = (r.width  - img.naturalWidth  * k.s) / 2;
+        k.y = (r.height - img.naturalHeight * k.s) / 2;
+
+        pasToe();
+    }
+
+    /* Startbeeld: iets dichterbij dan de hele kaart, gecentreerd op het midden
+       (de stad ligt wat onder het midden, dus iets naar beneden) */
+    function start(){
+
+        passen();
+
+        const r = box.getBoundingClientRect();
+
+        k.s = Math.min(k.max, k.fit * 1.8);
+        k.x = r.width  / 2 - img.naturalWidth  * 0.5  * k.s;
+        k.y = r.height / 2 - img.naturalHeight * 0.58 * k.s;
+
+        pasToe();
+    }
+
+    /* Alle pins van open incidenten in beeld brengen, gecentreerd.
+       Zonder pins: het gewone startbeeld. */
+    function toonIncidenten(){
+
+        if(!k.geladen) return;
+
+        const pins = (stand.pins || []).filter(p => typeof p.x === "number" && typeof p.y === "number");
+
+        if(!pins.length){ start(); return; }
+
+        passen();
+
+        const r = box.getBoundingClientRect();
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+
+        const xs = pins.map(p => p.x);
+        const ys = pins.map(p => p.y);
+        const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+        const y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+
+        /* Genoeg ruimte rond de pins (en voor de bol boven elke pin) */
+        const bw = Math.max((x1 - x0) * W, 1);
+        const bh = Math.max((y1 - y0) * H, 1);
+
+        const s = Math.min(r.width * 0.85 / bw, r.height * 0.75 / bh);
+
+        /* Niet verder uitzoomen dan de hele kaart, en niet te dicht op één pin */
+        k.s = Math.min(k.max, k.fit * 6, Math.max(k.fit, s));
+
+        const cx = (x0 + x1) / 2 * W;
+        const cy = (y0 + y1) / 2 * H;
+
+        k.x = r.width  / 2 - cx * k.s;
+        k.y = r.height / 2 - cy * k.s + 14 * 1;       /* de bol staat boven de pin: iets omlaag */
+
+        pasToe();
+    }
+
+    function zoom(factor, cx, cy){
+
+        const nieuw = Math.min(k.max, Math.max(k.min, k.s * factor));
+        const f = nieuw / k.s;
+
+        k.x = cx - (cx - k.x) * f;
+        k.y = cy - (cy - k.y) * f;
+        k.s = nieuw;
+
+        pasToe();
+    }
+
+    function zoomMidden(factor){
+
+        const r = box.getBoundingClientRect();
+        zoom(factor, r.width / 2, r.height / 2);
+    }
+
+    /* Een pin in het midden zetten en dichterbij komen */
+    function focusOp(id){
+
+        const el = Array.from(pinsEl.children).find(p => p.dataset.id === id);
+
+        if(!el) return;
+
+        if(!k.geladen){
+            wachtendeFocus = id;
+            return;
+        }
+
+        const r = box.getBoundingClientRect();
+
+        laatsteFocusTijd = Date.now();
+
+        k.s = Math.min(k.max, Math.max(k.s, k.fit * 4));
+        k.x = r.width  / 2 - el._x * img.naturalWidth  * k.s;
+        k.y = r.height / 2 - el._y * img.naturalHeight * k.s;
+
+        pasToe();
+    }
+
+    /* ---- Nieuwe stand van index.html toepassen ------------------------- */
+
+    function pasStandToe(nieuw){
+
+        stand = nieuw || { pins: [], plaatsen: null, focus: null };
+        stand.vormen = stand.vormen || [];
+        stand.open = stand.open || [];
+
+        tekenPins();
+        zetBanner();
+        tekenVormen();
+        vulIncidenten();
+        vulPloegen();
+        zetPaneel();
+
+        const f = stand.focus;
+
+        if(f && f.t > laatsteFocus){
+
+            /* Een oude focus (bv. van voor het openen) negeren we */
+            if(Date.now() - f.t < 3000) focusOp(f.id);
+
+            laatsteFocus = f.t;
+        }
+    }
+
+    window.addEventListener("storage", (e) => {
+
+        /* In DISPATCH heeft de sleutel in de gebeurtenis het voorvoegsel "D_" */
+        const eigen = (window.MODUS_PREFIX || "") + SLEUTEL_STAND;
+
+        if(e.key === SLEUTEL_STAND || e.key === eigen) pasStandToe(leesStand());
+    });
+
+    /* ---- Afbeelding laden: eerst kaart.png, dan kaart.jpg --------------- */
+
+    const bestanden = ["kaart.png", "kaart.jpg"];
+    let nr = 0;
+
+    img.onload = () => {
+
+        k.geladen = true;
+
+        /* Grote afbeelding (scherp genoeg)? Dan hoeft er niet verder ingezoomd te worden */
+        k.max = img.naturalWidth > 4000 ? 2 : 4;
+
+        melding.style.display = "none";
+        tekenPins();
+        toonIncidenten();
+        tekenVormen();
+
+        if(wachtendeFocus){
+            const id = wachtendeFocus;
+            wachtendeFocus = null;
+            focusOp(id);
+        }
+    };
+
+    img.onerror = () => {
+
+        nr++;
+
+        if(nr < bestanden.length) img.src = bestanden[nr];
+        else melding.style.display = "grid";
+    };
+
+    /* ---- Bediening -------------------------------------------------------- */
+
+    /* ---- Tekeningen: perimeters (cirkel), zones (vlak) en markers ---------- */
+
+    const KLEUREN = ["#ff6b6b", "#ffb347", "#5a8fff", "#4cd08a", "#b07cff", "#ffffff"];
+
+    const MARKERS = {
+        cp: ["⭐", "Commandopost"],
+        vz: ["👥", "Verzamelplaats"],
+        af: ["⛔", "Afsluiting"],
+        gv: ["⚠️", "Gevaar"],
+        po: ["🚓", "Politiepost"],
+        am: ["🚑", "Ambulancepost"]
+    };
+
+    const SVG = "http://www.w3.org/2000/svg";
+
+    /* ICONEN VAN DE PLOEGEN OP DE KAART, per dienst.
+       Een waarde is een emoji, of de naam van een afbeelding die naast kaart.html
+       staat (bv. "ikoon-politie.png", vierkant en liefst klein). */
+    const IKONEN = {
+        Politie:   "🚓",
+        Brandweer: "🚒",
+        Ambulance: "🚑",
+        Depannage: "🚚",
+        Burgers:   "🧍"
+    };
+
+    /* Kleur van de rand per dienst */
+    const DIENSTKLEUREN = {
+        Politie:   "#5a8fff",
+        Brandweer: "#ff6b6b",
+        Ambulance: "#4cd08a",
+        Depannage: "#ffb347",
+        Burgers:   "#b8c0c8"
+    };
+
+    /* Zet een emoji of afbeelding in een element */
+    function zetIkoon(el, waarde){
+
+        el.textContent = "";
+
+        if(/\.(png|jpe?g|webp|svg|gif)$/i.test(waarde)){
+
+            const i = document.createElement("img");
+            i.src = waarde;
+            i.alt = "";
+            i.draggable = false;
+            i.style.cssText = "width:100%;height:100%;border-radius:50%;object-fit:cover;pointer-events:none";
+            el.appendChild(i);
+
+        }else{
+
+            el.textContent = waarde;
+        }
+    }
+
+    const tekenen = { tool: null, kleur: KLEUREN[0], marker: "cp", incId: null, punten: [], muis: null };
+    let gekozen = null;           /* { incId, id } van de aangeklikte tekening */
+    let cirkelSleep = null;       /* tijdens het slepen van een cirkel */
+
+    function svgEl(naam, attr){
+
+        const e = document.createElementNS(SVG, naam);
+        Object.keys(attr).forEach(a => e.setAttribute(a, attr[a]));
+        return e;
+    }
+
+    function vormNaam(v){
+
+        return v.soort === "cirkel" ? "Perimeter"
+             : v.soort === "vlak" ? "Zone"
+             : v.soort === "lijn" ? "Afgesloten weg"
+             : v.soort === "ploeg" ? "Ploeg"
+             : (MARKERS[v.type] ? MARKERS[v.type][1] : "Marker");
+    }
+
+    function middenVan(v){
+
+        if(v.soort === "lijn"){
+            return v.punten[Math.floor((v.punten.length - 1) / 2)];
+        }
+
+        if(v.soort === "vlak"){
+            const n = v.punten.length;
+            return [
+                v.punten.reduce((t, p) => t + p[0], 0) / n,
+                v.punten.reduce((t, p) => t + p[1], 0) / n
+            ];
+        }
+
+        return [v.x, v.y];
+    }
+
+    /* Waar staat het label? Zelf versleept (lx, ly), anders in het midden van de tekening */
+    function labelPositie(v){
+
+        if(typeof v.lx === "number" && typeof v.ly === "number") return [v.lx, v.ly];
+
+        return middenVan(v);
+    }
+
+    function vormKiezen(v){
+
+        gekozen = v ? { incId: v.incId, id: v.id } : null;
+
+        tekenVormen();
+        zetPaneel();
+    }
+
+    /* Tekent alle tekeningen van de open incidenten opnieuw */
+    function tekenVormen(){
+
+        const g = document.getElementById("g");
+
+        g.innerHTML = "";
+        vormEls.innerHTML = "";
+        vormSvg = {};
+
+        if(!k.geladen) return;
+
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+
+        /* Is de gekozen tekening nog aanwezig? */
+        if(gekozen && !stand.vormen.some(v => v.id === gekozen.id)) gekozen = null;
+
+        stand.vormen.forEach(v => {
+
+            const isGekozen = !!gekozen && gekozen.id === v.id;
+            const kleur = v.kleur || KLEUREN[0];
+
+            let label = v.label || "";
+
+            if(v.soort === "cirkel"){
+
+                const cEl = svgEl("circle", {
+                    cx: v.x * W, cy: v.y * H, r: v.r * W,
+                    fill: kleur, "fill-opacity": 0.16,
+                    stroke: kleur, "stroke-width": isGekozen ? 5 : 3,
+                    "stroke-dasharray": isGekozen ? "10 6" : "none",
+                    "vector-effect": "non-scaling-stroke"
+                });
+                g.appendChild(cEl);
+                vormSvg[v.id] = [cEl];
+
+            }else if(v.soort === "lijn"){
+
+                const punten = v.punten.map(p => (p[0] * W) + "," + (p[1] * H)).join(" ");
+
+                /* Donkere rand eronder, zodat de lijn op elke ondergrond zichtbaar blijft */
+                const l1 = svgEl("polyline", {
+                    points: punten, fill: "none", stroke: "#000", "stroke-opacity": 0.55,
+                    "stroke-width": isGekozen ? 11 : 9, "stroke-linecap": "round", "stroke-linejoin": "round",
+                    "vector-effect": "non-scaling-stroke"
+                });
+                g.appendChild(l1);
+
+                const l2 = svgEl("polyline", {
+                    points: punten, fill: "none", stroke: kleur,
+                    "stroke-width": isGekozen ? 7 : 5, "stroke-linecap": "round", "stroke-linejoin": "round",
+                    "stroke-dasharray": "14 9",
+                    "vector-effect": "non-scaling-stroke"
+                });
+                g.appendChild(l2);
+                vormSvg[v.id] = [l1, l2];
+
+            }else if(v.soort === "vlak"){
+
+                const pEl = svgEl("polygon", {
+                    points: v.punten.map(p => (p[0] * W) + "," + (p[1] * H)).join(" "),
+                    fill: kleur, "fill-opacity": 0.16,
+                    stroke: kleur, "stroke-width": isGekozen ? 5 : 3,
+                    "stroke-dasharray": isGekozen ? "10 6" : "none",
+                    "stroke-linejoin": "round",
+                    "vector-effect": "non-scaling-stroke"
+                });
+                g.appendChild(pEl);
+                vormSvg[v.id] = [pEl];
+            }
+
+            const [mx, my] = (v.soort === "marker" || v.soort === "ploeg") ? [v.x, v.y] : labelPositie(v);
+
+            if(v.soort === "marker" || v.soort === "ploeg"){
+
+                const isPloeg = v.soort === "ploeg";
+
+                const m = document.createElement("div");
+                m.className = "marker" + (isGekozen ? " gekozen" : "");
+                m.style.setProperty("--k", isPloeg ? (DIENSTKLEUREN[v.dienst] || "#5a8fff") : kleur);
+                m.title = (isPloeg ? "Ploeg" : vormNaam(v)) + (label ? " · " + label : "") +
+                          " (#" + v.nr + ") · sleep om te verplaatsen";
+                m._x = mx;
+                m._y = my;
+                m._anker = "translate(-50%, -16px)";
+
+                const bol = document.createElement("div");
+                bol.className = "bol";
+
+                if(isPloeg) zetIkoon(bol, IKONEN[v.dienst] || "🚓");
+                else zetIkoon(bol, MARKERS[v.type] ? MARKERS[v.type][0] : "📌");
+
+                m.appendChild(bol);
+
+                if(label){
+                    const n = document.createElement("div");
+                    n.className = "naam";
+                    n.textContent = label;
+                    m.appendChild(n);
+                }
+
+                maakMarkerSleepbaar(m, v);
+                vormEls.appendChild(m);
+
+            }else if(label || tekenen.tool){
+
+                /* Tijdens het tekenen krijgt ook een tekening zonder label een klein
+                   #nummer, zodat je ze kunt kiezen en aanpassen */
+                if(!label) label = "#" + v.nr;
+
+                const l = document.createElement("div");
+                l.className = "vlabel" + (isGekozen ? " gekozen" : "");
+                l.style.setProperty("--k", kleur);
+                l.textContent = label;
+                l.title = vormNaam(v) + " (#" + v.nr + ")";
+                l._x = mx;
+                l._y = my;
+                l._anker = "translate(-50%, -50%)";
+
+                l.title += " · sleep om te verplaatsen, dubbelklik om terug te zetten";
+
+                maakLabelSleepbaar(l, v);
+                vormEls.appendChild(l);
+            }
+        });
+
+        /* Greepjes voor de gekozen tekening */
+        const gv = gekozen ? stand.vormen.find(x => x.id === gekozen.id) : null;
+
+        if(gv && (gv.soort === "cirkel" || gv.soort === "vlak" || gv.soort === "lijn")) maakHandvatten(gv);
+
+        zetPins();
+    }
+
+    /* ---- Gekozen tekening aanpassen: verplaatsen, hoekpunten, straal ---- */
+
+    let vormSvg = {};
+
+    /* Past de getekende vorm aan na een wijziging (zonder alles opnieuw te tekenen) */
+    function vormSvgBijwerken(v){
+
+        const els = vormSvg[v.id];
+        if(!els) return;
+
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+
+        if(v.soort === "cirkel"){
+            els[0].setAttribute("cx", v.x * W);
+            els[0].setAttribute("cy", v.y * H);
+            els[0].setAttribute("r", v.r * W);
+            return;
+        }
+
+        const punten = v.punten.map(p => (p[0] * W) + "," + (p[1] * H)).join(" ");
+        els.forEach(e => e.setAttribute("points", punten));
+    }
+
+    const kap01 = (n) => Math.min(1, Math.max(0, n));
+
+    /* Eén greepje: sleep om te veranderen; bijSleep(nx, ny, start, p) krijgt de nieuwe plek */
+    function maakHandvat(v, x, y, opties, bijSleep, bijKlaar){
+
+        const h = document.createElement("div");
+
+        h.className = "handvat" + (opties.klasse ? " " + opties.klasse : "");
+        h.style.setProperty("--k", v.kleur || KLEUREN[0]);
+        h.title = opties.titel || "";
+        if(opties.tekst) h.textContent = opties.tekst;
+        h._x = x;
+        h._y = y;
+        h._anker = opties.anker || "translate(-50%, -50%)";
+
+        let greep = null;
+        let bewogen = false;
+
+        h.addEventListener("dragstart", (e) => e.preventDefault());
+
+        h.addEventListener("pointerdown", (e) => {
+
+            if(stand.plaatsen) return;
+
+            e.stopPropagation();
+
+            const p = naarBeeld(e);
+
+            greep = { x: p.x, y: p.y };
+            bewogen = false;
+            h.setPointerCapture(e.pointerId);
+        });
+
+        h.addEventListener("pointermove", (e) => {
+
+            if(!greep) return;
+
+            const p = naarBeeld(e);
+            const dx = (p.x - greep.x) * img.naturalWidth  * k.s;
+            const dy = (p.y - greep.y) * img.naturalHeight * k.s;
+
+            if(!bewogen && Math.abs(dx) + Math.abs(dy) < 3) return;
+
+            bewogen = true;
+
+            bijSleep(kap01(p.x), kap01(p.y), greep, h);
+            vormSvgBijwerken(v);
+            zetPins();
+        });
+
+        h.addEventListener("pointerup", () => {
+
+            if(!greep) return;
+
+            greep = null;
+
+            if(bewogen) bijKlaar();
+        });
+
+        h.addEventListener("click", (e) => e.stopPropagation());
+        h.addEventListener("dblclick", (e) => {
+            e.stopPropagation();
+            if(opties.bijDubbelklik) opties.bijDubbelklik();
+        });
+
+        vormEls.appendChild(h);
+        return h;
+    }
+
+    function maakHandvatten(v){
+
+        const wijzig = (extra) => stuur(Object.assign({ type: "vorm-wijzig", incId: v.incId, id: v.id }, extra));
+
+        if(v.soort === "cirkel"){
+
+            const W = img.naturalWidth;
+            const H = img.naturalHeight;
+
+            const rand = maakHandvat(v, kap01(v.x + v.r), v.y,
+                { klasse: "straal", titel: "Sleep om de perimeter groter of kleiner te maken" },
+                (nx, ny) => {
+                    v.r = Math.max(0.002, Math.hypot((nx - v.x) * W, (ny - v.y) * H) / W);
+                    rand._x = nx; rand._y = ny;
+                },
+                () => wijzig({ x: v.x, y: v.y, r: v.r }));
+
+            maakHandvat(v, v.x, v.y,
+                { klasse: "midden", tekst: "✥", titel: "Sleep om de perimeter te verplaatsen", anker: "translate(-50%, 14px)" },
+                (nx, ny, start, h) => {
+                    const dx = nx - h._x, dy = ny - h._y;
+                    v.x = nx; v.y = ny;
+                    h._x = nx; h._y = ny;
+                    rand._x = kap01(rand._x + dx);
+                    rand._y = kap01(rand._y + dy);
+                },
+                () => wijzig({ x: v.x, y: v.y, r: v.r }));
+
+            return;
+        }
+
+        /* Zone of afgesloten weg: een greepje per hoekpunt + een om alles te verplaatsen */
+        const min = v.soort === "lijn" ? 2 : 3;
+        const hoeken = [];
+
+        v.punten.forEach((pt, i) => {
+
+            const h = maakHandvat(v, pt[0], pt[1],
+                {
+                    titel: "Sleep om dit punt te verplaatsen" +
+                           (v.punten.length > min ? " · dubbelklik om het te verwijderen" : ""),
+                    bijDubbelklik: () => {
+                        if(v.punten.length <= min) return;
+                        wijzig({ punten: v.punten.filter((x, j) => j !== i) });
+                    }
+                },
+                (nx, ny) => {
+                    v.punten[i] = [nx, ny];
+                    h._x = nx; h._y = ny;
+                },
+                () => wijzig({ punten: v.punten }));
+
+            hoeken.push(h);
+        });
+
+        const [mx, my] = middenVan(v);
+        let basis = null;
+
+        const midden = maakHandvat(v, mx, my,
+            { klasse: "midden", tekst: "✥", titel: "Sleep om de hele tekening te verplaatsen", anker: "translate(-50%, 14px)" },
+            (nx, ny, start, h) => {
+
+                if(!basis) basis = { punten: v.punten.map(p => p.slice()), x: h._x, y: h._y };
+
+                /* Niet voorbij de rand van de kaart */
+                let dx = nx - start.x, dy = ny - start.y;
+                basis.punten.forEach(p => {
+                    dx = Math.max(-p[0], Math.min(1 - p[0], dx));
+                    dy = Math.max(-p[1], Math.min(1 - p[1], dy));
+                });
+
+                v.punten = basis.punten.map(p => [p[0] + dx, p[1] + dy]);
+
+                hoeken.forEach((hh, i) => { hh._x = v.punten[i][0]; hh._y = v.punten[i][1]; });
+                h._x = basis.x + dx;
+                h._y = basis.y + dy;
+            },
+            () => { basis = null; wijzig({ punten: v.punten }); });
+
+        void midden;
+    }
+
+    /* Een label met de muis verplaatsen; dubbelklik zet het terug in het midden */
+    function maakLabelSleepbaar(l, v){
+
+        let greep = null;
+        let versleept = false;
+
+        l.addEventListener("dragstart", (e) => e.preventDefault());
+
+        l.addEventListener("pointerdown", (e) => {
+
+            /* Tijdens het tekenen van een vorm is een klik op het label gewoon een klik op de kaart */
+            if(bezigMetTekenen() || stand.plaatsen) return;
+
+            e.stopPropagation();
+
+            const p = naarBeeld(e);
+
+            greep = { px: p.x, py: p.y, x: l._x, y: l._y };
+            versleept = false;
+            l.setPointerCapture(e.pointerId);
+        });
+
+        l.addEventListener("pointermove", (e) => {
+
+            if(!greep) return;
+
+            const p = naarBeeld(e);
+            const dx = (p.x - greep.px) * img.naturalWidth  * k.s;
+            const dy = (p.y - greep.py) * img.naturalHeight * k.s;
+
+            if(!versleept && Math.abs(dx) + Math.abs(dy) < 4) return;
+
+            versleept = true;
+
+            l._x = Math.min(1, Math.max(0, greep.x + (p.x - greep.px)));
+            l._y = Math.min(1, Math.max(0, greep.y + (p.y - greep.py)));
+
+            zetPins();
+        });
+
+        l.addEventListener("pointerup", (e) => {
+
+            if(!greep) return;
+
+            greep = null;
+
+            if(versleept){
+                stuur({ type: "vorm-wijzig", incId: v.incId, id: v.id, lx: l._x, ly: l._y });
+            }
+        });
+
+        l.addEventListener("click", (e) => {
+
+            e.stopPropagation();
+
+            /* Na het slepen geen tekening kiezen */
+            if(versleept){ versleept = false; return; }
+
+            vormKiezen(v);
+        });
+
+        l.addEventListener("dblclick", (e) => {
+
+            e.stopPropagation();
+
+            if(tekenen.tool) return;
+
+            stuur({ type: "vorm-wijzig", incId: v.incId, id: v.id, lx: null, ly: null });
+        });
+    }
+
+    /* Is er een tekengereedschap actief waarbij een klik op een label of marker
+       een klik op de kaart moet zijn? Bij Ploeg of Marker mag verslepen wel. */
+    function bezigMetTekenen(){
+
+        /* Markers, labels en pins blijven ook tijdens het tekenen versleepbaar */
+        return false;
+    }
+
+    /* Een marker of ploeg met de muis verplaatsen */
+    function maakMarkerSleepbaar(m, v){
+
+        let greep = null;
+        let versleept = false;
+
+        /* Geen "sleepafbeelding" van de browser (bv. bij een afbeelding als icoon) */
+        m.addEventListener("dragstart", (e) => e.preventDefault());
+
+        m.addEventListener("pointerdown", (e) => {
+
+            if(bezigMetTekenen() || stand.plaatsen) return;
+
+            e.stopPropagation();
+
+            const p = naarBeeld(e);
+
+            greep = { px: p.x, py: p.y, x: m._x, y: m._y };
+            versleept = false;
+            m.setPointerCapture(e.pointerId);
+        });
+
+        m.addEventListener("pointermove", (e) => {
+
+            if(!greep) return;
+
+            const p = naarBeeld(e);
+            const dx = (p.x - greep.px) * img.naturalWidth  * k.s;
+            const dy = (p.y - greep.py) * img.naturalHeight * k.s;
+
+            if(!versleept && Math.abs(dx) + Math.abs(dy) < 4) return;
+
+            versleept = true;
+
+            m._x = Math.min(1, Math.max(0, greep.x + (p.x - greep.px)));
+            m._y = Math.min(1, Math.max(0, greep.y + (p.y - greep.py)));
+
+            zetPins();
+        });
+
+        m.addEventListener("pointerup", () => {
+
+            if(!greep) return;
+
+            greep = null;
+
+            if(versleept){
+                stuur({ type: "vorm-wijzig", incId: v.incId, id: v.id, x: m._x, y: m._y });
+            }
+        });
+
+        m.addEventListener("click", (e) => {
+
+            e.stopPropagation();
+
+            if(versleept){ versleept = false; return; }
+
+            vormKiezen(v);
+        });
+    }
+
+    /* Voorbeeld tijdens het tekenen (gestippeld) */
+    function voorbeeld(){
+
+        const v = document.getElementById("voorbeeld");
+
+        v.innerHTML = "";
+
+        if(!k.geladen) return;
+
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+        const kleur = tekenen.kleur;
+
+        if(cirkelSleep){
+
+            v.appendChild(svgEl("circle", {
+                cx: cirkelSleep.x * W, cy: cirkelSleep.y * H, r: cirkelSleep.r * W,
+                fill: kleur, "fill-opacity": 0.12,
+                stroke: kleur, "stroke-width": 3, "stroke-dasharray": "8 6",
+                "vector-effect": "non-scaling-stroke"
+            }));
+
+        }else if((tekenen.tool === "vlak" || tekenen.tool === "lijn") && tekenen.punten.length){
+
+            const lijst = tekenen.punten.slice();
+
+            if(tekenen.muis) lijst.push(tekenen.muis);
+
+            v.appendChild(svgEl("polyline", {
+                points: lijst.map(p => (p[0] * W) + "," + (p[1] * H)).join(" "),
+                fill: "none", stroke: kleur, "stroke-width": 3, "stroke-dasharray": "8 6",
+                "vector-effect": "non-scaling-stroke"
+            }));
+
+            tekenen.punten.forEach(p => {
+                v.appendChild(svgEl("circle", {
+                    cx: p[0] * W, cy: p[1] * H, r: 4 / k.s,
+                    fill: kleur
+                }));
+            });
+        }
+    }
+
+    /* Paneel: gekozen tekening en nieuwe tekening */
+    function kleurKnoppen(houder, huidige, bijKlik){
+
+        houder.innerHTML = "";
+
+        KLEUREN.forEach(c => {
+
+            const b = document.createElement("button");
+            b.style.background = c;
+            b.className = c === huidige ? "aan" : "";
+            b.title = "Kleur";
+            b.onclick = () => bijKlik(c);
+            houder.appendChild(b);
+        });
+    }
+
+    function vulIncidenten(){
+
+        const sel = document.getElementById("selInc");
+        const vorige = tekenen.incId;
+
+        sel.innerHTML = "";
+
+        stand.open.forEach(i => {
+            const o = document.createElement("option");
+            o.value = i.id;
+            o.textContent = i.tekst;
+            sel.appendChild(o);
+        });
+
+        if(!stand.open.some(i => i.id === vorige)){
+            tekenen.incId = stand.open.length ? stand.open[0].id : null;
+        }
+
+        sel.value = tekenen.incId || "";
+    }
+
+    /* De ploegen van het gekozen incident, voor de lijst bij "Ploeg" */
+    let geplaatstLokaal = new Set();
+
+    function vulPloegen(){
+
+        const sel = document.getElementById("selPloeg");
+        const vorige = sel.value;
+        const inc = stand.open.find(i => i.id === tekenen.incId);
+
+        sel.innerHTML = "";
+
+        const lijst = (inc && inc.ploegen) || [];
+
+        const opKaart = new Set(
+            stand.vormen.filter(v => v.soort === "ploeg" && v.incId === tekenen.incId).map(v => v.ploegId)
+        );
+
+        lijst.forEach(u => {
+            const o = document.createElement("option");
+            o.value = u.id;
+            o.textContent = u.naam + (opKaart.has(u.id) ? " ✓" : "");
+            sel.appendChild(o);
+        });
+
+        if(lijst.some(u => u.id === vorige)) sel.value = vorige;
+    }
+
+    /* Na het plaatsen van een ploeg: de volgende ploeg die nog niet op de kaart staat */
+    function volgendePloeg(geplaatst){
+
+        const sel = document.getElementById("selPloeg");
+
+        geplaatstLokaal.add(geplaatst);
+
+        const opKaart = new Set(
+            stand.vormen.filter(v => v.soort === "ploeg" && v.incId === tekenen.incId).map(v => v.ploegId)
+        );
+
+        const rest = Array.from(sel.options).map(o => o.value)
+            .filter(id => !opKaart.has(id) && !geplaatstLokaal.has(id));
+
+        if(rest.length) sel.value = rest[0];
+        else stopTekenen();
+    }
+
+    function tekenHint(){
+
+        if(!stand.open.length) return "Er zijn geen open incidenten om bij te tekenen.";
+        if(!tekenen.tool) return "Kies wat je wilt tekenen.";
+        if(tekenen.tool === "cirkel") return "Sleep op de kaart van het midden naar de rand.";
+        if(tekenen.tool === "marker") return "Klik op de kaart om de marker te plaatsen.";
+        if(tekenen.tool === "ploeg"){
+            const inc = stand.open.find(i => i.id === tekenen.incId);
+            return (inc && inc.ploegen && inc.ploegen.length)
+                ? "Kies een ploeg en klik op de kaart. Daarna kun je ze verslepen."
+                : "Er zijn nog geen ploegen aan dit incident gekoppeld.";
+        }
+
+        const min = tekenen.tool === "lijn" ? 2 : 3;
+
+        if(tekenen.tool === "lijn"){
+            return tekenen.punten.length < min
+                ? "Klik punten langs de weg (minstens 2). Esc = annuleren."
+                : "Klik verder, of kies Klaar (of Enter, of dubbelklik).";
+        }
+
+        return tekenen.punten.length < min
+            ? "Klik de hoekpunten (minstens 3). Esc = annuleren."
+            : "Klik verder, of kies Klaar (of Enter, of dubbelklik).";
+    }
+
+    function zetPaneel(){
+
+        const teken = document.getElementById("tekenPaneel");
+        const vorm = document.getElementById("vormPaneel");
+
+        document.querySelectorAll("#tekenPaneel [data-tool]").forEach(b => {
+            b.classList.toggle("aan", b.dataset.tool === tekenen.tool);
+        });
+
+        document.getElementById("markerRij").style.display = tekenen.tool === "marker" ? "" : "none";
+        document.getElementById("ploegRij").style.display = tekenen.tool === "ploeg" ? "" : "none";
+        document.getElementById("labelRij").style.display = tekenen.tool === "ploeg" ? "none" : "";
+        document.getElementById("kleuren").style.display = tekenen.tool === "ploeg" ? "none" : "";
+        document.getElementById("tekenHint").textContent = tekenHint();
+        document.getElementById("btnKlaar").style.display =
+            (tekenen.tool === "vlak" && tekenen.punten.length >= 3) ||
+            (tekenen.tool === "lijn" && tekenen.punten.length >= 2) ? "" : "none";
+        document.getElementById("btnStop").style.display = tekenen.tool ? "" : "none";
+
+        kleurKnoppen(document.getElementById("kleuren"), tekenen.kleur, (c) => {
+            tekenen.kleur = c;
+            zetPaneel();
+        });
+
+        /* Gekozen tekening */
+        const v = gekozen ? stand.vormen.find(x => x.id === gekozen.id) : null;
+
+        vorm.classList.toggle("open", !!v);
+
+        if(v){
+
+            document.getElementById("vormTitel").textContent =
+                (v.soort === "ploeg" ? "Ploeg " + (v.label || "") : vormNaam(v)) + " · #" + v.nr;
+
+            /* Een ploeg heeft geen eigen label of kleur */
+            document.getElementById("vormLabelRij").style.display = v.soort === "ploeg" ? "none" : "";
+            document.getElementById("vormKleuren").style.display = v.soort === "ploeg" ? "none" : "";
+
+            const veld = document.getElementById("vormLabel");
+
+            if(document.activeElement !== veld) veld.value = v.label || "";
+
+            kleurKnoppen(document.getElementById("vormKleuren"), v.kleur, (c) => {
+                stuur({ type: "vorm-wijzig", incId: v.incId, id: v.id, kleur: c });
+            });
+        }
+
+        void teken;
+    }
+
+    function stopTekenen(){
+
+        tekenen.tool = null;
+        tekenen.punten = [];
+        tekenen.muis = null;
+        cirkelSleep = null;
+
+        voorbeeld();
+        zetPaneel();
+        tekenVormen();
+    }
+
+    function kiesTool(tool){
+
+        if(!stand.open.length || stand.plaatsen) return;
+
+        tekenen.tool = tekenen.tool === tool ? null : tool;
+        tekenen.punten = [];
+        tekenen.muis = null;
+
+        if(tekenen.tool === "ploeg"){
+            geplaatstLokaal = new Set();
+            vulPloegen();
+        }
+
+        if(tekenen.tool) vormKiezen(null);
+        else tekenVormen();
+
+        voorbeeld();
+        zetPaneel();
+    }
+
+    function nieuweVorm(basis){
+
+        if(!tekenen.incId) return;
+
+        /* Een ploeg plaatsen: blijft actief voor de volgende ploeg */
+        if(basis.soort === "ploeg"){
+
+            stuur({ type: "vorm-toevoegen", incId: tekenen.incId, vorm: basis });
+            volgendePloeg(basis.ploegId);
+            zetPaneel();
+            return;
+        }
+
+        const vorm = Object.assign({
+            kleur: tekenen.kleur,
+            label: document.getElementById("inpLabel").value.trim().slice(0, 60)
+        }, basis);
+
+        stuur({ type: "vorm-toevoegen", incId: tekenen.incId, vorm: vorm });
+
+        document.getElementById("inpLabel").value = "";
+        stopTekenen();
+    }
+
+    function vlakKlaar(){
+
+        /* Dubbele punten achter elkaar (bv. door dubbelklikken) weghalen */
+        const punten = tekenen.punten.filter((p, i, a) =>
+            i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 0.0005
+        );
+
+        if(tekenen.tool === "lijn"){
+
+            if(punten.length < 2) return;
+
+            nieuweVorm({ soort: "lijn", punten: punten });
+            return;
+        }
+
+        if(punten.length < 3) return;
+
+        nieuweVorm({ soort: "vlak", punten: punten });
+    }
+
+    /* Ligt het punt (in kaartpunten) in de tekening? */
+    function ligtIn(v, px, py){
+
+        const W = img.naturalWidth;
+        const H = img.naturalHeight;
+
+        if(v.soort === "cirkel"){
+            return Math.hypot(px - v.x * W, py - v.y * H) <= v.r * W + 6 / k.s;
+        }
+
+        if(v.soort === "lijn"){
+
+            /* Binnen ongeveer 9 schermpixels van een stuk van de lijn */
+            const marge = 9 / k.s;
+
+            for(let i = 1; i < v.punten.length; i++){
+
+                const ax = v.punten[i - 1][0] * W, ay = v.punten[i - 1][1] * H;
+                const bx = v.punten[i][0] * W,     by = v.punten[i][1] * H;
+                const dx = bx - ax, dy = by - ay;
+                const l2 = dx * dx + dy * dy || 1;
+                const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2));
+
+                if(Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) <= marge) return true;
+            }
+
+            return false;
+        }
+
+        if(v.soort === "vlak"){
+
+            let binnen = false;
+            const p = v.punten;
+
+            for(let i = 0, j = p.length - 1; i < p.length; j = i++){
+
+                const xi = p[i][0] * W, yi = p[i][1] * H;
+                const xj = p[j][0] * W, yj = p[j][1] * H;
+
+                if(((yi > py) !== (yj > py)) &&
+                   (px < (xj - xi) * (py - yi) / (yj - yi) + xi)){
+                    binnen = !binnen;
+                }
+            }
+
+            return binnen;
+        }
+
+        return false;
+    }
+
+    function naarBeeld(e){
+
+        const r = box.getBoundingClientRect();
+        const px = (e.clientX - r.left - k.x) / k.s;
+        const py = (e.clientY - r.top  - k.y) / k.s;
+
+        return { px: px, py: py, x: px / img.naturalWidth, y: py / img.naturalHeight };
+    }
+
+    /* ---- Bediening -------------------------------------------------------- */
+
+    const NIET_SLEPEN = ".knoppen, .knoppenOnder, #banner, #pinVraag, .pin, .marker, .vlabel, .handvat, .paneel";
+
+    let sleep = null;
+
+    box.addEventListener("wheel", (e) => {
+
+        e.preventDefault();
+
+        const r = box.getBoundingClientRect();
+        zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - r.left, e.clientY - r.top);
+
+    }, { passive: false });
+
+    box.addEventListener("pointerdown", (e) => {
+
+        if(e.target.closest(NIET_SLEPEN)) return;
+
+        /* Cirkel tekenen: slepen = de straal bepalen (geen kaart verschuiven) */
+        if(tekenen.tool === "cirkel" && tekenen.incId && !stand.plaatsen && k.geladen){
+
+            const p = naarBeeld(e);
+
+            cirkelSleep = { x: p.x, y: p.y, r: 0 };
+            box.setPointerCapture(e.pointerId);
+            return;
+        }
+
+        sleep = { x: e.clientX, y: e.clientY, kx: k.x, ky: k.y, bewogen: false };
+        box.classList.add("sleept");
+        box.setPointerCapture(e.pointerId);
+    });
+
+    box.addEventListener("pointermove", (e) => {
+
+        if(cirkelSleep){
+
+            const p = naarBeeld(e);
+            const W = img.naturalWidth;
+            const H = img.naturalHeight;
+
+            cirkelSleep.r = Math.hypot((p.x - cirkelSleep.x) * W, (p.y - cirkelSleep.y) * H) / W;
+            voorbeeld();
+            return;
+        }
+
+        if((tekenen.tool === "vlak" || tekenen.tool === "lijn") && tekenen.punten.length && k.geladen){
+
+            const p = naarBeeld(e);
+            tekenen.muis = [p.x, p.y];
+            voorbeeld();
+        }
+
+        if(!sleep) return;
+
+        const dx = e.clientX - sleep.x;
+        const dy = e.clientY - sleep.y;
+
+        if(Math.abs(dx) + Math.abs(dy) > 5) sleep.bewogen = true;
+
+        k.x = sleep.kx + dx;
+        k.y = sleep.ky + dy;
+        pasToe();
+        voorbeeld();
+    });
+
+    box.addEventListener("pointerup", (e) => {
+
+        /* Cirkel afmaken */
+        if(cirkelSleep){
+
+            const c = cirkelSleep;
+
+            cirkelSleep = null;
+            voorbeeld();
+
+            /* Minstens ongeveer 8 pixels groot, anders was het gewoon een klik */
+            if(c.r * img.naturalWidth * k.s >= 8){
+                nieuweVorm({ soort: "cirkel", x: c.x, y: c.y, r: c.r });
+            }
+
+            return;
+        }
+
+        const was = sleep;
+
+        sleep = null;
+        box.classList.remove("sleept");
+
+        if(!was || was.bewogen || !k.geladen) return;
+
+        const p = naarBeeld(e);
+
+        if(p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1) return;
+
+        /* Een plek voor een incident kiezen heeft voorrang */
+        if(stand.plaatsen){
+
+            stuur({ type: "plaats", id: stand.plaatsen.id, x: p.x, y: p.y });
+
+        }else if((tekenen.tool === "vlak" || tekenen.tool === "lijn") && tekenen.incId){
+
+            tekenen.punten.push([p.x, p.y]);
+            voorbeeld();
+            zetPaneel();
+
+        }else if(tekenen.tool === "marker" && tekenen.incId){
+
+            nieuweVorm({ soort: "marker", type: tekenen.marker, x: p.x, y: p.y });
+
+        }else if(tekenen.tool === "ploeg" && tekenen.incId){
+
+            const ploegId = document.getElementById("selPloeg").value;
+
+            if(ploegId){
+                nieuweVorm({
+                    soort: "ploeg", ploegId: ploegId, x: p.x, y: p.y,
+                    label: document.getElementById("selPloeg").selectedOptions[0].textContent.replace(" ✓", "")
+                });
+            }
+
+        }else{
+
+            /* Gewone klik: een tekening kiezen (de bovenste) of niets */
+            let geraakt = null;
+
+            for(let i = stand.vormen.length - 1; i >= 0 && !geraakt; i--){
+                if(ligtIn(stand.vormen[i], p.px, p.py)) geraakt = stand.vormen[i];
+            }
+
+            vormKiezen(geraakt);
+        }
+    });
+
+    box.addEventListener("pointercancel", () => {
+        sleep = null;
+        cirkelSleep = null;
+        box.classList.remove("sleept");
+        voorbeeld();
+    });
+
+    box.addEventListener("dblclick", (e) => {
+
+        if(stand.plaatsen) return;
+
+        if(tekenen.tool === "vlak" || tekenen.tool === "lijn"){
+            vlakKlaar();
+            return;
+        }
+
+        if(!tekenen.tool && !e.target.closest(NIET_SLEPEN)) passen();
+    });
+
+    /* Paneel */
+    document.getElementById("btnTekenen").onclick = () => {
+
+        const p = document.getElementById("tekenPaneel");
+        const open = !p.classList.contains("open");
+
+        p.classList.toggle("open", open);
+
+        if(!open) stopTekenen();
+    };
+
+    document.getElementById("selInc").onchange = (e) => {
+        tekenen.incId = e.target.value || null;
+        geplaatstLokaal = new Set();
+        vulPloegen();
+        zetPaneel();
+    };
+
+    document.querySelectorAll("#tekenPaneel [data-tool]").forEach(b => {
+        b.onclick = () => kiesTool(b.dataset.tool);
+    });
+
+    (function(){
+        const sel = document.getElementById("selMarker");
+        Object.keys(MARKERS).forEach(sleutel => {
+            const o = document.createElement("option");
+            o.value = sleutel;
+            o.textContent = MARKERS[sleutel][0] + " " + MARKERS[sleutel][1];
+            sel.appendChild(o);
+        });
+        sel.onchange = () => { tekenen.marker = sel.value; };
+    })();
+
+    document.getElementById("btnKlaar").onclick = vlakKlaar;
+    document.getElementById("btnStop").onclick = stopTekenen;
+
+    document.getElementById("vormSluit").onclick = () => vormKiezen(null);
+
+    document.getElementById("vormWis").onclick = () => {
+        if(!gekozen) return;
+        stuur({ type: "vorm-wis", incId: gekozen.incId, id: gekozen.id });
+        gekozen = null;
+        zetPaneel();
+    };
+
+    document.getElementById("vormLabel").onchange = (e) => {
+        if(!gekozen) return;
+        stuur({ type: "vorm-wijzig", incId: gekozen.incId, id: gekozen.id, label: e.target.value.trim().slice(0, 60) });
+    };
+
+    document.getElementById("btnIn").onclick  = () => zoomMidden(1.4);
+    document.getElementById("btnUit").onclick = () => zoomMidden(1 / 1.4);
+    document.getElementById("btnPas").onclick = () => passen();
+    document.getElementById("btnIncidenten").onclick = () => toonIncidenten();
+
+    document.getElementById("btnSlot").onclick = () => {
+        pinsVast = !pinsVast;
+        const b = document.getElementById("btnSlot");
+        b.classList.toggle("open", !pinsVast);
+        document.body.classList.toggle("pinsLos", !pinsVast);
+        b.setAttribute("aria-pressed", pinsVast ? "true" : "false");
+        b.title = pinsVast ? "Pins vergrendeld: klik om te ontgrendelen" : "Pins ontgrendeld: klik om te vergrendelen";
+        b.setAttribute("aria-label", pinsVast ? "Pins vergrendeld" : "Pins ontgrendeld");
+        document.getElementById("slotDicht").style.display = pinsVast ? "" : "none";
+        document.getElementById("slotOpen").style.display = pinsVast ? "none" : "";
+    };
+
+    /* index.html laat weten dat de kaart opnieuw getoond wordt: dan alle incidenten
+       in beeld, tenzij er net naar één pin gesprongen is of een plek gekozen wordt */
+    window.addEventListener("message", (e) => {
+
+        if(!e.data || e.data.kaartOpdracht !== "toonIncidenten") return;
+        if(stand.plaatsen) return;
+        if(Date.now() - laatsteFocusTijd < 3000) return;
+
+        toonIncidenten();
+    });
+    document.getElementById("btnAnnuleer").onclick = () => stuur({ type: "annuleer" });
+
+    document.addEventListener("keydown", (e) => {
+
+        if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+        const tag = (e.target && e.target.tagName) || "";
+        const typt = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+        if(e.key === "Escape"){
+
+            if(stand.plaatsen) stuur({ type: "annuleer" });
+            else if(tekenen.tool) stopTekenen();
+            else if(gekozen) vormKiezen(null);
+
+        }else if(e.key === "Enter"){
+
+            if(typt && tag === "INPUT") e.target.blur();
+            else if(tekenen.tool === "vlak" || tekenen.tool === "lijn") vlakKlaar();
+
+        }else if((e.key === "m" || e.key === "M") && IN_KADER && !typt){
+
+            window.parent.postMessage({ kaart: "sluit" }, "*");
+        }
+    });
+
+    /* Bij het verslepen van de grootte komen er veel resize-events: even wachten */
+    let resizeTimer = null;
+
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => { if(k.geladen) toonIncidenten(); }, 200);
+    });
+
+    /* ---- Knoppen die enkel in het venster binnen de app horen ------------ */
+
+    if(IN_KADER){
+
+        const los = document.getElementById("btnLos");
+        const sluit = document.getElementById("btnSluit");
+
+        /* Een los kaartvenster bestaat enkel in de app */
+        let inApp = true;
+        try{ const pw = window.parent; inApp = !!(pw.__TAURI__ || pw.__TAURI_INTERNALS__ || pw.__TAURI_INVOKE__); }catch(e){}
+        los.style.display = inApp ? "" : "none";
+        sluit.style.display = "";
+
+        los.onclick = () => window.parent.postMessage({ kaart: "loskoppel" }, "*");
+        sluit.onclick = () => window.parent.postMessage({ kaart: "sluit" }, "*");
+
+    }else{
+
+        /* Los venster: laat weten dat het open is, zodat index.html dit
+           venster naar voren haalt in plaats van een tweede kaart te openen */
+        const leeft = () => {
+            try{ localStorage.setItem(SLEUTEL_LEVEND, String(Date.now())); }catch(e){}
+        };
+
+        leeft();
+        setInterval(leeft, 2000);
+
+        window.addEventListener("pagehide", () => {
+            try{ localStorage.removeItem(SLEUTEL_LEVEND); }catch(e){}
+        });
+    }
+
+    /* ---- Starten ----------------------------------------------------------- */
+
+    pasStandToe(leesStand());
+    img.src = bestanden[0];
+
+})();
+
+/* Geen opgeslagen invoer-suggesties van de browser ("Opgeslagen informatie") bij invoervelden.
+   Postcodevelden krijgen een eigen waarde, omdat de browser "off" daar soms negeert. */
+(function(){
+    const zetVeld = (e) => {
+        if(e.dataset && e.dataset.autofillKlaar) return;
+        e.setAttribute("autocomplete", /postcode|postal|zip/i.test((e.id || "") + " " + (e.name || "")) ? "nope" : "off");
+        if(e.dataset) e.dataset.autofillKlaar = "1";
+    };
+    const zetIn = (root) => {
+        if(root.matches && root.matches("input, textarea")) zetVeld(root);
+        if(root.querySelectorAll) root.querySelectorAll("input, textarea").forEach(zetVeld);
+    };
+    zetIn(document);
+    new MutationObserver(lijst => lijst.forEach(m => m.addedNodes.forEach(n => { if(n.nodeType === 1) zetIn(n); })))
+        .observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,660 @@
+/* BelgiëPD · gedeelde moderne stijllaag
+ *
+ * Wordt als LAATSTE laag geladen (door bpd-navigation.js) en bouwt voort op de
+ * bestaande thema-variabelen (--ref-*, licht/donker via data-bpd-theme).
+ * Enkel presentatie: geen wijzigingen aan rechten, statuskleuren of inhoud.
+ * Uitschakelen kan door de link in bpd-navigation.js te verwijderen.
+ *
+ *  1. Tokens          5. Knoppen
+ *  2. Lettertype      6. Formulieren
+ *  3. Opbouw/balken   7. Kaarten, meldingen, tabellen
+ *  4. Koppen & links  8. Details (focus, selectie, scrollbar)
+ */
+
+/* ---------- 1. Tokens ---------------------------------------------------- */
+html.bpd-reference-ui {
+  --m-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --m-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  --m-r-sm: 8px;
+  --m-r: 12px;
+  --m-r-lg: 16px;
+  --m-bar-h: 56px;
+  --m-page-w: 1320px;
+  --m-ok: #1f9d6b;
+  --m-warn: #c27b0a;
+  --m-bad: #d23b4e;
+  --m-ease: .14s cubic-bezier(.3, .7, .4, 1);
+}
+html.bpd-reference-ui[data-bpd-theme="light"],
+html.bpd-reference-ui:not([data-bpd-theme]) {
+  --m-shadow: 0 1px 2px rgba(16, 32, 64, .05), 0 4px 14px rgba(16, 32, 64, .05);
+  --m-shadow-hover: 0 2px 4px rgba(16, 32, 64, .06), 0 10px 28px rgba(16, 32, 64, .10);
+  --m-tint: color-mix(in srgb, var(--ref-accent) 8%, transparent);
+  --m-note-bg: #eef3ff;
+  --m-note-line: #3865dc;
+  --m-err-bg: #fdeff1;
+  --m-err-ink: #9d1f31;
+  --m-err-line: #d23b4e;
+  --m-warn-bg: #fff6e5;
+  --m-warn-ink: #7a4b00;
+  --m-ok-bg: #e9f7f0;
+  --m-ok-ink: #11673f;
+}
+html.bpd-reference-ui[data-bpd-theme="dark"] {
+  --m-shadow: none;
+  --m-shadow-hover: 0 8px 28px rgba(0, 0, 0, .35);
+  --m-tint: color-mix(in srgb, var(--ref-accent) 14%, transparent);
+  --m-note-bg: #14213d;
+  --m-note-line: #5b82f2;
+  --m-err-bg: #3a1b26;
+  --m-err-ink: #ffc9d1;
+  --m-err-line: #e0566a;
+  --m-warn-bg: #36290f;
+  --m-warn-ink: #ffdba0;
+  --m-ok-bg: #112f27;
+  --m-ok-ink: #a6ecd0;
+}
+
+/* ---------- 2. Lettertype ------------------------------------------------ */
+html.bpd-reference-ui body,
+html.bpd-reference-ui button,
+html.bpd-reference-ui input,
+html.bpd-reference-ui select,
+html.bpd-reference-ui textarea {
+  font-family: var(--m-font);
+}
+html.bpd-reference-ui body {
+  font-size: 14.5px;
+  line-height: 1.55;
+  font-feature-settings: "cv11", "ss01", "tnum" 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+html.bpd-reference-ui :is(code, kbd, pre, samp) {
+  font-family: var(--m-mono);
+  font-size: .92em;
+  background: var(--m-tint);
+  border-radius: 6px;
+  padding: .1em .38em;
+}
+html.bpd-reference-ui pre code { background: none; padding: 0; }
+
+/* ---------- 3. Opbouw: één rustige bovenbalk ----------------------------- */
+/* De portaalbalk (zoeken, thema, profiel) komt bovenaan; daaronder de
+   paginabalk met titel en acties. */
+html.bpd-reference-ui body.bpd-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+html.bpd-reference-ui body.bpd-shell > #bpdQuicknav { order: -2; }
+html.bpd-reference-ui body.bpd-shell > header { order: -1; }
+html.bpd-reference-ui body.bpd-shell > main,
+html.bpd-reference-ui body.bpd-shell > .workspace { order: 0; flex: 1 0 auto; }
+html.bpd-reference-ui body.bpd-shell > footer,
+html.bpd-reference-ui body.bpd-shell > .page-footer { order: 5; }
+
+html.bpd-reference-ui #bpdQuicknav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  min-height: var(--m-bar-h);
+  padding: 10px clamp(16px, 3vw, 40px);
+  gap: 12px;
+  align-items: center;
+  background: color-mix(in srgb, var(--ref-header) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border: 0;
+  border-bottom: 1px solid var(--ref-line);
+  box-shadow: none;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-breadcrumb {
+  font-size: 13px;
+  color: var(--ref-muted);
+  font-weight: 500;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-breadcrumb strong {
+  color: var(--ref-ink);
+  font-weight: 650;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-search {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--ref-input);
+  border: 1px solid var(--ref-line);
+  border-radius: 999px;
+  padding: 0 4px 0 14px;
+  min-height: 38px;
+  transition: border-color var(--m-ease), box-shadow var(--m-ease);
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-search:focus-within {
+  border-color: var(--ref-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ref-accent) 22%, transparent);
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-search input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  min-height: 34px;
+  padding: 0 8px 0 0;
+  font-size: 13.5px;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-search button {
+  border: 0;
+  background: transparent;
+  color: var(--ref-muted);
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 0;           /* enkel het icoon; label blijft voor schermlezers */
+  gap: 0;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-search button .bpd-svg-icon {
+  width: 17px; height: 17px; min-width: 17px;
+}
+html.bpd-reference-ui #bpdQuicknav :is(.bpd-theme-toggle, .bpd-ref-profile, .bpd-ref-shortcuts summary) {
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--ref-line);
+  background: var(--ref-card);
+  color: var(--ref-ink);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 14px;
+  transition: background var(--m-ease), border-color var(--m-ease);
+}
+html.bpd-reference-ui #bpdQuicknav :is(.bpd-theme-toggle, .bpd-ref-profile, .bpd-ref-shortcuts summary):hover {
+  background: var(--ref-card-hover);
+  border-color: var(--ref-line-strong);
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-theme-toggle {
+  display: inline-flex; align-items: center; gap: 7px; box-shadow: none; white-space: nowrap;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-shortcuts summary {
+  display: inline-flex; align-items: center; gap: 6px; list-style: none;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-theme-toggle .bpd-svg-icon {
+  width: 17px; height: 17px; min-width: 17px;
+}
+html.bpd-reference-ui #bpdQuicknav .bpd-ref-shortcuts summary::-webkit-details-marker { display: none; }
+
+/* Paginabalk (de eigen <header> van elke pagina) */
+html.bpd-reference-ui body.bpd-shell > header {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 14px clamp(16px, 3vw, 40px);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ref-line);
+  box-shadow: none;
+  color: var(--ref-ink);
+  min-height: 0;
+}
+html.bpd-reference-ui body.bpd-shell > header :is(strong, .portal-brand) {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  color: var(--ref-ink);
+}
+html.bpd-reference-ui body.bpd-shell > header small {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ref-muted);
+}
+html.bpd-reference-ui body.bpd-shell > header :is(nav, .header-actions, div:last-child) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Inhoud */
+html.bpd-reference-ui body.bpd-shell > main {
+  width: 100%;
+  max-width: var(--m-page-w);
+  margin: 0 auto;
+  padding: clamp(22px, 3vw, 40px) clamp(16px, 3vw, 40px) 64px;
+}
+
+/* ---------- 4. Koppen & links -------------------------------------------- */
+html.bpd-reference-ui main :is(h1, h2, h3, h4) {
+  color: var(--ref-ink);
+  font-weight: 700;
+  letter-spacing: -.022em;
+  line-height: 1.22;
+}
+html.bpd-reference-ui main h1 {
+  font-size: clamp(24px, 2.4vw, 31px);
+  font-weight: 750;
+  letter-spacing: -.03em;
+  margin: 0 0 6px;
+}
+html.bpd-reference-ui main h2 { font-size: 18px; margin: 0 0 10px; }
+html.bpd-reference-ui main h3 { font-size: 15.5px; margin: 0 0 8px; }
+html.bpd-reference-ui main :is(.sub, .lead, h1 + p) {
+  color: var(--ref-muted);
+  font-size: 14.5px;
+  max-width: 78ch;
+}
+html.bpd-reference-ui main :is(.eyebrow, .kicker) {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ref-accent);
+}
+html.bpd-reference-ui main a:not([class]),
+html.bpd-reference-ui main :is(p, li, td, small, .muted) a:not([class*="button"]):not([class*="btn"]) {
+  color: var(--ref-accent);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  font-weight: 550;
+}
+html.bpd-reference-ui main a:not([class]):hover,
+html.bpd-reference-ui main :is(p, li, td, small, .muted) a:not([class*="button"]):not([class*="btn"]):hover {
+  text-decoration: underline;
+}
+html.bpd-reference-ui body.bpd-shell > header a:not([class*="button"]):not([class*="btn"]):not(.portal-brand) {
+  color: var(--ref-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 7px 10px;
+  border-radius: 999px;
+  transition: background var(--m-ease), color var(--m-ease);
+}
+html.bpd-reference-ui body.bpd-shell > header a:not([class*="button"]):not([class*="btn"]):not(.portal-brand):hover {
+  color: var(--ref-ink);
+  background: var(--m-tint);
+}
+
+/* ---------- 5. Knoppen ---------------------------------------------------- */
+html.bpd-reference-ui :is(main, body.bpd-shell > header, .workspace) :is(button, .button, a.button, [class*="btn-"], .btn):not(.bpd-theme-toggle):not([data-operational]):not(.danger):not(.critical):not(.tab):not(.unit):not(.mr-table *) {
+  font-family: var(--m-font);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -.005em;
+  line-height: 1.2;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background var(--m-ease), border-color var(--m-ease), box-shadow var(--m-ease), transform var(--m-ease);
+}
+html.bpd-reference-ui main :is(button, .button):not(.bpd-theme-toggle):active { transform: translateY(1px); }
+html.bpd-reference-ui main :is(button, .button):disabled { opacity: .55; cursor: not-allowed; }
+
+html.bpd-reference-ui main :is(a.button, a.btn) {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none;
+}
+html.bpd-reference-ui [hidden] { display: none !important; }
+
+/* Primaire acties: de vaste accentkleur, zachte glans */
+html.bpd-reference-ui main :is(.primary, .button-primary, .btn-primary, button[type="submit"]:not(.alt):not(.secondary)) {
+  background: var(--ref-accent);
+  border: 1px solid color-mix(in srgb, var(--ref-accent) 80%, #000);
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .18) inset, 0 1px 2px rgba(10, 20, 50, .18);
+}
+html.bpd-reference-ui main :is(.primary, .button-primary, .btn-primary, button[type="submit"]:not(.alt):not(.secondary)):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ref-accent) 88%, #fff);
+}
+/* Secundaire acties: omlijnd */
+html.bpd-reference-ui main :is(.alt, .secondary, .button-light, .button-quiet) {
+  background: var(--ref-card);
+  color: var(--ref-ink);
+  border: 1px solid var(--ref-line-strong);
+  box-shadow: none;
+}
+html.bpd-reference-ui main :is(.alt, .secondary, .button-light, .button-quiet):hover:not(:disabled) {
+  background: var(--ref-card-hover);
+}
+html.bpd-reference-ui body.bpd-shell > header :is(button, .button) {
+  min-height: 36px;
+  font-size: 13px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+/* ---------- 6. Formulieren ------------------------------------------------ */
+html.bpd-reference-ui main label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ref-muted);
+  letter-spacing: 0;
+}
+html.bpd-reference-ui main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea) {
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ref-line-strong);
+  background: var(--ref-input);
+  color: var(--ref-ink);
+  font-size: 14px;
+  transition: border-color var(--m-ease), box-shadow var(--m-ease);
+}
+html.bpd-reference-ui main textarea { min-height: 88px; line-height: 1.5; }
+html.bpd-reference-ui main :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--ref-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ref-accent) 24%, transparent);
+}
+html.bpd-reference-ui main :is(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--ref-accent);
+  width: 16px; height: 16px;
+}
+html.bpd-reference-ui main select { padding-right: 32px; }
+
+/* ---------- 7. Kaarten, meldingen, tabellen ------------------------------- */
+html.bpd-reference-ui body.bpd-shell main :is(.card, .panel, section.card) {
+  background: var(--ref-card);
+  border: 1px solid var(--ref-line);
+  border-radius: var(--m-r-lg);
+  box-shadow: var(--m-shadow);
+  padding: clamp(16px, 2vw, 24px);
+}
+html.bpd-reference-ui body.bpd-shell main .module,
+html.bpd-reference-ui .portal .module {
+  border-radius: var(--m-r-lg);
+  box-shadow: var(--m-shadow);
+  transition: transform var(--m-ease), box-shadow var(--m-ease), border-color var(--m-ease);
+}
+html.bpd-reference-ui .portal .module:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--m-shadow-hover);
+  border-color: color-mix(in srgb, var(--ref-accent) 45%, var(--ref-line));
+}
+html.bpd-reference-ui .portal .module h3 { font-size: 15.5px; letter-spacing: -.015em; }
+html.bpd-reference-ui .portal .module p { font-size: 13px; line-height: 1.5; }
+html.bpd-reference-ui .portal .module .open { font-size: 12.5px; }
+
+/* Meldingen: één taal voor info / fout / waarschuwing / succes */
+html.bpd-reference-ui main :is(.notice, .error, .warn, .success, .feedback, .alert):not(:empty) {
+  background: var(--m-note-bg);
+  color: var(--ref-ink);
+  border: 1px solid color-mix(in srgb, var(--m-note-line) 35%, var(--ref-line));
+  border-left: 4px solid var(--m-note-line);
+  border-radius: var(--m-r);
+  padding: 12px 16px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  box-shadow: none;
+}
+html.bpd-reference-ui main :is(.notice.error, .error, .feedback.error, .alert.error) {
+  background: var(--m-err-bg);
+  color: var(--m-err-ink);
+  border-color: color-mix(in srgb, var(--m-err-line) 40%, var(--ref-line));
+  border-left-color: var(--m-err-line);
+}
+html.bpd-reference-ui main :is(.warn, .notice.warn, .feedback.warn) {
+  background: var(--m-warn-bg);
+  color: var(--m-warn-ink);
+  border-color: color-mix(in srgb, var(--m-warn) 40%, var(--ref-line));
+  border-left-color: var(--m-warn);
+}
+html.bpd-reference-ui main :is(.success, .notice.ok, .feedback.ok, .feedback.success) {
+  background: var(--m-ok-bg);
+  color: var(--m-ok-ink);
+  border-color: color-mix(in srgb, var(--m-ok) 40%, var(--ref-line));
+  border-left-color: var(--m-ok);
+}
+
+/* Tabellen */
+html.bpd-reference-ui main table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 13.5px;
+}
+html.bpd-reference-ui main table:not(.mr-table) thead th {
+  position: sticky; top: 0;
+  background: var(--ref-card);
+  color: var(--ref-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--ref-line-strong);
+}
+html.bpd-reference-ui main table:not(.mr-table) tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--ref-line);
+  vertical-align: middle;
+}
+html.bpd-reference-ui main table:not(.mr-table) tbody tr { transition: background var(--m-ease); }
+html.bpd-reference-ui main table:not(.mr-table) tbody tr:hover { background: var(--m-tint); }
+html.bpd-reference-ui main table:not(.mr-table) tbody tr:last-child td { border-bottom: 0; }
+
+/* Labels en badges */
+html.bpd-reference-ui main :is(.pill, .badge, .chip, .tag) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+
+/* ---------- 8. Details ---------------------------------------------------- */
+html.bpd-reference-ui :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ref-accent) 80%, #fff);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+html.bpd-reference-ui ::selection {
+  background: color-mix(in srgb, var(--ref-accent) 30%, transparent);
+}
+html.bpd-reference-ui * { scrollbar-width: thin; scrollbar-color: var(--ref-line-strong) transparent; }
+html.bpd-reference-ui :is(main, aside) hr { border: 0; border-top: 1px solid var(--ref-line); margin: 20px 0; }
+
+/* Zijbalk: iets zachter, zelfde taal */
+html.bpd-reference-ui #bpdSidebar .bpd-side-links a {
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 550;
+  transition: background var(--m-ease), color var(--m-ease);
+}
+html.bpd-reference-ui #bpdSidebar .bpd-ref-side-heading {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+}
+html.bpd-reference-ui #bpdSidebar .bpd-brand-text { font-weight: 700; letter-spacing: -.02em; }
+
+@media (max-width: 720px) {
+  html.bpd-reference-ui #bpdQuicknav { padding: 8px 12px; gap: 8px; }
+  html.bpd-reference-ui #bpdQuicknav .bpd-ref-breadcrumb { display: none; }
+  html.bpd-reference-ui body.bpd-shell > header { padding: 12px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.bpd-reference-ui * { transition: none !important; }
+}
+
+/* Emoji-vervangende iconen (bpd-icons.js) */
+.bpd-svg-icon.bpd-emoji-icon {
+  width: 1.12em; height: 1.12em; min-width: 1.12em;
+  vertical-align: -.2em;
+  stroke-width: 1.9;
+}
+
+/* TO Dienstbord */
+html.bpd-reference-ui .to-duty-page .brand-shield {
+  width: 36px; height: 36px; border-radius: 11px;
+  display: grid; place-items: center;
+  background: var(--m-tint); color: var(--ref-accent); border: 1px solid var(--ref-line);
+  font-size: 0;
+}
+html.bpd-reference-ui .to-duty-page .brand-shield .bpd-svg-icon { width: 19px; height: 19px; }
+html.bpd-reference-ui .to-duty-page .portal-brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
+html.bpd-reference-ui .to-duty-page .portal-brand small { display: block; margin-top: 1px; }
+html.bpd-reference-ui .to-duty-page .portal-back { display: inline-flex; align-items: center; gap: 6px; }
+html.bpd-reference-ui .to-duty-page .welcome {
+  background: var(--ref-card); border: 1px solid var(--ref-line); border-radius: 20px; box-shadow: var(--m-shadow);
+}
+html.bpd-reference-ui .to-duty-page .welcome-mark {
+  width: 76px; height: 76px; border-radius: 22px; display: grid; place-items: center;
+  background: var(--m-tint); color: var(--ref-accent); border: 1px solid color-mix(in srgb, var(--ref-accent) 30%, var(--ref-line));
+  font-size: 0; box-shadow: none;
+}
+html.bpd-reference-ui .to-duty-page .welcome-mark .bpd-svg-icon { width: 34px; height: 34px; }
+html.bpd-reference-ui .to-duty-page .welcome h2 { font-size: 22px; margin: 4px 0 8px; }
+
+/* Paginabalken met een eigen binnencontainer (.head / .header-inner / .wrap) */
+html.bpd-reference-ui body.bpd-shell > header > :is(.head, .header-inner, .wrap, .bar) {
+  max-width: none; width: 100%; margin: 0; padding: 0;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px;
+}
+html.bpd-reference-ui body.bpd-shell > header > :is(.head, .header-inner, .wrap, .bar) > :first-child { margin-right: auto; }
+html.bpd-reference-ui body.bpd-shell > header :is(.brand, .title) {
+  font-size: 15px; font-weight: 650; letter-spacing: -.01em; color: var(--ref-ink);
+}
+html.bpd-reference-ui body.bpd-shell > header :is(.subtitle, .sub) {
+  font-size: 12px; color: var(--ref-muted); font-weight: 500; margin: 0;
+}
+html.bpd-reference-ui body.bpd-shell > header :is(.ghost, .secondary) {
+  background: transparent; border: 1px solid var(--ref-line-strong); color: var(--ref-ink);
+}
+
+/* ---------- Gebruikersbeheer ---------------------------------------------- */
+html.bpd-reference-ui .account-actions {
+  display: grid; grid-template-columns: auto auto; justify-content: start; gap: 8px; max-width: 320px;
+}
+html.bpd-reference-ui .account-actions > :is(button, a, details) { min-width: 0; }
+html.bpd-reference-ui .account-actions button,
+html.bpd-reference-ui .account-actions .personnel-quicklink,
+html.bpd-reference-ui .account-more summary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 34px; padding: 0 12px; border-radius: 9px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center; text-decoration: none;
+  border: 1px solid var(--ref-line-strong); background: var(--ref-card); color: var(--ref-ink); box-shadow: none;
+}
+html.bpd-reference-ui .account-actions > button:first-child {
+  background: var(--ref-accent); border-color: color-mix(in srgb, var(--ref-accent) 80%, #000); color: #fff;
+}
+html.bpd-reference-ui .account-actions button:hover:not(:disabled),
+html.bpd-reference-ui .account-actions .personnel-quicklink:hover,
+html.bpd-reference-ui .account-more summary:hover { background: var(--ref-card-hover); }
+html.bpd-reference-ui .account-actions > button:first-child:hover:not(:disabled) { background: color-mix(in srgb, var(--ref-accent) 88%, #fff); }
+html.bpd-reference-ui .account-more { grid-column: 1 / -1; }
+html.bpd-reference-ui .account-more summary { width: 100%; justify-content: space-between; color: var(--ref-muted); }
+html.bpd-reference-ui .account-more summary::after { content: ""; width: 7px; height: 7px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-2px); transition: transform var(--m-ease); }
+html.bpd-reference-ui .account-more[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+html.bpd-reference-ui .account-more-items {
+  width: 100%; margin-top: 8px; padding: 6px; gap: 2px;
+  border: 1px solid var(--ref-line); border-radius: 12px; background: var(--ref-card);
+}
+html.bpd-reference-ui .account-more-items > small {
+  display: block; padding: 8px 10px 6px; color: var(--ref-muted); font-size: 12px; line-height: 1.45;
+}
+html.bpd-reference-ui main .account-more-items button {
+  width: 100%; justify-content: flex-start; text-align: left; border: 0; background: transparent;
+  min-height: 36px; padding: 0 10px; border-radius: 8px; font-weight: 550; white-space: normal;
+  background: transparent !important; box-shadow: none !important;
+}
+html.bpd-reference-ui main .account-more-items button:hover:not(:disabled) { background: var(--m-tint) !important; }
+html.bpd-reference-ui main .account-more-items button:hover:not(:disabled) { background: var(--m-tint); }
+html.bpd-reference-ui main .account-more-items button:is(.danger, .critical) { color: var(--m-err-line); background: transparent; border: 0; box-shadow: none; }
+html.bpd-reference-ui main .account-more-items button.danger:hover:not(:disabled) { background: var(--m-err-bg); }
+html.bpd-reference-ui main .account-actions a.personnel-quicklink { color: var(--ref-ink); }
+
+/* tabel: één rustige rij per account */
+html.bpd-reference-ui #admin table td { padding: 16px 12px; vertical-align: top; }
+html.bpd-reference-ui #admin td .name { font-size: 14.5px; font-weight: 650; color: var(--ref-ink); }
+html.bpd-reference-ui #admin td small { color: var(--ref-muted); font-size: 12px; }
+html.bpd-reference-ui #admin td select { width: 100%; max-width: 250px; min-height: 38px; }
+html.bpd-reference-ui .service-assignments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+html.bpd-reference-ui .service-assignment {
+  font-size: 11.5px; font-weight: 600; padding: 4px 9px; border-radius: 999px;
+  background: var(--m-tint); border: 1px solid color-mix(in srgb, var(--ref-accent) 28%, var(--ref-line)); color: var(--ref-ink);
+}
+html.bpd-reference-ui .status { display: inline-block; font-size: 12px; font-weight: 650; padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+html.bpd-reference-ui .status.approved { background: var(--m-ok-bg); color: var(--m-ok-ink); }
+html.bpd-reference-ui .status.pending { background: var(--m-warn-bg); color: var(--m-warn-ink); }
+html.bpd-reference-ui .status.blocked { background: var(--m-err-bg); color: var(--m-err-ink); }
+html.bpd-reference-ui #knownIdsSection { margin-top: 32px; }
+html.bpd-reference-ui details.admin-guide, html.bpd-reference-ui details.admin-quicklinks {
+  border: 1px solid var(--ref-line); border-radius: var(--m-r); background: var(--ref-card); padding: 0;
+}
+html.bpd-reference-ui details.admin-guide > summary, html.bpd-reference-ui details.admin-quicklinks > summary {
+  padding: 12px 16px; cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--ref-ink);
+}
+
+/* ===== Personeelslijst (tabel) ===== */
+@media (min-width:1481px) {
+  html.bpd-reference-ui #bpdMenuToggle { display: none !important; }
+}
+html.bpd-reference-ui .roster-personnel-page .mr-table td.mr-status-cell .mr-status {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 24px; line-height: 1.2; border-radius: 999px; font-weight: 650;
+}
+html.bpd-reference-ui .roster-personnel-page .mr-table .mr-specialty.mr-unknown {
+  background: transparent; border-color: transparent; color: var(--m-muted, #7f93ad);
+  font-weight: 400; opacity: .7;
+}
+
+/* ===== Lichte weergave: hard-gecodeerde donkere vlakken ===== */
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface] {
+  background: var(--m-note-bg) !important; background-image: none !important;
+  border-color: color-mix(in srgb, var(--ref-accent) 22%, #fff) !important;
+  box-shadow: none !important;
+}
+html.bpd-reference-ui[data-bpd-theme="light"] :is(th,thead,tr)[data-bpd-dark-surface] {
+  background: #e8eefb !important;
+}
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface] :where(h1,h2,h3,h4,p,span,small,div,li,label,strong,td,th) {
+  color: #1c2b4a;
+}
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface="ok"] { background: var(--m-ok-bg) !important; }
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface="err"] { background: var(--m-err-bg) !important; }
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface="warn"] { background: var(--m-warn-bg) !important; }
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface="ok"] :where(h1,h2,h3,h4,p,span,small,div,li,label,strong,td,th) { color: var(--m-ok-ink); }
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface="err"] :where(h1,h2,h3,h4,p,span,small,div,li,label,strong,td,th) { color: var(--m-err-ink); }
+html.bpd-reference-ui[data-bpd-theme="light"] [data-bpd-dark-surface="warn"] :where(h1,h2,h3,h4,p,span,small,div,li,label,strong,td,th) { color: var(--m-warn-ink); }
+html.bpd-reference-ui[data-bpd-theme="light"] .staff-list-head h2 { color: #172b49; }
+html.bpd-reference-ui[data-bpd-theme="light"] :is(.notice.warn, .env) {
+  background: var(--m-warn-bg) !important; color: var(--m-warn-ink) !important; border-color: #e0b96a !important;
+}
+html.bpd-reference-ui[data-bpd-theme="light"] .personnel-roster-heading strong { color: #172b49; }
+html.bpd-reference-ui[data-bpd-theme="light"] .personnel-roster-heading span,
+html.bpd-reference-ui[data-bpd-theme="light"] .staff-list-panel > p.subtle { color: #586d8c; }
+
+/* ===== Eén gedeeld kleurenschema voor personeelsstatus =====
+   Zelfde kleuren in de personeelslijst (tabel + mobiel) en in het dossiercentrum. */
+html.bpd-reference-ui {
+  --st-actief-bg:#1d6847;    --st-actief-line:#3ca873;    --st-actief-ink:#ebfff2;
+  --st-verlof-bg:#21588c;    --st-verlof-line:#5a9ada;    --st-verlof-ink:#f0f8ff;
+  --st-inactief-bg:#88323b;  --st-inactief-line:#d36a70;  --st-inactief-ink:#fff0f2;
+  --st-5050-bg:#995c1e;      --st-5050-line:#dfa24d;      --st-5050-ink:#fff4e2;
+  --st-nonactief-bg:#633f86; --st-nonactief-line:#aa83d8; --st-nonactief-ink:#f8f1ff;
+  --st-verwijderd-bg:#505a67;--st-verwijderd-line:#919ba8;--st-verwijderd-ink:#f5f6f7;
+}
+html.bpd-reference-ui :is(.mr-table,.mr-mobile-roster) .mr-status--actief,
+html.bpd-reference-ui .bpd-dossier-status-pill[data-tone="success"]
+  { background:var(--st-actief-bg); border-color:var(--st-actief-line); color:var(--st-actief-ink); }
+html.bpd-reference-ui :is(.mr-table,.mr-mobile-roster) .mr-status--verlof,
+html.bpd-reference-ui .bpd-dossier-status-pill[data-tone="leave"]
+  { background:var(--st-verlof-bg); border-color:var(--st-verlof-line); color:var(--st-verlof-ink); }
+html.bpd-reference-ui :is(.mr-table,.mr-mobile-roster) .mr-status--inactief,
+html.bpd-reference-ui .bpd-dossier-status-pill[data-tone="inactive"]
+  { background:var(--st-inactief-bg); border-color:var(--st-inactief-line); color:var(--st-inactief-ink); }
+html.bpd-reference-ui :is(.mr-table,.mr-mobile-roster) .mr-status--fifty-fifty,
+html.bpd-reference-ui .bpd-dossier-status-pill[data-tone="attention"]
+  { background:var(--st-5050-bg); border-color:var(--st-5050-line); color:var(--st-5050-ink); }
+html.bpd-reference-ui :is(.mr-table,.mr-mobile-roster) .mr-status--non-actief,
+html.bpd-reference-ui .bpd-dossier-status-pill[data-tone="nonactive"]
+  { background:var(--st-nonactief-bg); border-color:var(--st-nonactief-line); color:var(--st-nonactief-ink); }
+html.bpd-reference-ui :is(.mr-table,.mr-mobile-roster) .mr-status--verwijderd,
+html.bpd-reference-ui .bpd-dossier-status-pill[data-tone="removed"]
+  { background:var(--st-verwijderd-bg); border-color:var(--st-verwijderd-line); color:var(--st-verwijderd-ink); }

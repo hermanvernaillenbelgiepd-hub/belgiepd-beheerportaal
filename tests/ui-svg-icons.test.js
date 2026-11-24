@@ -11,7 +11,7 @@ const ids=[...sprite.matchAll(/<symbol id="([a-z-]+)" viewBox="0 0 24 24">/g)]
   .map(match=>match[1]);
 
 test('SVG file contains unique safe icon symbols, no active content',()=>{
-  assert.equal(ids.length,32);
+  assert.equal(ids.length,46);
   assert.equal(new Set(ids).size,ids.length);
   assert.match(sprite,/xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
   for(const id of ['house','users','folder-open','activity','network',
