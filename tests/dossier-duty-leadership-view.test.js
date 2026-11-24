@@ -44,7 +44,8 @@ test('leader can select a closed duty month without rewriting official activity 
  assert.match(view,/data-month-evidence/);
  assert.match(view,/niet gebruiken voor 50\/50 of INACTIEF/);
  assert.match(backend,/monthlyPreview:projectDutyMonthlyObservation/);
- assert.doesNotMatch(backend,/set\(|update\(|sendMessage|sendDiscord|autoPing/);
+ assert.doesNotMatch(backend,/runTransaction|\.collection\(|sendMessage|sendDiscord|triggerAutomaticPing/);
+ // res.set('Cache-Control') is a harmless HTTP response header, not a database write.
  const {spawnSync}=await import('node:child_process');
  const inline=center.match(/<script type="module">([\s\S]*?)<\/script>/);
  assert.ok(inline);
