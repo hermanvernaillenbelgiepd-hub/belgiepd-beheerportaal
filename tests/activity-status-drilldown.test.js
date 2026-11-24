@@ -9,7 +9,7 @@ test('statuskaart gebruikt dezelfde bestaande-statutengroep voor teller en namen
  assert.match(dashboard,/const matched=people\.filter\(p=>belongs\(p,active\)\)/);
  assert.match(dashboard,/selected\.id='activitySelectedStatusPanel'/);
  assert.match(dashboard,/tabs\.followup\.append\(selected\)/);
- assert.match(dashboard,/renderSelectedStatus\(safe\)/);
+ assert.match(dashboard,/renderSelectedStatus\(safe,lookupPlayer\)/);
  assert.match(dashboard,/selectTab\('followup'\);onSelect\(\)/);
  assert.match(dashboard,/p\.currentStatus/);
  assert.match(dashboard,/p\.lastConnection/);
