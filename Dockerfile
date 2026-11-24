@@ -65,6 +65,7 @@ RUN node --test tests/visual-design-settings.test.js
 RUN node --test tests/visual-design-pages.test.js
 RUN node --test tests/visual-design-developer-profile.test.js
 RUN node --test tests/developer-readonly-profile.test.js
+RUN node --test tests/developer-viewer-grants.test.js
 RUN node --test tests/reference-dashboard-style.test.js
 RUN node --test tests/portal-adaptive-layout.test.js
 RUN node --test tests/ui-svg-icons.test.js
