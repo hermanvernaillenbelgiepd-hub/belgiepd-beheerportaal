@@ -15,9 +15,28 @@ export const serviceDutySummary=x=>{
    (x.ongoingShifts?' · '+x.ongoingShifts+' lopend':'')+
    ' · laatste afgeronde dienst '+dutyClock(x.lastCompletedAt);
 };
+export function serviceMonthlyObservationText(preview){
+ if(!preview||!/^20\d{2}-(?:0[1-9]|1[0-2])$/.test(String(preview.month||'')))
+  return 'Maandcontrole: nog geen betrouwbare maandgegevens.';
+ const label=preview.month.slice(5,7)+'/'+preview.month.slice(0,4);
+ if(preview.status!=='records_found')
+  return label+': geen volledig afgesloten dienstregistratie teruggevonden. Dit bewijst geen 0 uur.';
+ const recorded=dutyDuration(preview.recordedMinutes);
+ const excluded=(preview.excludedBoundary||0)+(preview.excludedOngoing||0);
+ return label+': '+recorded+' uit '+preview.completedShiftCount+
+  ' volledig binnen deze maand afgesloten registraties'+
+  (excluded?' · '+excluded+' overlopende/lopende diensten niet meegeteld':'')+
+  ' · GEEN geverifieerd maandtotaal, niet gebruiken voor 50/50 of INACTIEF.';
+}
 export function renderServiceDutyDetails(root,data){
  root.replaceChildren();
- if(data?.status!=='verified_service_shifts'){root.textContent=serviceDutySummary(data);return}
+ const monthly=document.createElement('p');monthly.className='subtle';
+ monthly.textContent=serviceMonthlyObservationText(data?.monthlyPreview);
+ monthly.setAttribute('data-month-evidence','informational-only');
+ if(data?.status!=='verified_service_shifts'){
+  root.textContent=serviceDutySummary(data);root.append(monthly);return;
+ }
+ root.append(monthly);
  for(const g of data.byService||[]){
   const p=document.createElement('p');p.className='subtle';
   p.textContent=(g.service||'Niet opgegeven')+' · '+dutyDuration(g.minutes);root.append(p);
