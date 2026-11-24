@@ -297,7 +297,6 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 </section>
 </main>
 <script type="module">
-import {serviceDutySummary} from '/dossier-duty-view.js';
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel,matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-roster-order.js';
 
 const $=id=>document.getElementById(id);
@@ -489,7 +488,19 @@ function render(){
      encodeURIComponent(p.department)+'/'+encodeURIComponent(p.discordId),{
      cache:'no-store',headers:{Authorization:'Bearer '+token}});
     if(!response.ok)throw Error('Geen rechten of API niet bereikbaar');
-    output.textContent=serviceDutySummary(await response.json());
+    const data=await response.json();
+    if(data.status==='verified_service_shifts'){
+     const mins=data.minutes;
+     const hours=Number.isSafeInteger(mins)&&mins>=0?
+      Math.floor(mins/60)+' u '+String(mins%60).padStart(2,'0')+' min':'onbekend';
+     output.textContent='Diensturen API: '+hours+' · '+data.shiftCount+
+      ' diensten'+(data.ongoingShifts?' · '+data.ongoingShifts+' lopend':'')+
+      ' · geen afgesloten maandmeting';
+    }else if(data.status==='unmapped'){
+     output.textContent='Dienstcodes niet eenduidig aan deze hulpdienst toe te wijzen; geen nulurenconclusie.';
+    }else if(data.status==='no_records'){
+     output.textContent='Geen individuele dienstregistraties in het API-antwoord.';
+    }else{output.textContent='Diensturen tijdelijk niet beschikbaar.'}
    }catch{output.textContent='Diensturen niet beschikbaar voor deze dienst of functie.'}
    finally{button.disabled=false}
   };
