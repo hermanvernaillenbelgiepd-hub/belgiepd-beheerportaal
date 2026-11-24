@@ -1,14 +1,183 @@
 <!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Sollicitatiecentrum | BelgiëPD</title>
-<style>:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#e9f2ff;background:#0b182c}*{box-sizing:border-box}body{margin:0;background:#0b182c;color:#e9f2ff}header{padding:18px 24px;background:#142840;border-bottom:1px solid #344c69;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}header a,a{color:#a8ceff}main{max-width:1000px;margin:auto;padding:30px 20px 60px}h1{font-size:clamp(25px,4vw,35px);margin:0 0 8px}h2{font-size:20px}p{line-height:1.6;color:#c1cee0}.notice{padding:15px 17px;border:1px solid #9c8a55;background:#352d19;color:#ffe3a2;border-radius:12px;margin:18px 0}.services{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:20px 0}.service{border:1px solid #496485;background:#172d46;border-radius:12px;padding:18px;text-align:left;color:#f2f7ff;font:inherit;cursor:pointer}.service:hover,.service:focus-visible{border-color:#8dbeff}.service[aria-pressed="true"]{background:#294c79;outline:2px solid #9bc9ff}.service strong{display:block;margin-bottom:6px}.panel{background:#142840;padding:20px;border-radius:12px;border:1px solid #34516e}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;list-style:none;padding:0}.steps li{background:#1a3552;padding:13px;border-radius:9px}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}.actions a{display:inline-block;background:#24466c;padding:11px 15px;border-radius:9px;text-decoration:none;color:#fff}small{color:#c1cee0}</style>
-<link rel="stylesheet" href="/bpd-navigation.css"></head><body>
-<header><strong>BelgiëPD · Sollicitatiecentrum</strong><a href="/opleidingscentrum.html">← Opleidingscentrum</a></header>
-<main><h1>Sollicitatiecentrum</h1><p>De toekomstige centrale instroom voor alle hulpdiensten. Sollicitaties staan los van personeelsdossiers en het Opleidingscentrum.</p><div class="notice" role="status"><strong>Sollicitaties zijn momenteel niet geopend.</strong> De verwerking wordt pas ingeschakeld na verificatie van FiveM-gegevens, bevoegdheden, bewaartermijnen en de herstelprocedure. Via deze pagina wordt nog niets ingediend of opgeslagen.</div>
-<h2>Kies een hulpdienst</h2><div class="services" role="group" aria-label="Hulpdienst kiezen">
-<button class="service" type="button" data-dept="politie" aria-pressed="true"><strong>🚓 Politie</strong><small>Politionele instroom</small></button>
-<button class="service" type="button" data-dept="brandweer" aria-pressed="false"><strong>🚒 Brandweer</strong><small>Instroom via zoneleiding</small></button>
-<button class="service" type="button" data-dept="ambulance" aria-pressed="false"><strong>🚑 Ambulance</strong><small>AZLS-selectie en basisopleiding</small></button>
-<button class="service" type="button" data-dept="depannage" aria-pressed="false"><strong>🛠 Depannage</strong><small>Toelating en functiecontrole</small></button>
-<button class="service" type="button" data-dept="burger" aria-pressed="false"><strong>👥 Burger</strong><small>Wanneer de burgerprocedure wordt geactiveerd</small></button>
-</div><section class="panel" aria-live="polite"><h2 id="departmentTitle">Politie · toekomstige instroom</h2><p id="departmentNote">Beoordeling door het politioneel bevoegde kader. Toekenning van roepnummer, rechten of Discord-rollen gebeurt nooit automatisch door de sollicitatie.</p><ol class="steps"><li><strong>1. Solliciteren</strong><p>Discord-identiteit en geschiktheid verifiëren.</p></li><li><strong>2. Beoordelen</strong><p>Bevoegde dienstleiding beoordeelt de aanvraag.</p></li><li><strong>3. Aanstelling</strong><p>Pas na goedkeuring gecontroleerd in Personeelsbeheer opnemen.</p></li><li><strong>4. Opleiding</strong><p>Stage, basisopleiding en evaluaties via het Opleidingscentrum.</p></li></ol><div class="actions"><a href="/discord-status.html">Mijn profiel / Discord</a><a href="/opleidingscentrum.html">Opleidingscentrum</a></div></section></main>
-<script>(()=>{const names={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage',burger:'Burger'};const notes={politie:'Beoordeling door het politioneel bevoegde kader. Toekenning van roepnummer, rechten of Discord-rollen gebeurt nooit automatisch door de sollicitatie.',brandweer:'Beoordeling door bevoegde brandweerleiding; gekoppelde FiveM-gegevens moeten eerst betrouwbaar geverifieerd zijn.',ambulance:'Beoordeling door bevoegd AZLS-kader. Na aanvaarding begint de afzonderlijke personeels- en opleidingsprocedure.',depannage:'Beoordeling door bevoegde depannageleiding; een sollicitatie geeft geen automatische FAST-, AWV- of andere bevoegdheden.',burger:'Een afzonderlijke burgerprocedure kan later worden gekoppeld met eigen inzage- en beslisrechten.'};document.querySelectorAll('[data-dept]').forEach(button=>button.addEventListener('click',()=>{const d=button.dataset.dept;for(const peer of document.querySelectorAll('[data-dept]'))peer.setAttribute('aria-pressed',String(peer===button));document.getElementById('departmentTitle').textContent=names[d]+' · toekomstige instroom';document.getElementById('departmentNote').textContent=notes[d]}));})();</script><script defer src="/bpd-navigation.js"></script></body></html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Sollicitatiecentrum | BelgiëPD</title>
+<style>
+:root{font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;color:#e9f2ff;background:#0b182c}
+*{box-sizing:border-box}body{margin:0;background:#0b182c;color:#e9f2ff}
+header{padding:17px 23px;background:#142840;border-bottom:1px solid #344c69;display:flex;
+ align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header a,a{color:#a8ceff}header nav{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+main{max-width:1080px;margin:auto;padding:26px 20px 60px}
+h1{font-size:clamp(24px,4vw,34px);margin:0 0 8px}h2{font-size:19px;margin:0 0 8px}
+p{line-height:1.6;color:#c1cee0;margin:8px 0}
+button{font:inherit;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:3px solid #85b9ff;outline-offset:3px}
+.notice{padding:14px 16px;border:1px solid #9c8a55;background:#352d19;color:#ffe3a2;border-radius:11px;margin:17px 0}
+.notice strong{display:block}.notice p{color:inherit}
+.panel{background:#142840;padding:20px;border-radius:12px;border:1px solid #34516e;margin:16px 0}
+.panel-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.action{border:1px solid #799dcc;background:#315fc3;color:white;padding:10px 15px;
+ border-radius:8px;font-size:13px;font-weight:700;min-height:39px}
+.action.secondary{background:transparent;border-color:#6885aa;color:inherit}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.metric{background:#1a3552;border:1px solid #466584;border-radius:9px;padding:13px;min-width:0}
+.metric strong,.metric span,.metric small{display:block;overflow-wrap:anywhere}
+.metric strong{font-size:14px;margin:5px 0}.metric span{color:#acc7e5;font-size:12px}
+.metric small{color:#c1cee0;font-size:11px}
+.status{border-left:3px solid #6c99c4;background:#193552;padding:10px 12px;border-radius:6px;
+ font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.status[data-state="api_thresholds_met"]{border-left-color:#55c9a0}
+.status[data-state="not_yet_eligible"]{border-left-color:#eab66f}
+.services{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:17px 0}
+.service{border:1px solid #496485;background:#172d46;border-radius:11px;padding:15px;
+ text-align:left;color:#f2f7ff;min-height:80px}
+.service:hover,.service:focus-visible{border-color:#8dbeff}
+.service[aria-pressed="true"]{background:#294c79;outline:2px solid #9bc9ff}
+.service strong{display:block;margin-bottom:6px}.service small{color:#c1cee0}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;list-style:none;padding:0}
+.steps li{background:#1a3552;padding:13px;border-radius:9px;line-height:1.5;font-size:13px}
+.steps li strong{display:block;margin-bottom:5px}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+.actions a{display:inline-block;background:#24466c;padding:10px 14px;border-radius:9px;
+ text-decoration:none;color:#fff}
+.small,.muted,small{font-size:12px;color:#c1cee0}
+html[data-bpd-theme="light"] body{background:#f4f7fb;color:#18304a}
+html[data-bpd-theme="light"] header{background:#e8f0fa;border-color:#c6d5e6}
+html[data-bpd-theme="light"] :is(.panel,.metric,.steps li,.service){background:#fff;color:#18304a;border-color:#c4d3e3}
+html[data-bpd-theme="light"] .service[aria-pressed="true"]{background:#e1edff}
+html[data-bpd-theme="light"] :is(p,small,.muted,.service small,.metric span,.metric small){color:#4f6380}
+html[data-bpd-theme="light"] .status{background:#e9f1fc;color:#203a58}
+html[data-bpd-theme="light"] .notice{background:#fff3d7;color:#6b4a10;border-color:#d8b66a}
+html[data-bpd-theme="light"] .notice p{color:#6b4a10}
+html[data-bpd-theme="light"] .action.secondary{color:#204462}
+html[data-bpd-theme="light"] .actions a{background:#234b84;color:white}
+@media(max-width:650px){main{padding:18px 12px 40px}.metrics{grid-template-columns:1fr}
+ .panel{padding:14px}.steps{grid-template-columns:1fr}.services{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style><link rel="stylesheet" href="/bpd-navigation.css"></head>
+<body>
+<header><strong>BelgiëPD · Sollicitatiecentrum</strong>
+<nav><a href="/opleidingscentrum.html">Opleidingscentrum</a>
+<button id="login" class="action secondary" type="button">Aanmelden met Discord</button></nav></header>
+<main>
+<h1>Sollicitatiecentrum</h1>
+<p>Een afzonderlijke instroomprocedure per hulpdienst. Na een aanvaarde sollicitatie volgen de personeelsregistratie, eventuele stage en opleidingen via afzonderlijke, bevoegde stappen.</p>
+<div class="notice" role="status"><strong>Sollicitaties zijn momenteel niet geopend.</strong>
+<p>Je kunt je FiveM-toelatingsvoorwaarden alvast controleren. Via deze pagina wordt nog <strong>geen aanvraag ingediend</strong>, goedkeuring gegeven of Discord-rol toegekend.</p></div>
+<section class="panel" aria-labelledby="precheckTitle">
+<div class="panel-header">
+<div><h2 id="precheckTitle">Mijn FiveM-toelatingscontrole</h2>
+<p>Minimaal <strong>10 totale FiveM-speeluren</strong> én <strong>5 dagen sinds je eerste serververbinding</strong>. Deze voorwaarden zijn anders dan de 5-urenregeling voor terugkeer naar ACTIEF.</p></div>
+<button id="checkEligibility" class="action" type="button" disabled>Mijn voorwaarden controleren</button>
+</div>
+<div id="precheckStatus" class="status" data-state="verification_required" role="status" aria-live="polite">Meld je met je eigen Discord-account aan om de bestaande BelgiëPD-API te controleren.</div>
+<div class="metrics">
+<div class="metric"><span>Totale FiveM-speeltijd</span><strong id="playTime">Nog niet gecontroleerd</strong><small id="playTimeRule">Vereist: minimaal 10 uur</small></div>
+<div class="metric"><span>Eerste serververbinding</span><strong id="firstConnection">Nog niet gecontroleerd</strong><small id="firstConnectionRule">Vereist: minimaal 5 dagen geleden</small></div>
+<div class="metric"><span>Geschiktheid volgens API</span><strong id="eligibilityResult">Niet vastgesteld</strong><small id="eligibilityRule">Indicatief; geen sollicitatiegoedkeuring</small></div>
+</div>
+<p class="muted">De API-meting wordt rechtstreeks vanaf de beveiligde server opgehaald voor jouw geverifieerde Discord-ID. Ontbrekende gegevens gelden nooit als nul speeluren. Ook wanneer beide criteria gehaald zijn, blijft solliciteren voorlopig uitgeschakeld tot de afzonderlijke kandidaat- en beoordelingsworkflow is geactiveerd.</p>
+</section>
+<h2>Kies een hulpdienst</h2>
+<div class="services" role="group" aria-label="Hulpdienst kiezen">
+<button class="service" type="button" data-dept="politie" aria-pressed="true"><strong>Politie</strong><small>Politionele instroom</small></button>
+<button class="service" type="button" data-dept="brandweer" aria-pressed="false"><strong>Brandweer</strong><small>Selectie via zoneleiding</small></button>
+<button class="service" type="button" data-dept="ambulance" aria-pressed="false"><strong>Ambulance (AZLS)</strong><small>Instroom en basistraining</small></button>
+<button class="service" type="button" data-dept="depannage" aria-pressed="false"><strong>Depannage</strong><small>Toelating en basisopleiding</small></button>
+<button class="service" type="button" data-dept="burger" aria-pressed="false"><strong>Burger</strong><small>Afzonderlijke burgerprocedure</small></button>
+</div>
+<section class="panel" aria-live="polite" aria-labelledby="departmentTitle">
+<h2 id="departmentTitle">Politie · toekomstige instroom</h2>
+<p id="departmentNote">Beoordeling door het politioneel bevoegde kader. Toekenning van roepnummer, rechten of Discord-rollen gebeurt nooit automatisch door de sollicitatie.</p>
+<ol class="steps"><li><strong>1. Solliciteren</strong>Discord-identiteit en toelating controleren; afzonderlijke aanvraag wanneer opengesteld.</li>
+<li><strong>2. Beoordelen</strong>Bevoegd dienstkader behandelt uitsluitend de eigen hulpdienst.</li>
+<li><strong>3. Aanstelling</strong>Na afzonderlijke goedkeuring gecontroleerd registreren, zonder automatische rolgift.</li>
+<li><strong>4. Opleiding</strong>Stage, basisopleiding en evaluaties lopen via het Opleidingscentrum.</li></ol>
+<div class="actions"><a href="/discord-status.html">Mijn profiel / Discord</a><a href="/opleidingscentrum.html">Opleidingscentrum</a></div>
+</section>
+</main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const names={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',depannage:'Depannage',burger:'Burger'};
+const notes={
+ politie:'Beoordeling door het politioneel bevoegde kader. Toekenning van roepnummer, rechten of Discord-rollen gebeurt nooit automatisch door de sollicitatie.',
+ brandweer:'Alleen bevoegde brandweerleiding mag aanvragen beoordelen. Een aanvaarding creëert niet automatisch een personeelsfiche.',
+ ambulance:'Bevoegd AZLS-kader beoordeelt de aanvraag; stage en basisopleiding volgen afzonderlijk.',
+ depannage:'Bevoegde depannageleiding beoordeelt de aanvraag; FAST- en AWV-bevoegdheden worden niet automatisch toegekend.',
+ burger:'De afzonderlijke burgerprocedure blijft gesloten totdat de eigen toegangs- en beslissingsrechten actief zijn.'
+};
+document.querySelectorAll('[data-dept]').forEach(button=>button.addEventListener('click',()=>{
+ const dept=button.dataset.dept;
+ for(const peer of document.querySelectorAll('[data-dept]'))peer.setAttribute('aria-pressed',String(peer===button));
+ $('departmentTitle').textContent=names[dept]+' · toekomstige instroom';
+ $('departmentNote').textContent=notes[dept];
+}));
+const status=(message,state='verification_required')=>{
+ $('precheckStatus').textContent=message;$('precheckStatus').dataset.state=state;
+};
+const clear=()=>{
+ $('playTime').textContent='Nog niet gecontroleerd';
+ $('firstConnection').textContent='Nog niet gecontroleerd';
+ $('eligibilityResult').textContent='Niet vastgesteld';
+ $('playTimeRule').textContent='Vereist: minimaal 10 uur';
+ $('firstConnectionRule').textContent='Vereist: minimaal 5 dagen geleden';
+};
+const fmtDate=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))?
+ new Date(value).toLocaleString('nl-BE',{timeZone:'Europe/Brussels',
+  day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):
+ 'Niet beschikbaar';
+let auth=null,authSdk=null;
+async function check(){
+ const current=auth?.currentUser;
+ if(!current){status('Meld je eerst met je eigen Discord-account aan.');return}
+ const btn=$('checkEligibility');btn.disabled=true;
+ status('De eigen FiveM-API-gegevens worden gecontroleerd…');
+ try{
+  const token=await current.getIdToken();
+  const response=await fetch('/api/sollicitatiecentrum/mijn-voorwaarden',{
+   cache:'no-store',headers:{Authorization:'Bearer '+token}});
+  const data=await response.json().catch(()=>({}));
+  if(auth?.currentUser!==current)return;
+  if(!response.ok)throw Error(data.error||'Controle niet beschikbaar');
+  $('playTime').textContent=Number.isSafeInteger(data.playMinutes)?
+   (data.playMinutes/60).toLocaleString('nl-BE',{maximumFractionDigits:1})+' uur':'Niet verifieerbaar';
+  $('firstConnection').textContent=fmtDate(data.firstConnectionAt);
+  $('playTimeRule').textContent=data.playHoursMet===true?'✓ Minimaal 10 uur bereikt':
+   data.playHoursMet===false?'Nog geen 10 uur':'Urenbron nog niet controleerbaar';
+  $('firstConnectionRule').textContent=data.fiveDaysMet===true?'✓ Minimaal 5 dagen verstreken':
+   data.fiveDaysMet===false?'Nog geen 5 dagen':'Eerste verbinding nog niet controleerbaar';
+  $('eligibilityResult').textContent=data.eligibleByApi===true?'Beide criteria gehaald':
+   data.eligibleByApi===false?'Nog niet beide gehaald':'Onvoldoende brongegevens';
+  status(data.status==='api_thresholds_met'?
+   'Volgens de BelgiëPD-API voldoe je aan de twee toelatingsdrempels. Dit is een indicatie; sollicitaties blijven gesloten.':
+   data.status==='not_yet_eligible'?
+   'Nog niet aan beide toelatingsdrempels voldaan. Je kunt dit later opnieuw controleren.':
+   'De API kan de toelatingsvoorwaarden nog niet volledig verifiëren; dit betekent niet dat je nul uren hebt.',
+   data.status||'verification_required');
+ }catch(error){clear();status('Toelatingscontrole niet beschikbaar: '+error.message)}
+ finally{if(auth?.currentUser===current)btn.disabled=false}
+}
+$('checkEligibility').onclick=()=>void check();
+(async()=>{
+ try{
+  const response=await fetch('/api/client-config',{cache:'no-store'});
+  const config=await response.json();
+  if(!config.enabled)throw Error('Firebase is nog niet ingesteld');
+  const sdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=sdk.getApps().length?sdk.getApps()[0]:sdk.initializeApp(config.firebaseConfig);
+  auth=authSdk.getAuth(app);
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authSdk,config,
+   onError:error=>status(error.message)});
+  authSdk.onAuthStateChanged(auth,user=>{
+   clear();$('checkEligibility').disabled=!user?.uid?.startsWith('discord:');
+   status(user?.uid?.startsWith('discord:')?
+    'Discord aangemeld. Klik op Mijn voorwaarden controleren om je eigen FiveM-gegevens te lezen.':
+    user?'Google-aanmelding geeft geen kandidaatcontrole. Kies Aanmelden met Discord.':
+    'Meld je met je eigen Discord-account aan om de bestaande BelgiëPD-API te controleren.');
+  });
+ }catch(error){status('Discord-controle nog niet beschikbaar: '+error.message)}
+})();
+</script><script defer src="/bpd-navigation.js"></script>
+</body></html>

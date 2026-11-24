@@ -6,6 +6,31 @@ De burger of medewerker solliciteert zelfstandig voor `ambulance`, `brandweer` o
 
 **Productie: standaard UIT.** `BPD_ENABLE_SERVICE_APPLICATIONS=true` is vereist voor dossierinzage, aanvragen en kaderbeoordeling; dit gaat pas aan wanneer de FiveM-bewijsbron betrouwbaar aangesloten is. Voor TEST mag de vlag aan om de interface en weigering bij ontbrekend bewijs veilig te controleren.
 
+## Nieuwe read-only controle via bestaande BelgiëPD-API (november 2026)
+
+`/sollicitatiecentrum.html` laat een kandidaat die met een recent
+geverifieerd Discord-account is aangemeld alvast zijn **eigen** toelatingsdrempels
+controleren. Dit werkt ook zonder bestaand personeels- of politieaccount.
+
+`GET /api/sollicitatiecentrum/mijn-voorwaarden` vraagt uitsluitend de
+cumulatieve speeltijd en eerste serververbinding op bij
+`/v1/server-players/{eigenDiscordId}` via de bestaande beveiligde
+BelgiëPD-API. De server bepaalt de identiteit uit Firebase/Discord OAuth en
+wijst geblokkeerde portaalaccounts af. De reactie onderscheidt:
+`api_thresholds_met`, `not_yet_eligible` en
+`verification_required`. Onbekende uren of datum zijn **geen nuluren**.
+
+Dit is uitsluitend een indicatieve API-controle. De velden
+`verifiedForAdmission:false`, `applicationsOpen:false` en
+`canSubmit:false` blijven bewust vast. Geen kandidaat kan via deze stap
+een sollicitatie indienen, een personeelsrol krijgen of in stage worden gezet.
+De strengere zelfstandige bewijs- en beoordelingsflow hieronder blijft een
+voorwaarde voor het openen van definitieve sollicitaties.
+
+De 10-uurs/5-dagenregel staat volledig los van de 5-urenherstelcontrole
+in het Activiteitencentrum. De sollicitatiepagina blijft in productie
+zichtbaar maar voor echte inzendingen gesloten.
+
 ## Toelating
 
 Beide voorwaarden zijn verplicht:
