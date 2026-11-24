@@ -883,6 +883,7 @@ let auth=null,authMod=null,items=[];
 let boardWritesEnabled=false;
 let accountRoleCatalog=null;
 let serviceFunctionCatalog=null,knownIds=[],knownIdsPage=0,canAddExtraService=false;
+let canManageDeveloperViewer=false,developerReadOnly=false;
 const roles=['basiskader','middenkader','officierenkader','korpsleiding','bestuur'];
 const deptNames={politie:'Politie',brandweer:'Brandweer',ambulance:'Ambulance',
   depannage:'Depannage',burger:'Burger (administratieve categorie)',
@@ -997,7 +998,18 @@ function render(){
   for(const u of matches){
     const row=document.createElement('tr'),person=document.createElement('div');person.className='name';person.textContent=u.username||'Discord-lid';
     const id=document.createElement('small');id.textContent=u.discordId;id.style.display='block';
-    const wrap=document.createElement('div');wrap.append(person,id);cell(row,wrap);
+    const wrap=document.createElement('div');wrap.append(person,id);
+    if(u.developerView){
+      const developerState=document.createElement('small');
+      developerState.style.display='block';
+      developerState.style.fontWeight='700';
+      developerState.style.color=u.developerView.enabled?'#79dfb5':'#9eb0ca';
+      developerState.textContent='Developer · '+(u.developerView.enabled?'AAN':'UIT')+
+       (u.developerView.enabled&&u.developerView.expiresOn?
+        ' · tot '+new Date(u.developerView.expiresOn+'T12:00:00Z').toLocaleDateString('nl-BE'):'');
+      wrap.append(developerState);
+    }
+    cell(row,wrap);
     const state=document.createElement('span');state.className='status '+u.status;state.textContent=({pending:'In aanvraag',approved:'Goedgekeurd',blocked:'Geblokkeerd'})[u.status]||u.status;cell(row,state);
     const dept=document.createElement('select');
     const services=document.createElement('optgroup');services.label='Operationele hulpdiensten';
@@ -1134,11 +1146,42 @@ function render(){
       }catch(e){notice(e.message,true)}finally{approve.disabled=false}
     };
     actions.append(approve);
+    if(developerReadOnly)approve.hidden=true;
     const more=document.createElement('details');more.className='account-more';
     const moreSummary=document.createElement('summary');moreSummary.textContent='⋯ Meer';
     moreSummary.setAttribute('aria-label','Meer acties voor '+(u.username||u.discordId));
     const moreBody=document.createElement('div');moreBody.className='account-more-items';
     more.append(moreSummary,moreBody);
+    if(canManageDeveloperViewer&&u.status==='approved'&&u.developerView){
+      const view=u.developerView,enabled=view.enabled===true;
+      const summary=document.createElement('small');
+      summary.textContent='Developer · Inzage & Vormgeving: '+(enabled?'AAN':'UIT')+
+        '. Geen extra personeelsrol of operationele schrijfrechten.';
+      const toggle=document.createElement('button');
+      toggle.type='button';toggle.className=enabled?'danger':'alt';
+      toggle.textContent=enabled?'Developer UIT zetten':'Developer AAN zetten';
+      toggle.title='Alle portaalonderdelen inkijken; alleen Vormgeving wijzigen.';
+      toggle.onclick=async()=>{
+        const action=enabled?'uitzetten':'inschakelen';
+        const reason=prompt('Waarom Developer-toegang '+action+'? (minimaal 10 tekens)');
+        if(reason===null)return;
+        if(reason.trim().length<10||reason.trim().length>240)
+          return notice('Motivering van 10–240 tekens verplicht.',true);
+        if(!confirm('Developer-inzage '+action+' voor '+(u.username||u.discordId)+
+          '? De bestaande hulpdiensten en operationele rang blijven ongewijzigd.'))return;
+        toggle.disabled=true;
+        try{
+          await api('/api/users/'+encodeURIComponent(u.discordId)+'/developer-view',{
+            method:'PUT',body:{enabled:!enabled,reason:reason.trim(),
+              expectedRevision:view.revision||0}
+          });
+          notice('Developer-inzage '+(enabled?'uitgeschakeld':'ingeschakeld')+
+            '. De personenrol bleef ongewijzigd.');
+          await loadAdmin();
+        }catch(error){notice(error.message,true);toggle.disabled=false}
+      };
+      moreBody.append(summary,toggle);
+    }
     // Deliberately separate Board from operational service functions.
     // The existing Board nomination workflow always performs the actual
     // permission checks; this button merely navigates to that workflow.
@@ -1250,7 +1293,7 @@ function render(){
         catch(e){notice(e.message,true)}finally{block.disabled=false}
       };moreBody.append(block);
     }
-    if(moreBody.childElementCount)actions.append(more);
+    if(!developerReadOnly&&moreBody.childElementCount)actions.append(more);
     cell(row,actions);list.append(row);
   }
 }
@@ -1310,6 +1353,9 @@ async function loadAdmin(){
       return;
     }
     const data=await api('/api/users/overview');items=data.users||[];
+    developerReadOnly=context.developerReadOnly===true;
+    canManageDeveloperViewer=context.canManageDeveloperViewer===true&&
+      data.canManageDeveloperViewer===true&&!developerReadOnly;
     accountRoleCatalog=data.roleCatalog||null;
     serviceFunctionCatalog=data.functionCatalog||null;
     $('knownIdsSection').hidden=context.canViewKnownIds!==true;
