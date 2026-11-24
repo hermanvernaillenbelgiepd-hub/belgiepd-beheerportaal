@@ -46,7 +46,8 @@ test('server checks real department, exact dossier and rank before upstream look
   res=await fetch(base+'politie/'+id);
   assert.equal(res.status,403);assert.equal(called.length,1);
   res=await fetch(base+'brandweer/'+id);
-  assert.equal(res.status,404);assert.equal(called.length,1);
+  // De actor heeft geen geverifieerde Brandweer-bevoegdheid: 403 vóór lookup.
+  assert.equal(res.status,403);assert.equal(called.length,1);
  }finally{await new Promise(resolve=>listener.close(resolve))}
 });
 test('no data mutation or global API hours exposed by visual evidence',()=>{
