@@ -358,6 +358,18 @@ html[data-bpd-theme="dark"] .notification-page .notification-fold > summary .pil
   </select>
  </nav>
  <section class="notification-group notification-group--action" aria-label="Te behandelen"><div class="notification-group-heading"><span class="notification-group-icon" aria-hidden="true">⚡</span><div><h2>Te behandelen</h2><p>Aanvragen, controles en beslissingen die jouw aandacht kunnen vragen.</p></div></div><div class="notification-cards">
+<section id="activityReviewPanel" class="panel notification-tile notification-tile--action" hidden>
+ <details id="activityReviewFold" class="notification-fold" open>
+  <summary>📋 Politie · Activiteitenrapportering
+   <span id="activityReviewUnread" class="pill">0 ongelezen</span>
+   <span id="activityReviewPending" class="pill">0 ACTIEF-voorstellen</span>
+  </summary>
+  <p>Officierenkader en Korpsleiding zien de registratie, registrator, medewerker,
+   opvolgstatus en echte Discord-verzendbevestiging. Een voorstel ACTIEF moet
+   afzonderlijk worden goedgekeurd voordat de officiële personeelsstatus wijzigt.</p>
+  <div id="activityReviewList" aria-live="polite"></div>
+ </details>
+</section>
 <section id="policePromotionPanel" class="panel notification-tile notification-tile--action" hidden>
  <details class="notification-fold" id="policePromotionFold" open>
   <summary>⚠ Politie · promotievoorstellen <span id="policePromotionCount" class="pill">0</span></summary>
@@ -751,6 +763,110 @@ async function loadLeaveReturnChecks(){
   panel.hidden=false;
  }catch(e){list.textContent='Verlofterugkeer niet beschikbaar: '+e.message;panel.hidden=false}
 }
+async function loadActivityReviews(){
+ const panel=$('activityReviewPanel'),list=$('activityReviewList');
+ panel.hidden=true;list.replaceChildren();
+ if(!auth?.currentUser)return;
+ try{
+  const result=await api('/api/management/activity-ping-reviews');
+  const rows=Array.isArray(result.rows)?result.rows:[];
+  $('activityReviewUnread').textContent=(result.unread||0)+' ongelezen';
+  $('activityReviewPending').textContent=(result.pending||0)+' ACTIEF-voorstellen';
+  for(const x of rows){
+   const card=document.createElement('div');card.className='item';
+   const name=document.createElement('strong');
+   name.textContent=(x.subjectCall||'—')+' · '+(x.subjectName||'Personeelslid')+
+    ' · '+x.activityStatus+(x.state==='pending'?' · ACTIEF ter goedkeuring':'');
+   const info=document.createElement('p');
+   const time=x.createdAt&&Number.isFinite(Date.parse(x.createdAt))?
+    new Date(x.createdAt).toLocaleString('nl-BE'):'Datum onbekend';
+   info.textContent='Geregistreerd: '+time+' · door '+(x.reporterName||'onbekend')+
+    (x.reporterCall?' ('+x.reporterCall+')':'')+
+    ' · status bij registratie: '+(x.previousStatus||'—')+
+    ' · huidig: '+(x.currentStatus||'—');
+   const ping=document.createElement('p');
+   ping.textContent=x.discordPingSent?
+    'Discord-bericht handmatig verstuurd op '+(x.discordPingDate||'onbekende datum'):
+    'Geen Discord-bericht verstuurd; enkel dossier- of portaalmelding';
+   const state=document.createElement('p');
+   state.textContent=x.state==='approved'?'ACTIEF goedgekeurd door '+(x.decidedBy||'bevoegde leiding'):
+    x.state==='rejected'?'ACTIEF-voorstel afgewezen door '+(x.decidedBy||'bevoegde leiding'):
+    x.state==='pending'?'Wacht op een beslissing van bevoegd Officierenkader/Korpsleiding':
+    'Informatieve activiteitenrapportering; geen statuswijziging';
+   const action=document.createElement('div');action.className='actions';
+   const dossier=document.createElement('a');
+   dossier.href='/dossiercentrum.html?'+new URLSearchParams({
+    dept:'politie',discordId:x.targetDiscordId}).toString();
+   dossier.textContent='Dossier openen';action.append(dossier);
+   if(!x.readAt){
+    const read=document.createElement('button');read.type='button';
+    read.textContent='Gelezen';read.className='secondary';
+    read.onclick=async()=>{
+     read.disabled=true;
+     try{
+      await api('/api/management/activity-ping-reviews/'+encodeURIComponent(x.id)+'/read',{});
+      await loadActivityReviews();
+     }catch(e){feedback('Leesbevestiging mislukt: '+e.message,true);read.disabled=false}
+    };
+    action.append(read);
+   }
+   if(x.state==='pending'&&x.canApprove){
+    const form=document.createElement('form');form.className='request-decision-inline';
+    const label=document.createElement('label');
+    label.textContent='Motivering van de beslissing (minimaal 10 tekens)';
+    const reason=document.createElement('textarea');reason.rows=2;reason.maxLength=500;
+    reason.minLength=10;reason.required=true;reason.placeholder='Onderzoek en reden voor goed- of afkeuring';
+    label.append(reason);form.append(label);
+    const buttons=document.createElement('div');buttons.className='actions';
+    for(const [decision,text] of [['approved','Goedkeuren → ACTIEF'],
+      ['rejected','Afwijzen']]){
+     const button=document.createElement('button');button.type='submit';
+     button.textContent=text;if(decision==='approved')button.className='primary';
+     button.onclick=()=>form.dataset.decision=decision;
+     buttons.append(button);
+    }
+    form.append(buttons);
+    form.onsubmit=async e=>{
+     e.preventDefault();
+     const decision=form.dataset.decision||'rejected',note=reason.value.trim();
+     if(note.length<10||note.length>500)
+      return feedback('Een motivering van 10–500 tekens is verplicht.',true);
+     if(!confirm(decision==='approved'?
+      'Deze goedkeuring zet de officiële personeelsstatus ACTIEF, mits deze intussen niet gewijzigd is. Bevestigen?':
+      'ACTIEF-voorstel afwijzen en in het dossier loggen?'))return;
+     buttons.querySelectorAll('button').forEach(b=>b.disabled=true);
+     try{
+      const result=await api('/api/management/activity-ping-reviews/'+
+        encodeURIComponent(x.id)+'/decision',{decision,reason:note});
+      feedback(result.officialStatusChanged?
+       'ACTIEF goedgekeurd; officiële status, dossier en weekrapport bijgewerkt.':
+       'Voorstel afgewezen en in dossier en weekrapport gelogd.');
+      await Promise.all([loadActivityReviews(),loadStaffActivityFollowup()]);
+     }catch(error){
+      feedback('Beslissing niet opgeslagen: '+error.message,true);
+      buttons.querySelectorAll('button').forEach(b=>b.disabled=false);
+     }
+    };
+    card.append(form);
+   }else if(x.state==='pending'){
+    const p=document.createElement('p');
+    p.textContent='Niet goed te keuren vanuit deze rol of na een tussentijdse statuswijziging.';
+    card.append(p);
+   }
+   card.prepend(name,info,ping,state);card.append(action);list.append(card);
+  }
+  if(!rows.length)list.textContent='Nog geen nieuwe geregistreerde activiteitenpings voor dit kaderoverzicht.';
+  if(result.limited){
+   const p=document.createElement('p');p.textContent='Meest recente 120 meldingen getoond.';
+   list.append(p);
+  }
+  panel.hidden=false;
+ }catch(e){
+  if(/Geen kaderbevoegdheid|Geen bevoegdheid|403/.test(e.message))return;
+  list.textContent='Activiteitenrapportering momenteel niet beschikbaar: '+e.message;
+  panel.hidden=false;
+ }
+}
 async function loadActivityPings(){
  const panel=$('activityPingsPanel'),list=$('activityPingsList');
  panel.hidden=true;list.replaceChildren();
@@ -770,6 +886,13 @@ async function loadActivityPings(){
    const details=document.createElement('p');
    details.textContent=entry.details||'Activiteitsopvolging gevraagd.';
    row.append(heading,info,details);
+   if(entry.decision){
+    const decision=document.createElement('p');
+    decision.textContent='Voorstel ACTIEF '+(entry.decision==='approved'?'goedgekeurd':'afgewezen')+
+      (entry.decisionBy?' door '+entry.decisionBy:'')+
+      (entry.decisionReason?' · '+entry.decisionReason:'');
+    row.append(decision);
+   }
    if(entry.status!=='read'){
     const action=document.createElement('button');action.type='button';
     action.textContent='GELEZEN';
@@ -976,7 +1099,7 @@ async function load(){
  const refresh=async()=>{
   do{
    refreshRequestedAgain=false;
-   const loaders=[loadPolicePromotions,loadSivTrainingRestrictions,loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
+   const loaders=[loadPolicePromotions,loadSivTrainingRestrictions,loadActivityReviews,loadStaffActivityFollowup,loadLeaveReturnChecks,loadActivityPings,
      loadTraining,loadPathwayReview,loadSeriesLeave,loadLeave,loadLeaveDecisionNotices];
    loaders.unshift(loadIdentityReview);
    await Promise.allSettled(loaders.map(fn=>fn()));
