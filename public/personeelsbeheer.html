@@ -1009,6 +1009,10 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
  <h3>Personeelsverloop en speeltijd</h3>
  <p id="personnelLifeStatus" class="subtle">Personeelsstatus controleren…</p>
  <p id="personnelPlaytime" class="subtle">Speeltijd: broncontrole vereist.</p>
+  <p id="personnelDutySummary" class="subtle" role="status">Diensturen via API worden gecontroleerd.</p>
+  <details id="personnelDutyDetails"><summary>Geregistreerde diensturen en individuele diensten bekijken</summary>
+    <div id="personnelDutyRecords" class="sheet-records"></div>
+  </details>
  <div class="controls">
   <button id="personnelArchiveAction" type="button" class="alt" hidden>Uit dienst plaatsen en archiveren</button>
   <button id="personnelGlobalArchiveAction" type="button" class="alt" hidden>Politie · volledig uit dienst (alle diensten)</button>
@@ -1468,6 +1472,7 @@ placeholder="Bijvoorbeeld: K9-IO afgerond, geslaagd na opleiding en goedgekeurd 
 <script type="module">
 import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
+import {serviceDutySummary,renderServiceDutyDetails} from '/dossier-duty-view.js';
 import {installDossierTileCollapse} from '/dossier-tile-collapse.js';
 import {renderDepannageSpecialties,depannageSpecialtyMeta,depannageSpecialtyIcon} from '/depannage-specialty-icons.js';
 import {coursesForDepartment,trainingSelectLabels,qualificationSpecialty} from '/training-course-catalog.js';
@@ -1999,6 +2004,20 @@ function submitSelectedRegistration(){
   if(!form||form.hidden)return;
   if(!form.reportValidity())return;
   form.requestSubmit();
+}
+async function loadPersonnelDuty(p){
+ const key=p.dept+':'+p.discordId;
+ $('personnelDutySummary').textContent='Diensturen via API ophalen…';
+ $('personnelDutyRecords').replaceChildren();
+ try{
+  const data=await request('/api/duty-times/dossiers/'+encodeURIComponent(p.dept)+'/'+encodeURIComponent(p.discordId));
+  if(selected?.dept+':'+selected?.discordId!==key)return;
+  $('personnelDutySummary').textContent=serviceDutySummary(data);
+  renderServiceDutyDetails($('personnelDutyRecords'),data);
+ }catch{
+  if(selected?.dept+':'+selected?.discordId===key)
+   $('personnelDutySummary').textContent='Diensturen voor deze medewerker of functie niet beschikbaar.';
+ }
 }
 function setupDossierTabs(){
   const panes={};
@@ -6773,7 +6792,8 @@ async function loadPersonnelLifecycle(p){
  $('personnelGlobalArchiveAction').hidden=true;
  $('personnelLifeStatus').textContent='Archiefstatus controleren…';
  const hrs=x=>Number.isFinite(x)?x.toLocaleString('nl-BE')+' uur':'Niet beschikbaar';
- $('personnelPlaytime').textContent='Speeltijd (bron): '+hrs(p.hours)+
+ void loadPersonnelDuty(p);
+  $('personnelPlaytime').textContent='Speeltijd (bron): '+hrs(p.hours)+
    ' recent · '+hrs(p.totalHours)+' totaal'+
    (p.lastConnection?' · laatste verbinding '+p.lastConnection:'');
  try{

@@ -239,6 +239,7 @@ html:not([data-bpd-theme="dark"]) .fire-score-trend.trend-insufficient{color:#60
 <script type="module">
 import {enhanceBelgianDateInputs,refreshBelgianDateInputs} from '/bpd-date-inputs.js';
 import {renderDossierStatus} from '/dossier-identity-presentation.js';
+import {serviceDutySummary,renderServiceDutyDetails} from '/dossier-duty-view.js';
 import {installDossierTileCollapse} from '/dossier-tile-collapse.js';
 import {renderFireSpecialties,fireSpecialtyMeta,uniqueFireSpecialties} from '/fire-specialty-icons.js';
 import {displayServiceBadge} from '/dossier-service-badge.js';
@@ -261,6 +262,14 @@ const $=id=>document.getElementById(id);
    column('right',['movements','sanctions','promotions','training']));
  // Same three-column dossier system as Police; avoid the full-width empty footer.
  sheet.replaceChildren(overview);
+  const tile=document.createElement('section');tile.className='landscape-cell';
+  tile.dataset.sheetTile='diensturen';
+  const title=document.createElement('h3');title.textContent='Diensturen · BelgiëPD API';
+  const note=document.createElement('p');note.id='fireDutySummary';note.className='muted';
+  note.textContent='Alleen zichtbaar voor bevoegde dienstleiding.';
+  const content=document.createElement('div');content.id='fireDutyRecords';content.className='sheet-records';
+  tile.append(title,note,content);
+  overview.querySelector('.dossier-column--right').prepend(tile);
   installDossierTileCollapse($('overviewSection'));
 })();
 const copyFireHeader=async mode=>{
@@ -547,11 +556,22 @@ async function loadFireCheckrides(){
    if(data.limited)root.append(document.createTextNode(' Oudere evaluaties kunnen ontbreken in dit overzicht.'));
  }catch(e){root.textContent='Stage-evaluaties niet beschikbaar ('+e.message+').'}
 }
+async function loadFireDuty(){
+ const note=$('fireDutySummary'),root=$('fireDutyRecords');
+ note.textContent='Diensturen via API ophalen…';root.replaceChildren();
+ try{
+  const data=await api('/api/duty-times/dossiers/brandweer/'+encodeURIComponent(id));
+  note.textContent=serviceDutySummary(data);renderServiceDutyDetails(root,data);
+ }catch{note.textContent='Diensturen voor dit personeelslid of deze functie niet beschikbaar.'}
+}
 async function load(){
  if(!auth?.currentUser)return;
  try{
   if(!/^[0-9]{15,22}$/.test(id))throw Error('Ongeldige dossierverwijzing');
   const data=await api(endpoint);current=data;
+   const dutyTile=$('fireDutySummary').closest('[data-sheet-tile="diensturen"]');
+   dutyTile.hidden=!['leadership','full'].includes(data.visibility);
+   if(!dutyTile.hidden)void loadFireDuty();
   displayFirePromotionProposals(data);
   try{
     const access=await api('/api/dossier-retirement/access?dept=brandweer&discordId='+
