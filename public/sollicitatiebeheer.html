@@ -1,0 +1,236 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Sollicitatiebeheer · BelgiëPD</title>
+<style>
+:root{font-family:Inter,system-ui,"Segoe UI",Arial,sans-serif;background:#0c192c;color:#e9f2ff}
+*{box-sizing:border-box}body{margin:0;background:#0c192c;color:#e9f2ff}
+a{color:#a8ceff}button,select{font:inherit}button{cursor:pointer}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,select:focus-visible{outline:3px solid #88baff;outline-offset:3px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+ padding:16px 23px;background:#142941;border-bottom:1px solid #3a5572}
+header nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+main{max-width:1080px;margin:auto;padding:22px 18px 65px}
+h1{margin:0 0 8px;font-size:clamp(23px,4vw,32px)}h2{font-size:18px}
+p{line-height:1.5;color:#c5d7ec}small{font-size:12px;color:#bdd0e8}
+.panel{background:#152b45;border:1px solid #3f5879;border-radius:10px;padding:17px;margin:14px 0}
+.controls{display:flex;align-items:end;flex-wrap:wrap;gap:12px}
+.controls label{display:grid;gap:5px;font-size:12px;font-weight:700}
+select{min-width:190px;max-width:100%;background:#10263d;color:#fff;border:1px solid #6085ae;
+ padding:10px;border-radius:8px}
+.action{border:1px solid #6e94c7;background:#3162c8;color:#fff;padding:9px 13px;
+ border-radius:8px;font-size:13px;font-weight:700;min-height:37px}
+.action.secondary{background:transparent;color:inherit}
+.action.reject{background:#7a2c3d;border-color:#b26776}
+.status{padding:12px;border:1px solid #728bac;background:#203e5c;border-radius:9px;
+ margin-top:13px;line-height:1.5;font-size:13px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.metric{border:1px solid #3f5879;background:#1c3856;border-radius:9px;padding:12px}
+.metric strong{display:block;font-size:24px;margin-top:3px}
+.metric small{display:block}
+.cases{display:grid;gap:10px;margin-top:14px}
+.case{background:#1a3350;border:1px solid #446184;border-radius:9px;padding:14px;min-width:0}
+.case-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.case-head strong{overflow-wrap:anywhere}
+.case-status{background:#345980;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700}
+.case small{display:block;margin:7px 0}.case details{border-top:1px solid #4c6480;margin-top:9px;padding-top:9px}
+.case summary{cursor:pointer;font-weight:700;font-size:13px}
+.case .note{white-space:pre-wrap;overflow-wrap:anywhere;color:#e1ecfa;font-size:13px}
+.case .actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+#moreCases{margin:12px 0 0}
+html[data-bpd-theme="light"] body{background:#f4f7fc;color:#1a314b}
+html[data-bpd-theme="light"] header{background:#e6eef7;border-color:#b9cfe2}
+html[data-bpd-theme="light"] :is(.panel,.case,.metric){background:#fff;border-color:#bdd0e4}
+html[data-bpd-theme="light"] :is(p,small,.case .note){color:#425c7b}
+html[data-bpd-theme="light"] select{color:#16334c;background:#fff}
+html[data-bpd-theme="light"] .action.secondary{color:#214768}
+html[data-bpd-theme="light"] .case-status{background:#e7eff8;color:#204668}
+html[data-bpd-theme="light"] .status{color:#204668;background:#e9f1fa}
+@media(max-width:650px){main{padding:15px 11px 50px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.panel{padding:12px}.controls{align-items:stretch}.controls>*{flex:1;min-width:0}}
+</style><link rel="stylesheet" href="/bpd-navigation.css"></head>
+<body>
+<header><strong>BelgiëPD · Sollicitatiebeheer</strong>
+<nav><a href="/sollicitatiecentrum.html">Sollicitatiecentrum</a>
+<a href="/opleidingscentrum.html">Opleidingscentrum</a>
+<button class="action secondary" id="login" type="button">Aanmelden</button></nav>
+</header>
+<main>
+<h1>Beoordelingswachtrij</h1>
+<p>Per hulpdienst alleen de sollicitaties waarvoor je geverifieerde leidinggevende inzage hebt. Motivering en beslissingen worden afzonderlijk gelogd. Aanvaarding geeft <strong>geen automatische personeelsfiche, rang of Discord-rol</strong>.</p>
+<section class="panel" aria-label="Sollicitaties filteren">
+<div class="controls">
+<label>Hulpdienst<select id="department">
+<option value="brandweer">Brandweer</option>
+<option value="ambulance">Ambulance (AZLS)</option>
+<option value="depannage">Depannage</option>
+</select></label>
+<label>Status<select id="caseStatus">
+<option value="">Alle statussen</option>
+<option value="submitted">Ingediend</option>
+<option value="reviewing">In behandeling</option>
+<option value="accepted">Aanvaard</option>
+<option value="rejected">Afgewezen</option>
+<option value="withdrawn">Ingetrokken</option>
+</select></label>
+<button id="refresh" class="action" type="button">Vernieuwen</button>
+</div>
+<p id="feedback" class="status" role="status" aria-live="polite">Meld je aan met het bevoegde dienstaccount.</p>
+<div id="overview" hidden>
+<div class="metrics">
+<div class="metric"><small>Nieuw</small><strong id="countSubmitted">0</strong></div>
+<div class="metric"><small>In behandeling</small><strong id="countReviewing">0</strong></div>
+<div class="metric"><small>Aanvaard</small><strong id="countAccepted">0</strong></div>
+<div class="metric"><small>Afgewezen</small><strong id="countRejected">0</strong></div>
+</div>
+<p id="permission" class="status"></p>
+<div id="cases" class="cases"></div>
+<button class="action secondary" id="moreCases" type="button" hidden>Meer tonen</button>
+</div>
+</section></main>
+<script type="module">
+const $=id=>document.getElementById(id);
+const states={submitted:'Ingediend',reviewing:'In behandeling',accepted:'Aanvaard',
+ rejected:'Afgewezen',withdrawn:'Ingetrokken'};
+const fmt=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))?
+ new Date(value).toLocaleString('nl-BE',{timeZone:'Europe/Brussels',
+  day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):
+ 'Onbekend';
+let auth=null,authSdk=null,rows=[],canDecide=false,visibleCount=5,limited=false;
+function feedback(message){$('feedback').textContent=message}
+async function api(path,method='GET',body){
+ const current=auth?.currentUser;
+ if(!current)throw Error('Meld je aan met je bevoegd portaalaccount');
+ const token=await current.getIdToken();
+ const res=await fetch('/api/service-applications/'+path,{method,cache:'no-store',
+  headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ const result=await res.json().catch(()=>({}));
+ if(current!==auth?.currentUser)throw Error('Portaalsessie gewijzigd');
+ if(!res.ok)throw Error(result.error||'Beoordeling niet beschikbaar');
+ return result;
+}
+function render(){
+ const filtered=rows.filter(x=>!$('caseStatus').value||x.status===$('caseStatus').value);
+ const list=$('cases');list.replaceChildren();
+ for(const state of ['submitted','reviewing','accepted','rejected'])
+  $('count'+state[0].toUpperCase()+state.slice(1)).textContent=
+   String(rows.filter(x=>x.status===state).length);
+ for(const item of filtered.slice(0,visibleCount)){
+  const card=document.createElement('article');card.className='case';
+  const head=document.createElement('div');head.className='case-head';
+  const person=document.createElement('strong');
+  person.textContent='Kandidaat · '+item.discordId;
+  const state=document.createElement('span');state.className='case-status';
+  state.textContent=states[item.status]||item.status;
+  head.append(person,state);card.append(head);
+  const stamp=document.createElement('small');
+  stamp.textContent='Ingediend '+fmt(item.createdAt)+' · Gewijzigd '+fmt(item.updatedAt);
+  card.append(stamp);
+  const details=document.createElement('details');
+  const summary=document.createElement('summary');summary.textContent='Motivering bekijken';
+  const note=document.createElement('p');note.className='note';note.textContent=item.motivation||'—';
+  details.append(summary,note);card.append(details);
+  if(item.decisionReason){
+   const previous=document.createElement('small');
+   previous.textContent='Laatste beslissing: '+item.decisionReason;card.append(previous);
+  }
+  const actions=document.createElement('div');actions.className='actions';
+  const history=document.createElement('button');
+  history.className='action secondary';history.type='button';history.textContent='Historiek';
+  history.onclick=()=>void showHistory(item,card,history);
+  actions.append(history);
+  if(canDecide){
+   const allowed=item.status==='submitted'?[
+    ['start_review','In behandeling nemen'],['reject','Afwijzen']
+   ]:item.status==='reviewing'?[
+    ['accept','Aanvaarden'],['reject','Afwijzen']
+   ]:[];
+   for(const [action,label] of allowed){
+    const button=document.createElement('button');button.type='button';
+    button.className='action'+(action==='reject'?' reject':'');
+    button.textContent=label;
+    button.onclick=()=>void decide(item,action,button);
+    actions.append(button);
+   }
+  }
+  card.append(actions);list.append(card);
+ }
+ $('moreCases').hidden=filtered.length<=visibleCount;
+ $('moreCases').textContent='Toon meer ('+(filtered.length-visibleCount)+')';
+}
+async function showHistory(item,card,button){
+ button.disabled=true;
+ try{
+  const data=await api(encodeURIComponent(item.department)+'/'+encodeURIComponent(item.discordId)+'/history');
+  const detail=document.createElement('details');detail.open=true;
+  const summary=document.createElement('summary');summary.textContent='Beslissingshistoriek';
+  detail.append(summary);
+  for(const event of data.history||[]){
+   const p=document.createElement('p');p.className='note';
+   p.textContent=(states[event.action]||event.action)+' · '+fmt(event.at)+
+    ' · '+(event.by||'Onbekend')+' · '+(event.reason||'');
+   detail.append(p);
+  }
+  card.append(detail);
+ }catch(error){feedback(error.message)}finally{button.disabled=false}
+}
+async function decide(item,action,button){
+ const reason=prompt('Motivering voor '+(action==='accept'?'aanvaarden':
+  action==='reject'?'afwijzen':'in behandeling nemen')+' (10–1000 tekens)');
+ if(reason===null)return;
+ const clean=reason.trim();
+ if(clean.length<10||clean.length>1000){feedback('Vul een motivering van 10–1000 tekens in.');return}
+ if(!confirm('Beslissing voor kandidaat '+item.discordId+' bevestigen?'))return;
+ button.disabled=true;
+ try{
+  await api(encodeURIComponent(item.department)+'/'+encodeURIComponent(item.discordId)+
+   '/decision','POST',{action,reason:clean,expectedRevision:item.revision});
+  await load();
+ }catch(error){feedback(error.message);button.disabled=false}
+}
+async function load(){
+ $('refresh').disabled=true;$('overview').hidden=true;
+ feedback('Bevoegdheden en sollicitatiedossiers controleren…');
+ try{
+  const dept=$('department').value;
+  const data=await api('review?dept='+encodeURIComponent(dept));
+  if(data.enabled!==true){
+   feedback('Sollicitaties zijn nog gesloten. De beoordelingswachtrij wordt pas actief zodra de vertrouwde FiveM-bron is vrijgegeven.');
+   return;
+  }
+  rows=Array.isArray(data.cases)?data.cases:[];
+  canDecide=data.canDecide===true;limited=data.limited===true;
+  visibleCount=5;
+  $('permission').textContent=canDecide?
+   'Je kunt beslissen over sollicitaties van deze hulpdienst. Een aanvaarding stelt niemand automatisch aan.':
+   'Inzage alleen. Beoordelingen zijn voorbehouden aan geverifieerde dienstleiding.';
+  $('overview').hidden=false;
+  feedback(rows.length+' dossiers voor deze hulpdienst'+(limited?' · resultaat begrensd tot 100':'')+'.');
+  render();
+ }catch(error){feedback(error.message)}
+ finally{$('refresh').disabled=false}
+}
+$('refresh').onclick=()=>void load();
+$('department').onchange=()=>void load();
+$('caseStatus').onchange=()=>{visibleCount=5;render()};
+$('moreCases').onclick=()=>{visibleCount+=10;render()};
+(async()=>{
+ try{
+  const conf=await fetch('/api/client-config',{cache:'no-store'}).then(x=>x.json());
+  if(!conf.enabled)throw Error('Portaallogin niet geconfigureerd');
+  const sdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+  authSdk=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js');
+  const app=sdk.getApps().length?sdk.getApps()[0]:sdk.initializeApp(conf.firebaseConfig);
+  auth=authSdk.getAuth(app);
+  const {setupPortalLogin}=await import('/portal-login.js');
+  setupPortalLogin({button:$('login'),auth,authModule:authSdk,config:conf,
+   onError:e=>feedback(e.message)});
+  authSdk.onAuthStateChanged(auth,user=>{
+   if(user)void load();
+   else{$('overview').hidden=true;rows=[];feedback('Meld je aan met het bevoegde dienstaccount.')}
+  });
+ }catch(error){feedback(error.message)}
+})();
+</script><script defer src="/bpd-navigation.js"></script></body></html>
