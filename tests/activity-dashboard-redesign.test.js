@@ -52,3 +52,15 @@ test('three accessible tabs group already-authorized activity sections',()=>{
  assert.match(css,/\.activity-tab-panel\[hidden\]/);
  assert.match(css,/aria-selected=true/);
 });
+
+test('maandcontrole is eerste t/m laatste kalenderdag en oude reset blijft historisch',()=>{
+ const ui=read('public/activity-dashboard.js');
+ assert.match(ui,/monthH\.textContent='Maandcontrole vanaf de 1ste'/);
+ assert.match(ui,/minder dan 20 uur/);assert.match(ui,/minder dan 10 uur/);
+ assert.match(ui,/De externe reset wordt hiermee niet aangepast/);
+ assert.match(ui,/Te beoordelen afgesloten kalendermaand/);
+ const html=read('public/activiteitscentrum.html');
+ assert.match(html,/detail\.presetStatus==='ACTIEF'/);
+ assert.ok(ui.includes("['half','inactive','checking'].includes(active)"));
+ assert.match(ui,/Voorstel ACTIEF/);
+});

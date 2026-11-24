@@ -487,7 +487,7 @@ function openQuickActivityPing(detail={}){
  const requested=detail.person?
   detail.person.department+':'+detail.person.discordId:old;
  if([...sel.options].some(x=>x.value===requested))sel.value=requested;
- pingEl('quickPingStatus').value=choosePingStatus(detail.key);
+ pingEl('quickPingStatus').value=detail.presetStatus==='ACTIEF'?'ACTIEF':choosePingStatus(detail.key);
  pingEl('quickPingDiscord').value='nee';pingEl('quickPingDiscordDate').value='';
  pingEl('quickPingDiscordDateWrap').hidden=true;
  pingEl('quickPingReason').value='';pingEl('quickPingFeedback').textContent='';

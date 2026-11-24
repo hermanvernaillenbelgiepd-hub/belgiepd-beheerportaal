@@ -6,11 +6,12 @@ import {brusselsEventDate} from './personnel-event-date.js';
 import {canReadPersonnelSubject,canEditGeneralPersonnelInfo,PERSONNEL_EDITS_COLLECTION}
  from './personnel-editor-policy.js';
 import {INACTIVITY_PING_NOTICES} from './inactivity-ping-notifications.js';
+import {RETURN_CHECK_COLLECTION} from './activity-return-policy.js';
 
 export const ACTIVITY_PING_REVIEWS='bpd_activity_ping_reviews';
 const ID=/^\d{15,22}$/;
 const ENTRY=/^[A-Za-z0-9_-]{12,120}$/;
-const OLD=new Set(['50/50','INACTIEF','NON-ACTIEF']);
+const OLD=new Set(['50/50','INACTIEF','NON-ACTIEF','CHECKING']);
 const upper=s=>String(s||'').trim().toLocaleUpperCase('nl-BE');
 const trim=(s,n=120)=>typeof s==='string'?s.trim().slice(0,n):'';
 const iso=s=>s?.toDate?.()?.toISOString?.()||null;
@@ -32,11 +33,34 @@ export function activityReviewForNewPing({dept,discordId,entryId,actor,subject,d
  return {type:'activity_ping',dept:'politie',entryId,caseId:dept+'_'+discordId,
   targetDiscordId:discordId,subjectName:trim(subject.name),subjectCall:trim(subject.call,24),
   previousStatus:previous,activityStatus:data.activityStatus,proposedStatus:pending?'ACTIEF':null,
+  // A CHECKING from approved leave is a review projection, not always a persisted overlay.
+  checkingReturnId:pending&&previous==='CHECKING'&&subject.leaveReturnChecking===true&&
+   /^\d{4}-\d{2}-\d{2}$/.test(String(subject.leaveReturnEndDate||''))?
+   'politie_'+discordId+'_'+subject.leaveReturnEndDate:null,
+  statusBeforeChecking:previous==='CHECKING'&&subject.leaveReturnChecking===true?
+   upper(subject.statusBeforeChecking):null,
   state:pending?'pending':'information',
   reporterName:trim(actor.name),reporterCall:trim(actor.call,24),
   reporterDiscordId:actor.discordId,discordPingSent:data.discordPingSent,
   discordPingDate:data.discordPingSent?data.discordPingDate||null:null,
   readBy:{},createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
+}
+// Automated alerts are always informational. They can never become a
+// personnel ACTIEF proposal based solely on hours or days without login.
+export function activityReviewForAutomaticPing(person,ping,entryId){
+ if(person?.dept!=='politie'||!ID.test(String(person.personId||''))||
+  !ENTRY.test(entryId)||!['50/50','INACTIEF'].includes(ping?.kind))
+  throw Error('Ongeldige automatische activiteitenopvolging');
+ return {type:'activity_ping',dept:'politie',entryId,
+  caseId:'politie_'+person.personId,targetDiscordId:person.personId,
+  subjectName:trim(person.name),subjectCall:trim(person.call,24),
+  previousStatus:upper(person.status),activityStatus:ping.kind,
+  proposedStatus:null,state:'information',checkingReturnId:null,
+  statusBeforeChecking:null,
+  reporterName:'BelgiumPD activiteitscontrole',reporterCall:'—',
+  reporterDiscordId:null,discordPingSent:false,discordPingDate:null,
+  source:'automatic_fivem_activity',readBy:{},
+  createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()};
 }
 export function publicActivityReview(id,data,subject,actor){
  if(!ENTRY.test(id)||data?.type!=='activity_ping'||data.dept!=='politie'||!subject||
@@ -124,6 +148,13 @@ export function installActivityPingReviewRoutes(app,{
    const prior=upper(subject.status);
    if(!OLD.has(prior)||prior!==record.previousStatus)
     throw err(409,'De officiële status is intussen gewijzigd; nieuw voorstel nodig');
+   if(prior==='CHECKING'&&subject.leaveReturnChecking===true&&
+    (!record.checkingReturnId||record.checkingReturnId!==
+     'politie_'+subject.personId+'_'+subject.leaveReturnEndDate))
+    throw err(409,'De verlofterugkeercontrole is intussen gewijzigd; nieuw voorstel nodig');
+   // Never treat a projected CHECKING as an underlying manual CHECKING.
+   if(prior==='CHECKING'&&subject.leaveReturnChecking!==true&&record.checkingReturnId)
+    throw err(409,'Verlofterugkeercontrole niet meer geldig');
    if(payload.decision==='approved'&&
     (env.BPD_ENABLE_PERSONNEL_WRITES!=='true'||
      env.BPD_PERSONNEL_OVERRIDES_ACTIVE!=='true'))
@@ -135,16 +166,29 @@ export function installActivityPingReviewRoutes(app,{
    const notice=store.collection('bpd_notices').doc('politie').collection('events').doc();
    const privatePing=store.collection(INACTIVITY_PING_NOTICES).doc(subject.personId)
     .collection('events').doc(ref.id);
+   const checkingRef=prior==='CHECKING'&&subject.leaveReturnChecking===true?
+    store.collection(RETURN_CHECK_COLLECTION).doc(record.checkingReturnId):null;
    const decision=payload.decision,reason=payload.reason.trim();
    const actor={discordId:req.bpd.discordId,name:trim(req.bpd.name)||'Bevoegd kaderlid',
     call:trim(req.bpd.call,24)};
    await store.runTransaction(async tx=>{
-    const [rev,old,notification]=await Promise.all([
-     tx.get(ref),tx.get(overlay),tx.get(privatePing)]);
+    const [rev,old,notification,checking]=await Promise.all([
+     tx.get(ref),tx.get(overlay),tx.get(privatePing),
+     checkingRef?tx.get(checkingRef):Promise.resolve(null)]);
     if(!rev.exists||rev.get('state')!=='pending'||
      rev.get('targetDiscordId')!==subject.personId)throw err(409,'Voorstel al afgehandeld');
-    if(upper(old.exists?old.get('status'):subject.status)!==prior)
+    // For leave-return CHECKING, the original persisted status is not CHECKING:
+    // validate both the underlying status and the pending checking record.
+    const persisted=upper(old.exists?old.get('status'):
+     (checkingRef?subject.statusBeforeChecking:subject.status));
+    const expected=checkingRef?record.statusBeforeChecking:prior;
+    if(!expected||persisted!==expected)
      throw err(409,'Personeelsstatus ondertussen aangepast');
+    if(checkingRef&&(checking?.get('status')!=='CHECKING'||
+      checking.get('dept')!=='politie'||
+      checking.get('discordId')!==subject.personId||
+      checking.get('endDate')!==subject.leaveReturnEndDate))
+     throw err(409,'Verlofterugkeercontrole intussen behandeld of gewijzigd');
     const at=FieldValue.serverTimestamp();
     if(decision==='approved'){
      const data=old.exists?old.data():{};
@@ -155,6 +199,13 @@ export function installActivityPingReviewRoutes(app,{
      tx.set(overlay,{...next,dept:'politie',discordId:subject.personId,revision,
       ...(data.approvedRankEdit===true?{approvedRankEdit:true,rank:data.rank}:{}),
       updatedAt:at,updatedByUid:req.bpd.uid,updatedByDiscordId:req.bpd.discordId});
+     if(checkingRef){
+      // Close the return review atomically with ACTIEF so the roster projection
+      // cannot continue displaying CHECKING after the officer approved.
+      tx.update(checkingRef,{status:'ACTIEF',reason,resolvedAt:at,
+       resolvedBy:actor,resolvedByUid:req.bpd.uid,
+       linkedActivityPingReviewId:ref.id});
+     }
      tx.create(overlay.collection('audit').doc(),{previous,next,revision,
       reason,activityPingReviewId:ref.id,actorUid:req.bpd.uid,
       actorDiscordId:req.bpd.discordId,at});
@@ -164,6 +215,8 @@ export function installActivityPingReviewRoutes(app,{
     const details='ACTIEF-voorstel bij activiteitenping '+ref.id+': '+
      (decision==='approved'?'goedgekeurd; officiële status '+prior+' → ACTIEF':
       'afgewezen; officiële personeelsstatus ongewijzigd')+
+     (checkingRef&&decision==='approved'?
+      '. Openstaande CHECKING-terugkeercontrole gelijktijdig afgerond':'')+
      '. Logger: '+record.reporterName+' ('+record.reporterCall+
      '). Beslisser: '+actor.name+' ('+actor.call+'). Motivering: '+reason;
     tx.create(log,{type:'activiteit',reportCategory:'activiteit',

@@ -5,6 +5,7 @@ import {ACTIVITY_COLLECTION,assessActivityPings,automaticPingEntryId,
  activityDateBrussels} from './activity-ping-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice}
  from './inactivity-ping-notifications.js';
+import {ACTIVITY_PING_REVIEWS,activityReviewForAutomaticPing} from './activity-ping-review-routes.js';
 
 const SERVICES=new Set(['politie','brandweer','ambulance','depannage']);
 const ID=/^\d{15,22}$/;
@@ -47,6 +48,10 @@ async function storeAutomaticPing(db,person,ping,date){
   tx.create(member,{...source,createdAt:time,readAt:null});
   tx.create(serviceNotice,{caseId,entryId,type:'inactiviteitsping',dept,
    createdAt:time,source:'automatic_fivem_activity'});
+  if(dept==='politie'){
+   const review=db.collection(ACTIVITY_PING_REVIEWS).doc(entryId);
+   tx.create(review,activityReviewForAutomaticPing(person,ping,entryId));
+  }
   return true;
  });
  return outcome;

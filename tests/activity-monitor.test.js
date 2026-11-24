@@ -89,6 +89,12 @@ test('Same rule and incident has identical deterministic Firestore entry ID',()=
  assert.notEqual(one,automaticPingEntryId('ambulance',id,ping));
  assert.throws(()=>automaticPingEntryId('burger',id,ping));
 });
+test('Automatic Police ping creates a separate, information-only leadership notice',()=>{
+ const src=readFileSync(new URL('../src/activity-ping-runner.js',import.meta.url),'utf8');
+ assert.match(src,/activityReviewForAutomaticPing(person,ping,entryId)/);
+ assert.match(src,/if(dept==='politie')/);
+ assert.match(src,/tx.create(review,/);
+});
 test('No automatic alerts run without the explicit environment opt-in',()=>{
  assert.equal(automaticActivityPingsEnabled({}),false);
  assert.equal(automaticActivityPingsEnabled({BPD_ENABLE_ACTIVITY_AUTO_PINGS:'true'}),true);
