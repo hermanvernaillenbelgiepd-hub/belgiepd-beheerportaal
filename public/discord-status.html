@@ -138,6 +138,22 @@ button,.button{padding:8px 11px;font-size:13px;margin:2px 7px 2px 0}
 <p id="myCallsignStatus" class="muted" role="status">Controle van 5 kalenderdagen en 10 speeluren wordt opgehaald…</p>
 <p><a class="button" href="/vast-roepnummer-aanvragen.html">Vast roepnummer aanvragen of status bekijken →</a> <a href="/personeelslijst.html">Personeelslijst bekijken →</a></p>
 </section>
+<section class="leave-box" id="myDuty" aria-labelledby="myDutyTitle">
+<h3 id="myDutyTitle">Mijn diensturen · BelgiëPD API</h3>
+<p class="muted">Alleen jouw gegevens. Periode en totaal komen rechtstreeks van de API.
+De uitsplitsing per dienst volgt de geregistreerde shifts, niet de algemene speeluren.
+Geen automatische activiteitspings of maandtotalen.</p>
+<div class="profile-actions"><button class="secondary" type="button" id="dutyReload">↻ Diensturen vernieuwen</button></div>
+<p id="dutyStatus" class="muted" role="status" aria-live="polite">Je diensturen worden na aanmelding geladen.</p>
+<div id="dutySummary" class="profile-section" hidden>
+ <p id="dutyPeriod" class="muted"></p>
+ <p id="dutyTotal"></p>
+ <div id="dutyByService"></div>
+ <details><summary>Individuele dienstregistraties <span id="dutyShiftCount"></span></summary>
+  <div id="dutyShiftRows"></div>
+ </details>
+</div>
+</section>
 <section class="leave-box" id="myLeave" aria-labelledby="leaveHeading">
 <h3 id="leaveHeading">Mijn verlofaanvragen</h3>
 <p class="muted">Bekijk hier je lopende verlofperiodes en historiek. Nieuwe aanvragen verlopen via één centraal formulier in Verlofbeheer.</p>
@@ -250,6 +266,74 @@ function rows(id,items,render,empty){
     row.append(title,subtitle);root.append(row);
   }
 }
+
+const dutyMinutes=n=>{
+ if(!Number.isSafeInteger(n)||n<0)return 'Onbekend';
+ return Math.floor(n/60)+' u '+String(n%60).padStart(2,'0')+' min';
+};
+const dutyDate=value=>{
+ if(!value)return 'Onbekend';
+ const d=new Date(value);
+ return Number.isFinite(d.getTime())?d.toLocaleString('nl-BE',
+  {timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',year:'numeric',
+   hour:'2-digit',minute:'2-digit'}):'Onbekend';
+};
+async function loadOwnDuty(){
+ const user=auth?.currentUser;if(!user)return;
+ const btn=$('dutyReload');btn.disabled=true;
+ $('dutySummary').hidden=true;
+ $('dutyStatus').textContent='Diensturen ophalen bij BelgiëPD…';
+ try{
+  const token=await user.getIdToken();
+  const response=await fetch('/api/duty-times/me',{cache:'no-store',
+   headers:{Authorization:'Bearer '+token}});
+  const data=await response.json();
+  if(auth?.currentUser?.uid!==user.uid)return;
+  if(!response.ok||data.status!=='verified_api')
+   throw Error('API-gegevens niet beschikbaar ('+String(data.status||response.status)+')');
+  $('dutyPeriod').textContent='API-periode: '+dutyDate(data.period?.from)+
+   ' tot '+dutyDate(data.period?.till);
+  $('dutyTotal').textContent='Totaal volgens API: '+dutyMinutes(data.reportedMinutes)+
+   ' · Som van shifts: '+dutyMinutes(data.shiftMinutes);
+  const by=$('dutyByService');by.replaceChildren();
+  const groups=Array.isArray(data.byService)?data.byService:[];
+  if(!groups.length){const row=document.createElement('p');
+   row.textContent='Geen individuele dienstregistraties in het antwoord.';by.append(row)}
+  for(const group of groups){
+   const row=document.createElement('div');row.className='profile-row';
+   const title=document.createElement('strong');
+   title.textContent=(group.department||'Dienst onbekend')+
+    (group.service?' · '+group.service:'');
+   const sub=document.createElement('small');
+   sub.textContent=dutyMinutes(group.minutes)+' · '+group.count+' registraties'+
+     (group.ongoing?' · '+group.ongoing+' lopend':'');
+   row.append(title,sub);by.append(row);
+  }
+  const shifts=Array.isArray(data.shifts)?data.shifts:[];
+  $('dutyShiftCount').textContent='('+shifts.length+')';
+  const records=$('dutyShiftRows');records.replaceChildren();
+  for(const shift of shifts){
+   const row=document.createElement('div');row.className='profile-row';
+   const title=document.createElement('strong');
+   title.textContent=(shift.department||'Dienst onbekend')+
+    (shift.service?' · '+shift.service:'')+' · '+dutyMinutes(shift.minutes);
+   const sub=document.createElement('small');
+   sub.textContent=dutyDate(shift.startedAt)+' – '+
+     (shift.ongoing?'Lopend':dutyDate(shift.endedAt));
+   row.append(title,sub);records.append(row);
+  }
+  $('dutyStatus').textContent=data.reconciled?
+   'Diensturen opgehaald; API-totaal en som van shifts komen overeen.':
+   'Diensturen opgehaald. Let op: API-totaal en som van shifts verschillen; niet als gevalideerde maanduren gebruiken.';
+  if(data.ongoingShifts)$('dutyStatus').textContent+=' '+data.ongoingShifts+
+   ' dienst(en) zijn nog lopend.';
+  $('dutySummary').hidden=false;
+ }catch(error){
+  if(auth?.currentUser?.uid===user.uid)
+   $('dutyStatus').textContent='Diensturen momenteel niet beschikbaar. Er worden geen uren geschat.';
+ }finally{btn.disabled=false}
+}
+$('dutyReload').addEventListener('click',loadOwnDuty);
 async function loadPersonal(){
   const user=auth?.currentUser;if(!user)return;
   const btn=$('personalReload');btn.disabled=true;$('personalStatus').textContent='Je persoonlijke gegevens ophalen…';
@@ -572,7 +656,7 @@ async function showProfile(){const user=auth.currentUser;
     let {r,data}=await load(false);
     if(r.status===401)({r,data}=await load(true));
     if(!r.ok)throw new Error(data.error||'Discord-profiel kon niet worden geverifieerd');$('profile').hidden=false;updateConnectionCard(true);loadedFor=null;$('name').textContent=data.name||'Onbekend';$('discordId').textContent=data.discordId;$('joined').textContent=data.joinedAt?new Date(data.joinedAt).toLocaleString('nl-BE'):'Onbekend';$('verified').textContent=data.lastVerifiedAt?new Date(data.lastVerifiedAt).toLocaleString('nl-BE'):'Onbekend';currentRoles=data.roleIds||[];knownRoleNames=new Map(Object.entries(data.roleNames||{}));renderAdvancedRoles();state('Discord-lidmaatschap geverifieerd. Je volledige profiel staat hieronder.');
-await Promise.all([loadPersonal(),loadNewMemberStatus(),loadHonorable(),loadOwnCorpsNotes()]);
+await Promise.all([loadPersonal(),loadOwnDuty(),loadNewMemberStatus(),loadHonorable(),loadOwnCorpsNotes()]);
 return true;
 }catch(e){updateConnectionCard(false);$('profile').hidden=true;
   state('Geen actieve Discord-verificatie: '+e.message+'. Klik op Aanmelden met Discord om opnieuw te verbinden.',true);
