@@ -160,3 +160,20 @@ html[data-bpd-theme="dark"] .activity-quick-ping-dialog :is(input,select,textare
  color:#eff7ff;background:#0d2139;border-color:#5c7ca0}
 html[data-bpd-theme="dark"] .activity-selected-person .activity-lookup-button:hover,
 html[data-bpd-theme="dark"] .activity-selected-person .activity-mini-button:hover{background:#315578}
+
+/* Calendar-month activity policy stays separate from historic 16th reset records. */
+#activityCalendarMonthPolicy.activity-month-policy{
+ padding:10px 13px;margin:10px 0 5px;border:1px solid #b8d2e8;
+ border-left:3px solid #4b84d0;border-radius:9px;background:#edf5ff;
+}
+#activityCalendarMonthPolicy strong{font-size:12px;display:block}
+#activityCalendarMonthPolicy p{font-size:12px;margin:5px 0}
+#activityCalendarMonthPolicy small{font-size:11px;line-height:1.4;display:block;color:#58708a}
+html[data-bpd-theme="dark"] body.bpd-shell main #activityCalendarMonthPolicy{
+ background:#182f4c!important;color:#e8f4ff;border-color:#486a8e!important;
+ border-left-color:#86b7fa!important}
+html[data-bpd-theme="dark"] body.bpd-shell main #activityCalendarMonthPolicy small{
+ color:#c6d8ee!important}
+.activity-selected-person .activity-proposal-button{border-color:#397c6c;color:#145b47}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-selected-person .activity-proposal-button{
+ color:#b4ffdf;border-color:#5aa88c}
