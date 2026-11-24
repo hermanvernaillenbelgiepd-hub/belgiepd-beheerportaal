@@ -58,6 +58,8 @@ test('server does not auto-approve developer and rejects writes before protected
  assert.ok(server.indexOf('developerViewerEligible(verified,member')<
    server.indexOf("if(!managed.exists||managed.get('status')==='pending')"));
  assert.match(user,/developerReadOnly:req\.bpd\.portalDeveloperReadOnly===true/);
+ assert.match(user,/if\(actor\.portalDeveloperReadOnly===true\)/);
+ assert.match(user,/technicalAvailable:false,mode:'developer'/);
  assert.match(server,/developerReadOnly:req\.bpd\.portalDeveloperReadOnly===true/);
  assert.match(read('public/bpd-navigation.js'),/showDeveloperReadOnlyLabel/);
 });
