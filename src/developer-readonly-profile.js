@@ -2,6 +2,7 @@
 // Synthetic technical-shaped actor exists ONLY after verified Discord OAuth
 // and a configured allowlist; all non-design state-changing methods are denied.
 import {verifiedDiscordIdentity} from './user-access.js';
+import {validDesignPageKey} from './visual-design-page-policy.js';
 const ID=/^\d{15,22}$/;
 const DATE=/^\d{4}-\d{2}-\d{2}$/;
 const ALL=['politie','brandweer','ambulance','depannage','burger'];
@@ -33,7 +34,8 @@ export function readOnlyDeveloperActor(uid,id){
 export function readOnlyDeveloperRequestAllowed(method,path){
  if(method==='GET'||method==='HEAD')return true;
  // Only validated per-page and global appearance updates, NEVER grant changes.
- return method==='PUT'&&(
-  path==='/api/visual-design/admin'||
-  /^\/api\/visual-design\/pages\/[a-z0-9-]+$/.test(path));
+ if(method!=='PUT')return false;
+ if(path==='/api/visual-design/admin')return true;
+ const match=/^\/api\/visual-design\/pages\/([a-z0-9-]+)$/.exec(String(path||''));
+ return Boolean(match&&validDesignPageKey(match[1]));
 }
