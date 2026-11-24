@@ -6,6 +6,43 @@ De burger of medewerker solliciteert zelfstandig voor `ambulance`, `brandweer` o
 
 **Productie: standaard UIT.** `BPD_ENABLE_SERVICE_APPLICATIONS=true` is vereist voor dossierinzage, aanvragen en kaderbeoordeling; dit gaat pas aan wanneer de FiveM-bewijsbron betrouwbaar aangesloten is. Voor TEST mag de vlag aan om de interface en weigering bij ontbrekend bewijs veilig te controleren.
 
+## Afgeschermde aanvraag- en beoordelingsworkflow — voorbereid op MAIN
+
+De volgende functionaliteit is geïmplementeerd, maar **in productie uitgeschakeld**
+tot de vertrouwde FiveM-bron en de instroomprocedure zijn gevalideerd:
+
+- `/sollicitatiecentrum.html`: voorbereidend kandidaatformulier voor
+  Brandweer, Ambulance en Depannage; eigen overzicht en intrekken zodra geopend
+- `/sollicitatiebeheer.html`: per hulpdienst afgeschermde wachtrij,
+  eerst de laatste vijf zichtbaar, vervolgens extra dossiers op aanvraag;
+  geverifieerde dienstleiding kan in behandeling nemen, aanvaarden of afwijzen
+- iedere inzending, intrekking en beslissing heeft een afzonderlijke auditregel;
+  `submitted → reviewing → accepted/rejected`; zelfbeoordeling en
+  dubbele sollicitaties zijn niet toegestaan
+- aanvaarding verandert **nooit** het personeelsdossier, de rang, het roepnummer,
+  de Discord-rollen of het opleidingstraject
+
+De API's `/api/service-applications/status`, `/me`,
+`/submit`, `/withdraw`, `/review?dept=...`,
+`/:dept/:discordId/decision`, `/:dept/:discordId/history`
+en `/telemetry` zijn afzonderlijk afgeschermd. GET van status toont slechts
+publieke booleans; alle andere controles vereisen een geldige Discord-
+respectievelijk dienstleidingaanmelding. Een niet-geactiveerde workflow geeft
+geen schrijfbare sollicitatiegegevens vrij. Geen nieuwe roltoewijzingen.
+
+**Inschakelen mag pas na bronvalidatie en besluit over bewaring en bevoegdheden.**
+Op de daarvoor bestemde Render-service is pas daarna een unieke,
+minimaal 32 tekens lange secret nodig, met alle drie expliciete instellingen:
+
+`BPD_ENABLE_SERVICE_APPLICATIONS=true`
+`BPD_ENABLE_FIVEM_EVIDENCE_INGEST=true`
+`BPD_FIVEM_EVIDENCE_SECRET=<nieuwe beveiligde serversecret>`
+
+De server ondertekent vertrouwde FiveM-telemetrie zelf. De handtekening en
+verificatie van de bron worden opnieuw nagegaan voordat een echte aanvraag
+wordt opgeslagen. De gewone spelers-API voor de kandidaatvoorcontrole
+**volstaat niet** voor het openen van de indienknop.
+
 ## Nieuwe read-only controle via bestaande BelgiëPD-API (november 2026)
 
 `/sollicitatiecentrum.html` laat een kandidaat die met een recent
