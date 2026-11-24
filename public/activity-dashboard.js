@@ -64,7 +64,27 @@ function initialize(){
  createPing.title='Manuele opvolging registreren in dossier en weekrapport; geen automatische Discord-DM';
  createPing.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
   detail:{key:active}}));
- overview.append(createPing,tiles,note,diagnostics);
+ const month=document.createElement('section');
+ month.id='activityCalendarMonthPolicy';month.className='activity-month-policy';
+ const monthH=document.createElement('strong');
+ monthH.textContent='Maandcontrole vanaf de 1ste';
+ const monthInfo=document.createElement('p');
+ const belgianMonth=new Intl.DateTimeFormat('sv-SE',{
+  timeZone:'Europe/Brussels',year:'numeric',month:'2-digit'
+ }).format(new Date());
+ const [year,number]=belgianMonth.split('-').map(Number);
+ const previous=new Date(Date.UTC(year,number-2,1,12));
+ const monthName=new Intl.DateTimeFormat('nl-BE',{
+  timeZone:'UTC',month:'long',year:'numeric'
+ }).format(previous);
+ monthInfo.textContent='Te beoordelen afgesloten kalendermaand: '+monthName+
+  ' (1ste t/m laatste dag). 50/50 bij minder dan 20 uur; INACTIEF bij minder dan 10 uur.'+
+  ' Alleen geverifieerde maandmetingen, rekening houdend met goedgekeurd verlof.';
+ const old=document.createElement('small');
+ old.textContent='De historische RECORDS-peilstand op de 16de is geen maandafsluiting.'+
+  ' De externe reset wordt hiermee niet aangepast. Automatische pings blijven afhankelijk van de geverifieerde bot.';
+ month.append(monthH,monthInfo,old);
+ overview.append(createPing,tiles,month,note,diagnostics);
  const filterLabel=document.createElement('div');filterLabel.className='activity-eyebrow';
  filterLabel.textContent='FILTERS · Dienst, reeks en opvolging';
  filter.prepend(filterLabel);
@@ -189,6 +209,16 @@ function renderSelectedStatus(people,lookupPlayer){
   ping.title='Leg voor deze medewerker een opvolging vast in dossier en weekrapport';
   ping.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
     detail:{person:{department:p.department,discordId:p.discordId},key:active}}));
+  if(['half','inactive','checking'].includes(active)){
+   const proposal=document.createElement('button');
+   proposal.type='button';proposal.className='activity-mini-button activity-proposal-button';
+   proposal.textContent='Voorstel ACTIEF';
+   proposal.title='Maak een voorstel ter goedkeuring door Officierenkader / Korpsleiding';
+   proposal.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
+    detail:{person:{department:p.department,discordId:p.discordId},
+     presetStatus:'ACTIEF',key:active}}));
+   item.append(proposal);
+  }
   const actions=document.createElement('a');
   actions.href='/dossiercentrum.html?'+new URLSearchParams({
    dept:p.department,discordId:p.discordId}).toString();
