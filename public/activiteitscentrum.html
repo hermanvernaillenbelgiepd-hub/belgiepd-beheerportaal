@@ -843,6 +843,7 @@ $('refresh').addEventListener('click',load);
   setupPortalLogin({button:$('login'),auth,authModule:authSdk,config:cfg,
    onError:e=>{$('feedback').textContent=e.message}});
   authSdk.onAuthStateChanged(auth,()=>{
+    playerEvidenceCache.clear();playerVisibleRows.clear();
     void load();void loadCadreConfig();
    });
  }catch(e){$('feedback').textContent=e.message}
