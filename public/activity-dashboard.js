@@ -11,7 +11,7 @@ function belongs(p,key){
  if(key==='half')return status==='50/50';
  if(key==='inactive')return status==='inactief';
  if(key==='leave')return p.leave?.active===true;
- if(key==='checking')return p.returnChecking===true;
+ if(key==='checking')return p.returnChecking===true||status==='checking';
  if(key==='review')return verifiedLeave&&Number.isSafeInteger(p.effectiveInactiveDays)&&p.effectiveInactiveDays>=60;
  return true;
 }
@@ -209,21 +209,23 @@ function renderSelectedStatus(people,lookupPlayer){
   ping.title='Leg voor deze medewerker een opvolging vast in dossier en weekrapport';
   ping.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
     detail:{person:{department:p.department,discordId:p.discordId},key:active}}));
+  let proposal=null;
   if(['half','inactive','checking'].includes(active)){
-   const proposal=document.createElement('button');
+   proposal=document.createElement('button');
    proposal.type='button';proposal.className='activity-mini-button activity-proposal-button';
    proposal.textContent='Voorstel ACTIEF';
    proposal.title='Maak een voorstel ter goedkeuring door Officierenkader / Korpsleiding';
    proposal.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
     detail:{person:{department:p.department,discordId:p.discordId},
      presetStatus:'ACTIEF',key:active}}));
-   item.append(proposal);
   }
   const actions=document.createElement('a');
   actions.href='/dossiercentrum.html?'+new URLSearchParams({
    dept:p.department,discordId:p.discordId}).toString();
   actions.textContent='Dossier openen';
-  item.append(title,status,connection,hours,api,query,ping,actions);list.append(item);
+  item.append(title,status,connection,hours,api,query,ping);
+  if(proposal)item.append(proposal);
+  item.append(actions);list.append(item);
  }
  if(!matched.length){
   const empty=document.createElement('p');
