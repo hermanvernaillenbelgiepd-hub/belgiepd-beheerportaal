@@ -21,6 +21,7 @@ import {ACTIVITY_FOLLOWUP_STATUS} from './activity-followup-status-policy.js';
 import {verifiedColleagueLink,createColleagueLink,loadLinkedCaseEntries} from './dossier-linked-cases.js';
 import {TRAINING_RESULT_LABELS} from './training-result-policy.js';
 import {INACTIVITY_PING_NOTICES,inactivityPingNotice,publicPingNotice,validPingId} from './inactivity-ping-notifications.js';
+import {ACTIVITY_PING_REVIEWS,activityReviewForNewPing} from './activity-ping-review-routes.js';
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {POLICE_PROMOTION_PROPOSALS,nextPromotionRank} from './police-promotion-routes.js';
 import {POLICE_RANK_CHOICES,policeSubjectGradeOption} from './personnel-rank-policy.js';
@@ -356,6 +357,12 @@ export function installManagementRoutes(app,{requireUser,requireMemberUser=requi
           discordContactSource:'manual_attestation'}):{}),
         createdAt:FieldValue.serverTimestamp(),modifiedAt:null});
       batch.create(notice,{caseId:caseId(dept,id),entryId:newDoc.id,type,dept,createdAt:FieldValue.serverTimestamp()});
+       // One canonical Police ping is also one officer notification.
+       // Historical imports never create an ACTIEF approval proposal.
+       if(type==='inactiviteitsping'&&dept==='politie'&&!represented){
+         batch.create(db().collection(ACTIVITY_PING_REVIEWS).doc(newDoc.id),
+          activityReviewForNewPing({dept,discordId:id,entryId:newDoc.id,actor,subject,data}));
+       }
       if(proposalType){
         const ref=db().collection(POLICE_PROMOTION_PROPOSALS).doc(newDoc.id);
         batch.create(ref,{discordId:id,dept:'politie',caseEntryId:newDoc.id,
