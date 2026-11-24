@@ -83,7 +83,10 @@ function initialize(){
  const old=document.createElement('small');
  old.textContent='De historische RECORDS-peilstand op de 16de is geen maandafsluiting.'+
   ' De externe reset wordt hiermee niet aangepast. Automatische pings blijven afhankelijk van de geverifieerde bot.';
- month.append(monthH,monthInfo,old);
+ const recoveryInfo=document.createElement('p');
+ recoveryInfo.id='activityFiveHourRecoveryPolicy';
+ recoveryInfo.textContent='Terug naar ACTIEF: 5 uur FiveM-activiteit binnen 14 dagen, los van de kalendermaand. Bij 50/50, INACTIEF en CHECKING kun je via een eerste en latere FiveM-API-meting de indicatieve toename opvolgen. De eerste meting is een beginpunt, geen nulurenconclusie; een tellerreset telt niet als negatief uur. Zonder afzonderlijk sessiebewijs blijft goedkeuring een handmatige kaderbeslissing.';
+ month.append(monthH,monthInfo,old,recoveryInfo);
  overview.append(createPing,tiles,month,note,diagnostics);
  const filterLabel=document.createElement('div');filterLabel.className='activity-eyebrow';
  filterLabel.textContent='FILTERS · Dienst, reeks en opvolging';
@@ -148,7 +151,7 @@ function formatFiveMHours(minutes){
 }
 let selectedStatusRender=0;
 // Callback lives in the authenticated page. This module has no network or secrets.
-function renderSelectedStatus(people,lookupPlayer){
+function renderSelectedStatus(people,lookupPlayer,observeRecovery){
  const serial=++selectedStatusRender;
  const root=$('activitySelectedStatusPanel');if(!root)return;
  root.replaceChildren();root.hidden=!active;
@@ -210,11 +213,46 @@ function renderSelectedStatus(people,lookupPlayer){
   ping.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
     detail:{person:{department:p.department,discordId:p.discordId},key:active}}));
   let proposal=null;
-  if(['half','inactive','checking'].includes(active)){
+  const recoveryNeeded=['half','inactive','checking'].includes(active);
+  if(recoveryNeeded){
+   const progress=document.createElement('small');
+   progress.className='activity-recovery-evidence';
+   progress.setAttribute('role','status');
+   progress.textContent='Herstel 5 uur / 14 dagen: nog geen API-meetpunten. Dit is geen nulurenconclusie.';
+   const bar=document.createElement('progress');
+   bar.className='activity-recovery-progress';bar.max=300;bar.value=0;bar.hidden=true;
+   bar.setAttribute('aria-label','Indicatieve FiveM-hersteltoename van 0 tot 5 uur');
+   const recoveryButton=document.createElement('button');
+   recoveryButton.type='button';recoveryButton.className='activity-mini-button';
+   recoveryButton.textContent='Hersteluren controleren';
+   recoveryButton.title='Leg uitsluitend een FiveM-API-meetpunt vast. Wijzigt geen personeelsstatus of ping.';
+   recoveryButton.onclick=async()=>{
+    if(typeof observeRecovery!=='function')return;
+    recoveryButton.disabled=true;
+    progress.textContent='FiveM-API controleren en meetpunt bewaren…';
+    try{
+     const result=await observeRecovery(p);
+     if(result?.error)throw Error(result.error);
+     const measured=Number.isSafeInteger(result?.observedIncreaseMinutes)?
+       Math.max(0,result.observedIncreaseMinutes):null;
+     bar.hidden=measured===null;
+     if(measured!==null)bar.value=Math.min(300,measured);
+     const display=measured===null?'Nog niet meetbaar':
+       formatFiveMHours(measured)+' / 5 uur';
+     progress.textContent='Herstel (14 dagen): '+display+
+       ' · '+String(result?.message||'Nog geen volledige broncontrole')+
+       ' Geen automatische statuswijziging.';
+    }catch(error){progress.textContent='Herstelmeting niet beschikbaar: '+error.message+
+      '. De bestaande personeelsstatus blijft behouden.';}
+    finally{recoveryButton.disabled=false}
+   };
+   item.append(progress,bar,recoveryButton);
+  }
+  if(recoveryNeeded){
    proposal=document.createElement('button');
    proposal.type='button';proposal.className='activity-mini-button activity-proposal-button';
    proposal.textContent='Voorstel ACTIEF';
-   proposal.title='Maak een voorstel ter goedkeuring door Officierenkader / Korpsleiding';
+   proposal.title='Manueel ACTIEF-voorstel ter beoordeling door Officierenkader/Korpsleiding. 5 uur API-toename is voorlopig uitsluitend indicatief.';
    proposal.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
     detail:{person:{department:p.department,discordId:p.discordId},
      presetStatus:'ACTIEF',key:active}}));
@@ -247,12 +285,12 @@ function renderSelectedStatus(people,lookupPlayer){
   })();
  }
 }
-export function renderActivityDashboard(people,sources,onSelect,lookupPlayer){
+export function renderActivityDashboard(people,sources,onSelect,lookupPlayer,observeRecovery){
  initialize();verifiedLeave=sources?.approvedLeaveComplete===true;
  const safe=Array.isArray(people)?people:[];
  if($('filter').value||$('attentionOnly').checked)active='';
  $('activityAuthorizedTotal').textContent=String(safe.length);
- renderSelectedStatus(safe,lookupPlayer);
+ renderSelectedStatus(safe,lookupPlayer,observeRecovery);
  const container=$('activityStatusTiles');container.replaceChildren();
  for(const [key,name,note] of TILES){
   const count=safe.filter(p=>belongs(p,key)).length;
