@@ -2,7 +2,7 @@
 // accounts; every service-lead review repeats the current dossier authorization.
 // No route provisions personnel, callsigns, permissions, or Discord roles.
 import {getAuth} from 'firebase-admin/auth';
-import {getFirestore,FieldValue} from 'firebase-admin/firestore';
+import {getFirestore} from 'firebase-admin/firestore';
 import {timingSafeEqual} from 'node:crypto';
 import {verifiedDiscordIdentity,USER_COLLECTION} from './user-access.js';
 import {
@@ -16,8 +16,6 @@ import {
 const ID=/^\d{15,22}$/;
 const denied=(res,status,message)=>res.status(status).json({error:message});
 const issue=(message,status=403)=>Object.assign(Error(message),{status});
-const safeDate=value=>value?.toDate?.()?.toISOString?.()||
- typeof value==='string'?value:null;
 function safeApplication(doc){
  const result=publicServiceApplication(doc);
  if(!result)return null;
@@ -59,7 +57,9 @@ export function installServiceApplicationRoutes(app,{
  }
  async function reviewScope(req,res,next){
   res.set('Cache-Control','private, no-store');
-  if(!statusOpen(env))return res.json({...restricted(env),cases:[],reviewer:false});
+  if(!statusOpen(env))return req.method==='GET'?
+   res.json({...restricted(env),cases:[],reviewer:false}):
+   denied(res,503,'Sollicitaties zijn nog gesloten');
   const dept=String(req.query?.dept||req.params?.dept||'');
   if(!SERVICE_APPLICATION_DEPARTMENTS.includes(dept))
    return denied(res,400,'Ongeldige hulpdienst');
