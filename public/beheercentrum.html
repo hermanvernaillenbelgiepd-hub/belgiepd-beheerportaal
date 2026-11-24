@@ -90,6 +90,23 @@ html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
 [hidden]{display:none!important}
 @media(max-width:790px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){main{padding:14px 12px 40px}.grid,.form-grid{grid-template-columns:1fr}header{padding:12px}}
+
+.activity-readiness{margin-top:14px;padding:14px;border-radius:11px;
+ border:1px solid #6480a4;background:#122b45}
+.activity-readiness h3{margin:0 0 8px;font-size:15px}
+.activity-readiness-steps{list-style:none;padding:0;margin:10px 0;
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.activity-readiness-step{min-width:0;padding:9px 11px;border:1px solid #405f81;
+ border-radius:8px;background:#172f4c}
+.activity-readiness-step strong{display:block;font-size:12px;line-height:1.35}
+.activity-readiness-step small{display:block;margin-top:4px;color:#bbcee3;
+ font-size:11px;line-height:1.45}
+.activity-readiness-step--missing{border-left:3px solid #edab6f}
+.activity-readiness-step--ok{border-left:3px solid #54a98c}
+.activity-readiness-step--pending{border-left:3px solid #869bb7}
+.activity-readiness-step--warning{border-left:3px solid #e6ad59}
+.activity-readiness-step--off{border-left:3px solid #62758e}
+@media(max-width:680px){.activity-readiness-steps{grid-template-columns:1fr}}
 </style>
 <link rel="stylesheet" href="/bpd-navigation.css">
 <link rel="stylesheet" href="/assets/organogram-decorations.css?v=central-awards-management-20261106">
@@ -135,6 +152,13 @@ html[data-bpd-theme="light"] #visualDesignStatus.bad{color:#9f2e40}
  <p class="muted" id="integrationMessage" role="status" aria-live="polite">Status wordt geladen…</p>
  <div id="integrationGrid" class="integration-grid" aria-label="Status van koppelingen"></div>
  <p class="muted">Vaste-roepnummer-speeluren en maandelijkse FiveM-activiteit zijn twee onafhankelijke koppelingen. Dit scherm is uitsluitend ter inzage.</p>
+ <section id="activityReadinessPanel" class="activity-readiness" hidden aria-labelledby="activityReadinessTitle">
+  <h3 id="activityReadinessTitle">FiveM-activiteitsmonitor · voorwaarden voor automatische pings</h3>
+  <p class="muted" id="activityReadinessMonth"></p>
+  <ol id="activityReadinessSteps" class="activity-readiness-steps"></ol>
+  <p class="muted" id="activityReadinessNext" role="status"></p>
+  <p class="muted">Geen geheime sleutels, namen, Discord-ID's of individuele uren. Eén recente meting is geen bewijs van volledige maanddekking.</p>
+ </section>
  <div id="dutySchemaInspector" hidden>
   <div class="row"><div><h3>BelgiëPD API · diensturen</h3>
    <p class="muted">Alleen Technisch Beheer. Deze controle toont uitsluitend veldnamen en types; geen medewerkersgegevens, uren of sleutel.</p></div>
@@ -506,10 +530,32 @@ async function loadIntegrations(){
    }
    $('integrationGrid').append(box);
   }
+  const readiness=data.activityReadiness,readinessPanel=$('activityReadinessPanel');
+  readinessPanel.hidden=!readiness;
+  $('activityReadinessSteps').replaceChildren();
+  if(readiness){
+   $('activityReadinessMonth').textContent='Te controleren afgesloten maand: '+
+    readiness.checkedMonth+' (1ste tot laatste dag, Belgische tijd).';
+   for(const step of readiness.steps||[]){
+    const item=document.createElement('li');
+    const kind=['ok','missing','pending','warning','off'].includes(step.state)?
+     step.state:'pending';
+    item.className='activity-readiness-step activity-readiness-step--'+kind;
+    const title=document.createElement('strong');
+    const labels={ok:'ingesteld of ontvangen',missing:'ontbreekt',
+     pending:'nog te verifiëren',warning:'controle nodig',off:'uitgeschakeld'};
+    title.textContent=step.label+' · '+labels[kind];
+    const description=document.createElement('small');
+    description.textContent=step.detail;
+    item.append(title,description);$('activityReadinessSteps').append(item);
+   }
+   $('activityReadinessNext').textContent='Volgende actie: '+readiness.nextAction;
+  }
   $('integrationMessage').textContent='Gecontroleerd: '+
    new Date(data.checkedAt).toLocaleString('nl-BE')+' · Alleen lezen';
  }catch(error){
   if(turn!==integrationRequest||auth?.currentUser?.uid!==user.uid)return;
+  $('activityReadinessPanel').hidden=true;
   $('integrationMessage').textContent='Status tijdelijk niet beschikbaar: '+error.message;
  }finally{
   if(turn===integrationRequest)$('integrationReload').disabled=false;
