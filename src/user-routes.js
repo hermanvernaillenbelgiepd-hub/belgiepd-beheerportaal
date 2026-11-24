@@ -147,6 +147,10 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
   // The profile switch cannot alter the permanent approval/Discord rank.
   app.get('/api/users/profile',requireUser,(req,res)=>{
     const actor=req.bpd;
+    if(actor.portalDeveloperReadOnly===true)
+      return res.json({technicalAvailable:false,mode:'developer',
+       operationalRole:'developer',discordPoliceRank:null,
+       linkedDiscordId:actor.discordId||null,readOnly:true});
     return res.json({technicalAvailable:actor.profileTechnicalAvailable===true,
       mode:actor.portalTechnicalMode===true?'technisch':'politie',
       operationalRole:actor.operationalRole||actor.role,
