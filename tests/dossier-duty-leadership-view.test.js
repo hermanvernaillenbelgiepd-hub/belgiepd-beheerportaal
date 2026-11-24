@@ -13,3 +13,10 @@ test('brandweerdossier toont diensturen alleen voor toegelaten leiding',()=>{
  assert.match(h,/fireDutySummary/);assert.match(h,/data\.visibility/);
  assert.match(h,/api\/duty-times\/dossiers\/brandweer/);
 });
+
+test('Activiteitencentrum houdt de maandmeting apart en haalt diensturen alleen op aanvraag op',()=>{
+ const h=read('public/activiteitscentrum.html');
+ assert.match(h,/button\.onclick=async/);
+ assert.match(h,/api\/duty-times\/dossiers/);
+ assert.doesNotMatch(read('src/activity-center-routes.js'),/readOwnDutyTimes|bpd-duty-service-scope/);
+});
