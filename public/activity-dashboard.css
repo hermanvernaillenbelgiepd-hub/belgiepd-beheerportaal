@@ -121,3 +121,42 @@ html[data-bpd-theme="dark"] body.bpd-shell main .activity-selected-person{
  color:#f3f8ff;background:#1d3955;border-color:#3f6388}
 html[data-bpd-theme="dark"] body.bpd-shell main .activity-selected-person small{color:#c9d9eb}
 @media(max-width:720px){.activity-selected-list{grid-template-columns:1fr;max-height:550px}}
+
+/* Kleine acties in de opvolgingskaarten i.p.v. brede primaire knoppen. */
+.activity-selected-person .activity-lookup-button,
+.activity-selected-person .activity-mini-button,
+.activity-create-ping,
+.activity-quick-ping-dialog button{
+ font-size:11px;line-height:1.25;min-height:29px;
+ padding:5px 10px;border-radius:7px;
+}
+.activity-selected-person .activity-lookup-button,
+.activity-selected-person .activity-mini-button{
+ width:auto;max-width:100%;align-self:flex-start;
+ background:transparent;border:1px solid #7592b3;color:inherit;font-weight:700;
+}
+.activity-selected-person .activity-lookup-button:hover,
+.activity-selected-person .activity-mini-button:hover{background:#dae9fa}
+.activity-create-ping{margin:9px 0;background:#2858b7;color:#fff;font-weight:750}
+.activity-quick-ping-dialog{width:min(94vw,590px);max-height:90vh;overflow:auto;
+ padding:22px;border:1px solid #6a86a5;border-radius:13px;
+ background:#f7faff;color:#1a3654;box-shadow:0 20px 70px #05152770}
+.activity-quick-ping-dialog::backdrop{background:#07142fc4}
+.activity-quick-ping-dialog h2{margin:0 0 10px;font-size:18px}
+.activity-quick-ping-dialog form{display:grid;gap:12px}
+.activity-quick-ping-dialog label{display:grid;gap:5px;font-size:12px;font-weight:700;color:inherit}
+.activity-quick-ping-dialog input,
+.activity-quick-ping-dialog select,.activity-quick-ping-dialog textarea{
+ width:100%;min-width:0;background:transparent;color:inherit;
+ border:1px solid #859ebd;border-radius:7px;padding:9px}
+.activity-quick-ping-dialog textarea{min-height:90px;resize:vertical}
+.activity-quick-ping-dialog .quick-ping-actions{display:flex;justify-content:flex-end;
+ gap:8px;flex-wrap:wrap}
+.activity-quick-ping-dialog .quick-ping-actions button[type=submit]{
+ background:#3158cb;color:white}
+html[data-bpd-theme="dark"] .activity-quick-ping-dialog{
+ background:#142944;color:#eff7ff;border-color:#55769b}
+html[data-bpd-theme="dark"] .activity-quick-ping-dialog :is(input,select,textarea){
+ color:#eff7ff;background:#0d2139;border-color:#5c7ca0}
+html[data-bpd-theme="dark"] .activity-selected-person .activity-lookup-button:hover,
+html[data-bpd-theme="dark"] .activity-selected-person .activity-mini-button:hover{background:#315578}
