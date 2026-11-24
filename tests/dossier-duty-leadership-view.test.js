@@ -20,3 +20,13 @@ test('Activiteitencentrum houdt de maandmeting apart en haalt diensturen alleen 
  assert.match(h,/api\/duty-times\/dossiers/);
  assert.doesNotMatch(read('src/activity-center-routes.js'),/readOwnDutyTimes|bpd-duty-service-scope/);
 });
+
+test('fire dossier ES-module heeft geen dubbele declaraties',async()=>{
+ const {spawnSync}=await import('node:child_process');
+ const html=read('public/brandweerdossier.html');
+ const match=html.match(/<script type="module">([\s\S]*?)<\/script>/);
+ assert.ok(match,'Module-script ontbreekt');
+ const result=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:match[1],encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);
+});
