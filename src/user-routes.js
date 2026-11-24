@@ -184,10 +184,13 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
   // Useful when a valid Discord identity lacks scoped management rights.
   app.get('/api/users/context',requireUser,(req,res)=>{
     const depts=req.bpd.departments||[];
-    res.json({role:req.bpd.role,profileMode:req.bpd.portalTechnicalMode===true?'technisch':'politie',departments:depts,
+    res.json({role:req.bpd.portalDeveloperReadOnly===true?'developer':req.bpd.role,
+      profileMode:req.bpd.portalDeveloperReadOnly===true?'developer':req.bpd.portalTechnicalMode===true?'technisch':'politie',
+      developerReadOnly:req.bpd.portalDeveloperReadOnly===true,departments:depts,
       departmentRoles:Object.fromEntries(depts.map(dept=>[dept,roleForDepartment(req.bpd,dept)||'geen'])),
-      canManageUsers:isUserManager(req.bpd),canManageTO:req.bpd.role==='beheerder',
-      canViewKnownIds:isVerifiedTechnicalRoleApprover(req.bpd)});
+      canManageUsers:req.bpd.portalDeveloperReadOnly===true?false:isUserManager(req.bpd),
+      canManageTO:req.bpd.portalDeveloperReadOnly!==true&&req.bpd.role==='beheerder',
+      canViewKnownIds:req.bpd.portalDeveloperReadOnly!==true&&isVerifiedTechnicalRoleApprover(req.bpd)});
   });
   const admin=(req,res,next)=>isUserManager(req.bpd)?next():denial(res,403,'Alleen officierenkader, korpsleiding en beheer kunnen gebruikers beheren');
   // Independent TO rights: no police or other personnel role is modified.

@@ -570,6 +570,7 @@
     const view={
       context:{
         dashboardProfile:context.dashboardProfile||null,
+        developerReadOnly:context.developerReadOnly===true,
         basicObservationCanSubmit:context.basicObservationCanSubmit===true,
         basicObservationCanReview:context.basicObservationCanReview===true,
         ambulanceCanOpenDossier:context.ambulanceCanOpenDossier===true,
@@ -595,6 +596,20 @@
   function clearNavView(){
     try{window.sessionStorage.removeItem(navCacheKey)}catch{}
   }
+  function showDeveloperReadOnlyLabel(enabled){
+    document.getElementById('bpdDeveloperReadOnlyLabel')?.remove();
+    document.documentElement.dataset.bpdDeveloperReadonly=enabled?'true':'false';
+    if(!enabled)return;
+    const box=document.createElement('div');
+    box.id='bpdDeveloperReadOnlyLabel';box.setAttribute('role','status');
+    box.textContent='Developer · INZAGE ALLEEN · Vormgeving wijzigen toegestaan';
+    Object.assign(box.style,{position:'fixed',bottom:'12px',right:'12px',
+      zIndex:'2147483600',background:'#123253',color:'#ffffff',
+      border:'1px solid #6c9ec5',borderRadius:'9px',padding:'8px 12px',
+      fontSize:'12px',fontWeight:'700',maxWidth:'min(94vw,390px)',
+      boxShadow:'0 3px 15px #0004',pointerEvents:'none'});
+    document.body.append(box);
+  }
   async function verifyIdentity(show){
     // Do not initialize Firebase here: most existing pages initialize their
     // own app. Only subscribe to the app once their own login module exists.
@@ -609,7 +624,8 @@
       authSdk.onAuthStateChanged(authSdk.getAuth(apps[0]),async user=>{
         const turn=++request;
         document.getElementById('bpdCitizenDossiersLink')?.remove();
-        if(!user){clearNavView();show(['home','personnel','organogram','profile']);return}
+        if(!user){clearNavView();showDeveloperReadOnlyLabel(false);
+          show(['home','personnel','organogram','profile']);return}
         try{
           const saved=cachedNavView(user.uid);
           let context,member,citizen;
@@ -636,6 +652,7 @@
               saveNavView(user.uid,context,member,citizen);
           }
           if(turn!==request)return;
+          showDeveloperReadOnlyLabel(context?.developerReadOnly===true);
           const citizenGranted=citizen?.canAccess===true;
           const showVerified=pages=>{
             const visible=[...pages];
