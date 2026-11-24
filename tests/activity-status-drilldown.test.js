@@ -20,7 +20,7 @@ test('klik navigeert naar de zichtbare statussen en niet naar verborgen/lege opv
  const html=read('public/activiteitscentrum.html');
  assert.match(html,/activitySelectedStatusPanel/);
  assert.match(html,/selected&&!selected\.hidden\?selected:\$\('personnelDetails'\)/);
- assert.match(html,/Laatste verbinding/); // visual labels in selection module
+ assert.match(read('public/activity-dashboard.js'),/Laatste verbinding/);
  const source=read('src/activity-center-routes.js');
  assert.doesNotMatch(source,/readOwnDutyTimes|bpd-duty-service-scope/);
 });
