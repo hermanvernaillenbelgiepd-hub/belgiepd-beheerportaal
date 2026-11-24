@@ -999,7 +999,7 @@ function render(){
     const row=document.createElement('tr'),person=document.createElement('div');person.className='name';person.textContent=u.username||'Discord-lid';
     const id=document.createElement('small');id.textContent=u.discordId;id.style.display='block';
     const wrap=document.createElement('div');wrap.append(person,id);
-    if(u.developerView){
+    if(u.developerView&&(u.developerView.enabled||u.developerView.source!=='none')){
       const developerState=document.createElement('small');
       developerState.style.display='block';
       developerState.style.fontWeight='700';
