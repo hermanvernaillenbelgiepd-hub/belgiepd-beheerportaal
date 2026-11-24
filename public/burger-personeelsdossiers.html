@@ -141,6 +141,14 @@ html:not([data-bpd-theme="dark"]) .score-trend-up{color:#116f42;background:#e4f7
 html:not([data-bpd-theme="dark"]) .score-trend-down{color:#a02e38;background:#ffe9ea}
 html:not([data-bpd-theme="dark"]) .score-trend-stable{color:#765b12;background:#fff5d4}
 html:not([data-bpd-theme="dark"]) .score-trend-insufficient{color:#405776;background:#edf1f7}
+.citizen-section[data-collapsed="true"]>:not(h2){display:none!important}
+.citizen-section>h2{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.citizen-section .citizen-fold-toggle{font-size:11px;min-height:30px;
+ padding:5px 9px;background:#24486c;color:#edf5ff;border:1px solid #7898bd}
+html:not([data-bpd-theme="dark"]) .citizen-section .citizen-fold-toggle{
+ background:#e0ebfb;color:#183d61;border-color:#7294b7}
+@media print{.citizen-section[data-collapsed="true"]>:not(h2){display:block!important}
+ .citizen-fold-toggle{display:none!important}}
 </style><link rel="stylesheet" href="/dossier-identity-polish.css"></head>
 <body class="bpd-unified-dossier dossier-onepage">
 <header><strong>🏛️ BelgiëPD · Burgerpersoneelsdossiers</strong>
@@ -294,6 +302,25 @@ import {renderRecentDossierEntries,attachExpandableDossierText} from '/dossier-r
 import {observationTrendSymbol,observationTrendLabel} from '/observation-score-trend.js';
 import {attachDossierRecordPreview} from '/dossier-entry-preview.js';
 const $=id=>document.getElementById(id);
+// Burgerdossier heeft dezelfde inklapmogelijkheid, zonder gegevens of rechten te wijzigen.
+function installCitizenFolds(){
+ for(const section of document.querySelectorAll('.citizen-section-list>.citizen-section')){
+  const heading=[...section.children].find(x=>x.tagName==='H2');
+  if(!heading||section.dataset.foldReady==='true')continue;
+  section.dataset.foldReady='true';
+  section.dataset.collapsed=String(section.id==='citizenDeletionLog');
+  const button=document.createElement('button');
+  button.type='button';button.className='citizen-fold-toggle';
+  const sync=()=>{
+   const closed=section.dataset.collapsed==='true';
+   button.textContent=closed?'Openklappen':'Inklappen';
+   button.setAttribute('aria-expanded',String(!closed));
+  };
+  button.onclick=()=>{section.dataset.collapsed=String(section.dataset.collapsed!=='true');sync()};
+  sync();heading.append(button);
+ }
+}
+installCitizenFolds();
 let auth,authMod,portalSetup,selectedId=null,rows=[],deleteTarget=null,profileRevision=0;
 const set=(id,value)=>{$(id).textContent=value==null||value===''?'—':String(value)};
 const mark=(msg,error=false)=>{set('message',msg);$('message').className=error?'error':'muted'};

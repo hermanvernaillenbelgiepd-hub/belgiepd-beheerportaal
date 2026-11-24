@@ -89,6 +89,7 @@ RUN node --test tests/activity-records-compact-view.test.js
 RUN node --test tests/activity-leave-exclusion.test.js
 RUN node --test tests/activity-charts.test.js
 RUN node --test tests/activity-dashboard-redesign.test.js
+RUN node --test tests/activity-status-drilldown.test.js
 RUN node --test tests/request-provenance-flow.test.js
 RUN node --test tests/leave-dual-recipient-notices.test.js
 RUN node --test tests/personnel-name-dossier-shortcuts.test.js
