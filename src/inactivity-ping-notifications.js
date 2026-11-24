@@ -29,6 +29,9 @@ export function publicPingNotice(id,record){
   sentBy:clean(record.sentBy?.name).slice(0,120),
   kind:['50/50','INACTIEF'].includes(record.kind)?record.kind:null,
   sentAt:iso(record.createdAt),readAt:iso(record.readAt),
-  status:record.status==='read'?'read':'sent'
+  status:record.status==='read'?'read':'sent',
+  decision:['approved','rejected'].includes(record.decision)?record.decision:null,
+  decisionReason:clean(record.decisionReason).slice(0,500),
+  decidedAt:iso(record.decidedAt),decisionBy:clean(record.decisionBy?.name).slice(0,120)
  };
 }
