@@ -33,6 +33,8 @@ import {installVisualDesignRoutes} from './visual-design-routes.js';
 import {installVisualDesignPageRoutes} from './visual-design-page-routes.js';
 import {DESIGN_GRANTS_COLLECTION} from './visual-design-grants.js';
 import {isDesignOnlyApiPath,developerDesignActor} from './visual-design-developer-policy.js';
+import {developerViewerEligible,readOnlyDeveloperActor,readOnlyDeveloperRequestAllowed}
+ from './developer-readonly-profile.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
@@ -349,6 +351,17 @@ async function requireUser(req,res,next){
         return res.status(403).json({error:'Discord-verificatie verlopen. Meld je opnieuw aan met Discord.'});
       const store=getFirestore(),ref=store.collection(USER_COLLECTION).doc(id);
       let managed=await cachedAuthDoc(USER_COLLECTION,id);
+      // A temporary read-only developer gets a synthetic VIEW of technical
+      // modules, but may save ONLY validated visual-design settings.
+      // Evaluate BEFORE any automatic role provisioning; do not create a staff
+      // account or modify operational permissions for this identity.
+      if(developerViewerEligible(verified,member,managed.data(),
+       process.env,Date.now())){
+       req.bpd=readOnlyDeveloperActor(verified.uid,id);
+       if(!readOnlyDeveloperRequestAllowed(req.method,req.path))
+        return res.status(403).json({error:'Developer-profiel: alleen lezen. Uitsluitend Vormgeving mag worden opgeslagen.'});
+       return next();
+      }
       if(!managed.exists||managed.get('status')==='pending'){
         const provisioned=await ensureVerifiedMiddleAccess(store,verified,member,
           process.env.DISCORD_GUILD_ID,process.env);
@@ -1074,7 +1087,8 @@ installManualRoleRoutes(app,{requireUser,getSnapshot});
 // Dashboard visibility uses server-confirmed operational or board authorisation.
 app.get('/api/dashboard/admin-visibility',requireDossierUser,(req,res)=>{
   res.set('Cache-Control','no-store');
-  res.json({visible:canSeeDashboardManagement(req.bpd),
+  res.json({developerReadOnly:req.bpd.portalDeveloperReadOnly===true,
+    visible:canSeeDashboardManagement(req.bpd),
     technicalCenterVisible:mayOpenTechnicalCenter(req.bpd),
     showAdvancedDashboard:canSeeAdvancedDashboard(req.bpd),
     navigationCapabilities:req.bpd.portalNavigation||{},

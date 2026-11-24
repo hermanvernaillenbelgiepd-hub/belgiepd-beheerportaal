@@ -17,10 +17,12 @@ const keys=['expectedRevision','observationArchiveEnabled',
 export function mayEditTechnicalSettings(actor){
  return Boolean(actor&&ID.test(String(actor.discordId||''))&&
   actor.uid==='discord:'+actor.discordId&&
+  actor.portalDeveloperReadOnly!==true&&
   actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&
   actor.role==='beheerder');
 }
 export function mayOpenTechnicalCenter(actor){
+ if(actor?.portalDeveloperReadOnly===true&&actor?.uid==='discord:'+actor?.discordId)return true;
  if(mayEditTechnicalSettings(actor))return true;
  // Only personally authenticated, approved Police Officers/Corps may open
  // central management. A global role from Brandweer, AZLS or Bestuur cannot
