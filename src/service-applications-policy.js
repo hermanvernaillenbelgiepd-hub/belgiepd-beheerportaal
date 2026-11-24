@@ -1,6 +1,5 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {mayReadFortnightReport} from './fortnight-report-policy.js';
-import {roleForDepartment} from './leave-policy.js';
 export const SERVICE_APPLICATION_DEPARTMENTS=Object.freeze(['brandweer','ambulance','depannage']);
 export const SERVICE_APPLICATION_COLLECTION='bpd_service_applications';
 export const SERVICE_EVIDENCE_COLLECTION='bpd_fivem_verified_playtime';
@@ -48,19 +47,25 @@ export function canViewServiceApplications(actor,dept,roster=[]){
  if(!SERVICE_APPLICATION_DEPARTMENTS.includes(dept)||!actor)return false;
  if(actor.uid!=='discord:'+actor.discordId)return false;
  if(actor.portalTechnicalMode===true&&actor.profileTechnicalAvailable===true&&actor.role==='beheerder')return true;
- return mayReadFortnightReport(actor,dept,roster);
+ const fireLeader=dept==='brandweer'&&actor.departments?.includes('brandweer')&&
+  actor.fireAccessLevel==='leadership'&&
+  roster.filter(p=>p?.dept==='brandweer'&&p.personId===actor.discordId).length===1;
+ return Boolean(fireLeader||mayReadFortnightReport(actor,dept,roster));
 }
 export function canReviewServiceApplications(actor,dept,roster=[]){
  if(!canViewServiceApplications(actor,dept,roster)||actor?.portalDeveloperReadOnly===true)
   return false;
  if(actor.portalTechnicalMode===true)return true;
  if(!actor.departments?.includes(dept))return false;
- if(roster.filter(p=>p?.dept===dept&&p.personId===actor.discordId).length!==1)return false;
+ const people=roster.filter(p=>p?.dept===dept&&p.personId===actor.discordId);
+ if(people.length!==1)return false;
+ const code=[people[0].call,people[0].rank].map(v=>String(v||'').trim().toUpperCase());
  if(dept==='brandweer')return actor.fireZoneChief===true||
-  actor.fireAccessLevel==='leadership'&&['officierenkader','korpsleiding'].includes(roleForDepartment(actor,'brandweer'));
+  actor.fireAccessLevel==='leadership';
  if(dept==='ambulance')return actor.reportServiceRoles?.ambulanceAzls===true||
-  actor.ambulanceReportVerified===true;
- if(dept==='depannage')return actor.reportServiceRoles?.depannageAwv===true;
+  code.some(x=>/^DIRMED(?:[- ]?\d{1,4})?$/.test(x));
+ if(dept==='depannage')return actor.reportServiceRoles?.depannageAwv===true||
+  code.some(x=>/^(?:AWV|ANWV)(?:[- ]?\d{1,4}|[ -]LEIDING)?$/.test(x));
  return false;
 }
 export function normalizeServiceEvidenceBody(data,now=new Date()){
