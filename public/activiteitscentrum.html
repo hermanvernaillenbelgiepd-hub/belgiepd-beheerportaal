@@ -448,6 +448,18 @@ function showPlayerEvidenceInRow(p,data){
  row.apiHours.textContent='API totaal: '+playerApiHours(data.totalPlayMinutes)+
   ' · cumulatief, geen afgesloten maand';
 }
+async function observeRecoveryProgress(p){
+ const user=auth?.currentUser;
+ if(!user)throw Error('Meld je eerst aan');
+ const token=await user.getIdToken();
+ const response=await fetch('/api/activity-recovery/'+
+  encodeURIComponent(p.department)+'/'+encodeURIComponent(p.discordId)+'/observe',{
+  method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token}});
+ const data=await response.json().catch(()=>({}));
+ if(user!==auth?.currentUser)throw Error('Portaalsessie gewijzigd');
+ if(!response.ok)throw Error(data.error||'Herstelmeting niet beschikbaar');
+ return data;
+}
 async function readPlayerEvidence(p){
  const key=playerEvidenceKey(p),now=Date.now(),entry=playerEvidenceCache.get(key);
  if(entry&&(entry.pending||entry.expires>now)){
@@ -571,7 +583,7 @@ function render(){
   $('personnelDetails').open=true;render();
   const selected=document.getElementById('activitySelectedStatusPanel');
   (selected&&!selected.hidden?selected:$('personnelDetails')).scrollIntoView({block:'start'});
- },readPlayerEvidence);
+ },readPlayerEvidence,observeRecoveryProgress);
  const visible=sortActivityLikePersonnel(scoped.filter(p=>
   (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))&&
   (!activityDashboardModule||activityDashboardModule.activityStatusTileMatch(p))));
