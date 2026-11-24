@@ -296,6 +296,42 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
  </details>
 </section>
 </main>
+<dialog id="activityQuickPingDialog" class="activity-quick-ping-dialog" aria-labelledby="activityQuickPingTitle">
+<h2 id="activityQuickPingTitle">Activiteitenping registreren</h2>
+<p>Deze registratie komt in het personeelsdossier en het weekrapport. Een Discord-bericht wordt niet automatisch verstuurd. Bij Politie ontvangt het bevoegde Officierenkader/Korpsleiding een opvolgingsmelding.</p>
+<form id="activityQuickPingForm">
+ <label>Personeelslid
+  <select id="quickPingPerson" required></select>
+ </label>
+ <label>Opvolgstatus
+  <select id="quickPingStatus" required>
+   <option value="50/50">50/50</option>
+   <option value="INACTIEF">INACTIEF</option>
+   <option value="ACTIEF">Voorstel: terug ACTIEF</option>
+   <option value="TUSSENTIJDSE_CONTROLE_PING">CHECKING / tussentijdse controle</option>
+   <option value="GEEN_VERBETERING_NA_PING">Geen verbetering na eerdere ping</option>
+   <option value="VERWIJDERING_TE_BEOORDELEN">60+ dagen: verwijdering beoordelen</option>
+  </select>
+ </label>
+ <label>Is er daadwerkelijk een Discord-bericht verstuurd?
+  <select id="quickPingDiscord" required>
+   <option value="nee">Nee – enkel portaalmelding</option>
+   <option value="ja">Ja – buiten het portaal handmatig verstuurd</option>
+  </select>
+ </label>
+ <label id="quickPingDiscordDateWrap" hidden>Datum van het werkelijk verzonden Discord-bericht
+  <input type="date" id="quickPingDiscordDate">
+ </label>
+ <label>Motivering en opvolgingsverslag
+  <textarea id="quickPingReason" rows="3" minlength="15" maxlength="1200" required placeholder="Wat werd gecontroleerd, waarom en welke opvolging wordt gevraagd?"></textarea>
+ </label>
+ <p id="quickPingFeedback" role="status" aria-live="polite"></p>
+ <div class="quick-ping-actions">
+  <button type="button" id="quickPingCancel" class="secondary-action">Annuleren</button>
+  <button type="submit" id="quickPingSubmit">Bewaren en melden</button>
+ </div>
+</form>
+</dialog>
 <script type="module">
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel,matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-roster-order.js';
 
@@ -430,6 +466,91 @@ async function readPlayerEvidence(p){
  showPlayerEvidenceInRow(p,data);
  return data;
 }
+// Directe manuele dossierregistratie: onafhankelijk van automatische FiveM-pings.
+const pingEl=id=>document.getElementById(id);
+const localToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+ year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+function choosePingStatus(tile){
+ return ({active:'ACTIEF',half:'50/50',inactive:'INACTIEF',
+   checking:'TUSSENTIJDSE_CONTROLE_PING',
+   review:'VERWIJDERING_TE_BEOORDELEN',leave:'TUSSENTIJDSE_CONTROLE_PING'})[tile]||'50/50';
+}
+function openQuickActivityPing(detail={}){
+ if(!auth?.currentUser)return;
+ const allowed=records.filter(x=>/^\d{15,22}$/.test(String(x.discordId||'')));
+ const sel=pingEl('quickPingPerson'),old=sel.value;
+ sel.replaceChildren(new Option('Selecteer een personeelslid…',''));
+ for(const p of allowed){
+  sel.add(new Option((p.call||'—')+' · '+(p.name||'Onbekend')+
+   ' ('+p.department+')',p.department+':'+p.discordId));
+ }
+ const requested=detail.person?
+  detail.person.department+':'+detail.person.discordId:old;
+ if([...sel.options].some(x=>x.value===requested))sel.value=requested;
+ pingEl('quickPingStatus').value=choosePingStatus(detail.key);
+ pingEl('quickPingDiscord').value='nee';pingEl('quickPingDiscordDate').value='';
+ pingEl('quickPingDiscordDateWrap').hidden=true;
+ pingEl('quickPingReason').value='';pingEl('quickPingFeedback').textContent='';
+ pingEl('activityQuickPingDialog').showModal();
+}
+window.addEventListener('bpd-quick-activity-ping',event=>openQuickActivityPing(event.detail));
+pingEl('quickPingCancel').onclick=()=>pingEl('activityQuickPingDialog').close();
+pingEl('quickPingDiscord').onchange=()=>{
+ const sent=pingEl('quickPingDiscord').value==='ja';
+ pingEl('quickPingDiscordDateWrap').hidden=!sent;
+ pingEl('quickPingDiscordDate').required=sent;
+ if(!sent)pingEl('quickPingDiscordDate').value='';
+};
+pingEl('activityQuickPingForm').onsubmit=async event=>{
+ event.preventDefault();
+ const selected=pingEl('quickPingPerson').value,person=records.find(p=>
+   p.department+':'+p.discordId===selected);
+ const followup=pingEl('quickPingStatus').value;
+ const sent=pingEl('quickPingDiscord').value==='ja';
+ const pingDate=pingEl('quickPingDiscordDate').value;
+ const reason=pingEl('quickPingReason').value.trim();
+ const out=pingEl('quickPingFeedback');
+ if(!person)return void(out.textContent='Kies een personeelslid.');
+ if(reason.length<15||reason.length>1200)
+  return void(out.textContent='Vermeld een motivering van minimaal 15 tekens.');
+ if(sent&&(!pingDate||pingDate>localToday()))
+  return void(out.textContent='Vermeld een geldige Discord-verzenddatum.');
+ if(!confirm('Activiteitenping registreren voor '+person.call+' · '+person.name+
+  '?\nEr wordt geen automatisch Discord-bericht verstuurd.'))return;
+ const button=pingEl('quickPingSubmit');button.disabled=true;
+ out.textContent='Opslaan…';
+ try{
+  const user=auth?.currentUser;if(!user)throw Error('Niet aangemeld');
+  const token=await user.getIdToken();
+  const label=pingEl('quickPingStatus').selectedOptions[0]?.textContent||followup;
+  const payload={dept:person.department,discordId:person.discordId,
+   type:'inactiviteitsping',eventDate:localToday(),
+   activityStatus:followup,discordPingSent:sent,
+   ...(sent?{discordPingDate:pingDate}:{portalNotice:true}),
+   details:'Opvolgstatus: '+label+' · Discord-ping handmatig verstuurd: '+
+    (sent?'Ja ('+pingDate+')':'Nee')+'\n'+reason};
+  const response=await fetch('/api/management/cases',{
+   method:'POST',cache:'no-store',headers:{
+    Authorization:'Bearer '+token,'Content-Type':'application/json'},
+   body:JSON.stringify(payload)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||data.saved!==true||!data.reference)
+   throw Error(data.error||'Opslag niet bevestigd');
+  // The existing canonical case endpoint must confirm the same entry ID.
+  const q=new URLSearchParams({dept:person.department,discordId:person.discordId});
+  const read=await fetch('/api/management/cases?'+q,{
+   cache:'no-store',headers:{Authorization:'Bearer '+token}});
+  const check=await read.json().catch(()=>({}));
+  if(!read.ok||!Array.isArray(check.entries)||!check.entries.some(x=>
+    x.id===data.reference&&x.type==='inactiviteitsping'))
+   return void(out.textContent='Opslag referentie '+data.reference+
+    ' is bevestigd, maar teruglezen lukt nog niet. Controleer het dossier en registreer niet opnieuw.');
+  out.textContent='Geregistreerd en gecontroleerd in dossier. Referentie: '+data.reference+
+    '. Weekrapport wordt bijgewerkt; bevoegde leiding ontvangt een melding.';
+  await load();
+ }catch(error){out.textContent='Opslaan niet bevestigd: '+error.message}
+ finally{button.disabled=false}
+};
 function render(){
  const dept=$('department').value,kind=$('filter').value,series=$('activitySeries').value;
  const query=$('search').value.trim().toLocaleLowerCase('nl');
