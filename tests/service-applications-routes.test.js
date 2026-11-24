@@ -14,37 +14,47 @@ const leader={uid:'discord:'+officer,discordId:officer,role:'officierenkader',
  reportServiceRoles:{depannageAwv:true}};
 function mockDb(){
  const docs=new Map();let serial=0;
- const snap=key=>({exists:docs.has(key),data:()=>docs.get(key),
-  get:field=>docs.get(key)?.[field]});
- const doc=key=>({path:key,get:async()=>snap(key),
-  collection:name=>collection(key+'/'+name)});
- const collection=path=>({
-  doc:(id)=>doc(path+'/'+(id||'a'+(++serial))),
-  where:(field,op,value)=>({
-   limit:max=>({get:async()=>({
-    docs:[...docs.entries()].filter(([key,d])=>
-     key.startsWith(path+'/')&&key.slice(path.length+1).indexOf('/')<0&&
-     op==='=='&&d[field]===value).slice(0,max).map(([key,d])=>({id:key.split('/').at(-1),data:()=>d})),
-    size:[...docs.entries()].filter(([key,d])=>
-     key.startsWith(path+'/')&&key.slice(path.length+1).indexOf('/')<0&&
-     op==='=='&&d[field]===value).slice(0,max).length})
-   })})
-  }),
-  orderBy:(_field,_direction)=>({limit:max=>({get:async()=>({
-   docs:[...docs.entries()].filter(([key])=>key.startsWith(path+'/')&&
-    key.slice(path.length+1).indexOf('/')<0)
-    .slice(0,max).reverse().map(([key,d])=>({data:()=>d}))
-  })})})
- });
- return {docs,collection,
-  runTransaction:async cb=>cb({
-   get:async ref=>snap(ref.path),
-   create:(ref,v)=>{if(docs.has(ref.path))throw Error('exists');docs.set(ref.path,v)},
-   update:(ref,v)=>{if(!docs.has(ref.path))throw Error('not found');
-    docs.set(ref.path,{...docs.get(ref.path),...v})},
-   set:(ref,v)=>docs.set(ref.path,v)
-  })
- };
+ function snapshot(key){
+  return {exists:docs.has(key),data:()=>docs.get(key),get:field=>docs.get(key)?.[field]};
+ }
+ function doc(key){
+  return {path:key,get:async()=>snapshot(key),collection:name=>collection(key+'/'+name)};
+ }
+ function collection(path){
+  const rows=()=>[...docs.entries()].filter(([key])=>
+   key.startsWith(path+'/')&&!key.slice(path.length+1).includes('/'));
+  return {
+   doc(id){return doc(path+'/'+(id||'a'+(++serial)))},
+   where(field,op,value){
+    return {limit(max){
+     return {async get(){
+      const matches=rows().filter(([key,data])=>op==='=='&&data[field]===value).slice(0,max);
+      return {docs:matches.map(([key,data])=>({id:key.split('/').at(-1),data:()=>data})),
+       size:matches.length};
+     }};
+    }};
+   },
+   orderBy(_field,_direction){
+    return {limit(max){
+     return {async get(){
+      const matches=rows().slice(0,max).reverse();
+      return {docs:matches.map(([key,data])=>({id:key.split('/').at(-1),data:()=>data})),
+       size:matches.length};
+     }};
+    }};
+   }
+  };
+ }
+ return {docs,collection,async runTransaction(callback){
+  return callback({
+   get:async ref=>snapshot(ref.path),
+   create(ref,data){if(docs.has(ref.path))throw Error('Already exists');
+    docs.set(ref.path,data)},
+   update(ref,data){if(!docs.has(ref.path))throw Error('Not found');
+    docs.set(ref.path,{...docs.get(ref.path),...data})},
+   set(ref,data){docs.set(ref.path,data)}
+  });
+ }};
 }
 async function withServer(options,run){
  const app=express();app.use('/api/service-applications',express.json({limit:'8kb',strict:true}));
