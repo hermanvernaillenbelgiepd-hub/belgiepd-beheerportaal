@@ -72,8 +72,8 @@ function initialize(){
  const belgianMonth=new Intl.DateTimeFormat('sv-SE',{
   timeZone:'Europe/Brussels',year:'numeric',month:'2-digit'
  }).format(new Date());
- const [year,number]=belgianMonth.split('-').map(Number);
- const previous=new Date(Date.UTC(year,number-2,1,12));
+ const [year,monthNumber]=belgianMonth.split('-').map(Number);
+ const previous=new Date(Date.UTC(year,monthNumber-2,1,12));
  const monthName=new Intl.DateTimeFormat('nl-BE',{
   timeZone:'UTC',month:'long',year:'numeric'
  }).format(previous);
