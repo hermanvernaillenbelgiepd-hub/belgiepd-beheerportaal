@@ -37,20 +37,19 @@ export function installCandidatePrecheckRoutes(app,{
   res.set('Cache-Control','private, no-store');
   const bearer=/^Bearer (\S+)$/.exec(req.get('Authorization')||'')?.[1];
   if(!bearer)return res.status(401).json({error:'Meld je eerst aan met je eigen Discord-account'});
-  let id;
-  try{
-   const verified=await verifyToken(bearer);
-   const candidate=verified?.uid?.startsWith('discord:')?verified.uid.slice(8):'';
-   if(!isDiscordId(candidate))return res.status(403).json({error:'Eigen Discord-login vereist'});
-   const [member,account]=await Promise.all([getMember(candidate),getAccount(candidate)]);
-   id=verifiedDiscordIdentity(verified,member?.data?.(),env.DISCORD_GUILD_ID,now().getTime());
-   if(id!==candidate)
-    return res.status(403).json({error:'Discord-lidmaatschap niet recent genoeg geverifieerd'});
-   if(account?.data?.()?.status==='blocked')
-    return res.status(403).json({error:'Portaalaccount is geblokkeerd'});
-  }catch{
-   return res.status(401).json({error:'Discord-aanmelding ongeldig of niet verifieerbaar'});
-  }
+  let verified;
+  try{verified=await verifyToken(bearer)}
+  catch{return res.status(401).json({error:'Discord-aanmelding ongeldig of verlopen'})}
+  const candidate=verified?.uid?.startsWith('discord:')?verified.uid.slice(8):'';
+  if(!isDiscordId(candidate))return res.status(403).json({error:'Eigen Discord-login vereist'});
+  let member,account;
+  try{[member,account]=await Promise.all([getMember(candidate),getAccount(candidate)])}
+  catch{return res.status(503).json({error:'Discord-gegevens tijdelijk niet controleerbaar'})}
+  const id=verifiedDiscordIdentity(verified,member?.data?.(),env.DISCORD_GUILD_ID,now().getTime());
+  if(id!==candidate)
+   return res.status(403).json({error:'Discord-lidmaatschap niet recent genoeg geverifieerd'});
+  if(account?.data?.()?.status==='blocked')
+   return res.status(403).json({error:'Portaalaccount is geblokkeerd'});
   try{
    const result=await readPlayer(id);
    return res.json(candidatePrecheck(result,now()));
