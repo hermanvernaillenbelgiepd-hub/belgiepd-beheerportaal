@@ -9,6 +9,10 @@ import {MANUAL_ROLE_CATALOG} from './manual-role-catalog.js';
 import {ensureVerifiedMiddleAccess,stillEligibleAutoCadre,AUTO_CADRE_SOURCE} from './verified-mid-cadre-access.js';
 import {ensureVerifiedRegularAccess,stillEligibleAutoRegular,AUTO_REGULAR_SOURCE} from './verified-regular-personnel-access.js';
 import {makeProfileCookie,clearProfileCookie} from './portal-profile-mode.js';
+import {mayEditTechnicalSettings} from './technical-center-config.js';
+import {DEVELOPER_VIEWER_COLLECTION,DEVELOPER_VIEWER_AUDIT,
+ developerViewerGrantState,validateDeveloperViewerChange,developerViewerNewExpiry}
+ from './developer-viewer-grants.js';
 import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-policy.js';
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {roleForDepartment} from './leave-policy.js';
@@ -192,8 +196,9 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
       profileMode:req.bpd.portalDeveloperReadOnly===true?'developer':req.bpd.portalTechnicalMode===true?'technisch':'politie',
       developerReadOnly:req.bpd.portalDeveloperReadOnly===true,departments:depts,
       departmentRoles:Object.fromEntries(depts.map(dept=>[dept,roleForDepartment(req.bpd,dept)||'geen'])),
-      canManageUsers:req.bpd.portalDeveloperReadOnly===true?false:isUserManager(req.bpd),
+      canManageUsers:isUserManager(req.bpd),
       canManageTO:req.bpd.portalDeveloperReadOnly!==true&&req.bpd.role==='beheerder',
+      canManageDeveloperViewer:mayEditTechnicalSettings(req.bpd),
       canViewKnownIds:req.bpd.portalDeveloperReadOnly!==true&&isVerifiedTechnicalRoleApprover(req.bpd)});
   });
   const admin=(req,res,next)=>isUserManager(req.bpd)?next():denial(res,403,'Alleen officierenkader, korpsleiding en beheer kunnen gebruikers beheren');
@@ -274,11 +279,19 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
       const snap=await collection().limit(250).get();
       const scoped=snap.docs.filter(d=>canSeeUser(req.bpd,d.data()));
       const users=[];
+      // Only Technisch Beheer can see and modify Developer grant controls.
+      const canManageDeveloperViewer=mayEditTechnicalSettings(req.bpd);
+      const grants=canManageDeveloperViewer?
+       await db().collection(DEVELOPER_VIEWER_COLLECTION).limit(501).get():null;
+      const developerGrants=new Map(grants?.docs.map(doc=>[doc.id,doc.data()])||[]);
       // Read-only, guild-verified Board status. Never grants a rank or privilege.
       // Read in bounded groups to avoid excessive concurrent Firestore requests.
       for(let i=0;i<scoped.length;i+=20){
         const group=await Promise.all(scoped.slice(i,i+20).map(async d=>{
           const summary=serialize(d.id,d.data());
+          if(canManageDeveloperViewer)
+           summary.developerView=developerViewerGrantState(d.id,
+            developerGrants.get(d.id)||null,process.env);
           if(summary.status!=='approved')return {...summary,board:{discord:false,appointed:false}};
           const [member,appointment]=await Promise.all([
             db().collection('bpd_discord_auth').doc(d.id).get(),
@@ -293,7 +306,7 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
       }
       return res.json({role:req.bpd.role,departments:req.bpd.departments,
         users,roleCatalog:MANUAL_ROLE_CATALOG,functionCatalog:SERVICE_FUNCTIONS,
-        limited:snap.size===250});
+        canManageDeveloperViewer,limited:snap.size===250});
     }catch(e){return fail(res,e)}
   });
   // Technical manager's union of KNOWN identities, not the full Discord guild.
@@ -346,6 +359,47 @@ export function installUserRoutes(app,{requireUser,accessList,getSnapshot}){
         limited:accounts.size===LIMIT||identities.size===LIMIT||
           known.size>1000||roster.stale===true,
         rosterStale:roster.stale===true});
+    }catch(e){return fail(res,e)}
+  });
+  // Only verified Technisch Beheer may change this isolated read-only Developer
+  // grant. It does not modify portal roles, service ranks, personnel or rights.
+  app.put('/api/users/:discordId/developer-view',requireUser,async(req,res)=>{
+    res.set('Cache-Control','private, no-store');
+    if(!mayEditTechnicalSettings(req.bpd))
+     return denial(res,403,'Alleen Technisch Beheer kan Developer-inzage aan- of uitzetten');
+    const id=req.params.discordId;
+    if(!validId(id))return denial(res,400,'Ongeldige Discord-ID');
+    let input;
+    try{input=validateDeveloperViewerChange(req.body)}
+    catch(e){return denial(res,e.status||400,e.message)}
+    try{
+     const store=db(),ref=store.collection(DEVELOPER_VIEWER_COLLECTION).doc(id);
+     const audit=store.collection(DEVELOPER_VIEWER_AUDIT).doc();
+     const result=await store.runTransaction(async tx=>{
+      const [account,snap]=await Promise.all([
+       tx.get(store.collection(USER_COLLECTION).doc(id)),tx.get(ref)
+      ]);
+      if(!approvedManagedEntry(account.data(),id))
+       throw publicError('Developer-inzage vereist een goedgekeurd portaalaccount',422);
+      const previous=snap.exists?snap.data():null;
+      const current=developerViewerGrantState(id,previous,process.env);
+      if(current.revision!==input.expectedRevision)
+       throw publicError('Developer-machtiging ondertussen gewijzigd; vernieuw eerst',409);
+      if(current.enabled===input.enabled)return {changed:false,developerView:current};
+      const expiresOn=input.enabled?
+       developerViewerNewExpiry(id,previous,process.env):current.expiresOn;
+      const at=FieldValue.serverTimestamp(),revision=current.revision+1;
+      const record={discordId:id,enabled:input.enabled,expiresOn,revision,
+       updatedBy:req.bpd.discordId,updatedAt:at};
+      tx.set(ref,record);
+      tx.create(audit,{discordId:id,action:input.enabled?'enable':'disable',
+       actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,reason:input.reason,
+       previous:current,after:{enabled:input.enabled,expiresOn,revision},
+       personnelRolesChanged:false,dossierDataChanged:false,at});
+      return {changed:true,developerView:developerViewerGrantState(id,record,process.env)};
+     });
+     return res.json({saved:true,...result,personnelRolesChanged:false,
+      dossierDataChanged:false});
     }catch(e){return fail(res,e)}
   });
   // Classification has no effect on access, roles or department assignments.
