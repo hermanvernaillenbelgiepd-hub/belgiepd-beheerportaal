@@ -297,6 +297,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 </section>
 </main>
 <script type="module">
+import {serviceDutySummary} from '/dossier-duty-view.js';
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel,matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-roster-order.js';
 
 const $=id=>document.getElementById(id);
@@ -475,6 +476,24 @@ function render(){
   hours.append(el('small',p.verified?'✓ Geverifieerd · '+p.periodLabel:p.periodLabel||'Oude bron'));
   const lastHistorical=p.historicalRecords?.at(-1);
   if(lastHistorical)hours.append(el('small','RECORDS '+belgianHistoricalDate(lastHistorical.date)+': '+lastHistorical.hours+' uur (peilstand)'));
+  const button=document.createElement('button');
+  button.type='button';button.className='secondary-action';
+  button.textContent='Diensturen API';button.style.fontSize='11px';button.style.marginTop='5px';
+  const output=el('small','');
+  button.onclick=async()=>{
+   button.disabled=true;output.textContent='Diensturen ophalen…';
+   try{
+    const user=auth?.currentUser;if(!user)throw Error('Niet aangemeld');
+    const token=await user.getIdToken();
+    const response=await fetch('/api/duty-times/dossiers/'+
+     encodeURIComponent(p.department)+'/'+encodeURIComponent(p.discordId),{
+     cache:'no-store',headers:{Authorization:'Bearer '+token}});
+    if(!response.ok)throw Error('Geen rechten of API niet bereikbaar');
+    output.textContent=serviceDutySummary(await response.json());
+   }catch{output.textContent='Diensturen niet beschikbaar voor deze dienst of functie.'}
+   finally{button.disabled=false}
+  };
+  hours.append(button,output);
   row.append(hours);
   const leave=el('td',p.leave?.active?'Verlof '+belgianHistoricalDate(p.leave.startDate)+' – '+belgianHistoricalDate(p.leave.endDate):
    p.leave?.lastEnded?'Einde '+p.leave.lastEnded:'—');

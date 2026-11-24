@@ -81,6 +81,9 @@ RUN node --test tests/portal-service-scoped-navigation.test.js
 RUN node --test tests/technical-integration-status.test.js
 RUN node --test tests/bpd-duty-schema-inspector.test.js
 RUN node --test tests/bpd-duty-times-self.test.js
+RUN node --test tests/bpd-duty-service-scope.test.js
+RUN node --test tests/dossier-foldable-views.test.js
+RUN node --test tests/dossier-duty-leadership-view.test.js
 RUN node --test tests/activity-center-triage-ui.test.js
 RUN node --test tests/activity-records-compact-view.test.js
 RUN node --test tests/activity-leave-exclusion.test.js

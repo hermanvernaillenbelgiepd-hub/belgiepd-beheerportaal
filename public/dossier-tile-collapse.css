@@ -1,0 +1,7 @@
+body.bpd-unified-dossier.dossier-onepage .landscape-cell[data-collapsed="true"]>:not(h3){display:none!important}
+body.bpd-unified-dossier.dossier-onepage .landscape-cell .dossier-tile-toggle{
+ margin-left:auto;padding:5px 9px;min-width:86px;border:1px solid #789fc7;
+ background:#15395b;color:#edf5ff;border-radius:7px;font-size:11px;font-weight:700}
+body.bpd-unified-dossier.dossier-onepage .landscape-cell .dossier-tile-toggle:focus-visible{outline:2px solid #9bcaff;outline-offset:2px}
+html:not([data-bpd-theme="dark"]) body.bpd-unified-dossier.dossier-onepage .landscape-cell .dossier-tile-toggle{
+ color:#153758;background:#dbeaff;border-color:#618ab0}

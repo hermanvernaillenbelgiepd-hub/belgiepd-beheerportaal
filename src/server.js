@@ -26,6 +26,7 @@ import {scheduleBasicObservationAutoArchive} from './basic-observation-auto-arch
 import {installTechnicalCenterRoutes,mayOpenTechnicalCenter} from './technical-center-config.js';
 import {installTechnicalIntegrationStatusRoutes} from './technical-integration-status.js';
 import {installOwnDutyTimesRoutes} from './bpd-own-duty-times.js';
+import {installScopedDutyTimesRoutes} from './bpd-duty-service-scope.js';
 import {installVisualDesignRoutes} from './visual-design-routes.js';
 import {installVisualDesignPageRoutes} from './visual-design-page-routes.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
@@ -1041,6 +1042,7 @@ installUserRoutes(app,{requireUser,accessList,getSnapshot});
 installTechnicalCenterRoutes(app,{requireUser});
 installTechnicalIntegrationStatusRoutes(app,{requireUser});
 installOwnDutyTimesRoutes(app,{requireUser});
+installScopedDutyTimesRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installVisualDesignRoutes(app,{requireUser});
 installVisualDesignPageRoutes(app,{requireUser});
 installPortalLabelRoutes(app,{requireUser:requireDossierUser});
