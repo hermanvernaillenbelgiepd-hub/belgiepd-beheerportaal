@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {canReviewPoliceActivity,activityReviewForNewPing,
- publicActivityReview,ACTIVITY_PING_REVIEWS} from '../src/activity-ping-review-routes.js';
+ publicActivityReview,activityReviewForAutomaticPing,ACTIVITY_PING_REVIEWS} from '../src/activity-ping-review-routes.js';
 import {publicPingNotice} from '../src/inactivity-ping-notifications.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const officer={uid:'discord:111111111111111111',discordId:'111111111111111111',
@@ -60,6 +60,17 @@ test('50/50, INACTIEF en CHECKING kunnen elk een ACTIEF-voorstel opleveren',()=>
  assert.match(source,/checking\.get\('status'\)!=='CHECKING'/);
  assert.match(source,/persisted!==expected/);
  assert.match(source,/subject\.leaveReturnChecking!==true&&record\.checkingReturnId/);
+});
+test('Automatische uren- en afwezigheidspings zijn louter informatief voor leiding',()=>{
+ const alert=activityReviewForAutomaticPing({
+  dept:'politie',personId:subject.personId,call:subject.call,
+  name:subject.name,status:'50/50'
+ },{kind:'INACTIEF'},entryId);
+ assert.equal(alert.state,'information');
+ assert.equal(alert.proposedStatus,null);
+ assert.equal(alert.discordPingSent,false);
+ assert.equal(alert.reporterName,'BelgiumPD activiteitscontrole');
+ assert.equal(publicActivityReview(entryId,alert,subject,officer)?.canApprove,false);
 });
 test('gewone opvolgingsping geeft alleen rapportage, geen ACTIEF-voorstel',()=>{
  for(const status of ['50/50','INACTIEF','TUSSENTIJDSE_CONTROLE_PING',
