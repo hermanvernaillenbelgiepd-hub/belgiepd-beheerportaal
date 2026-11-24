@@ -262,14 +262,14 @@ const $=id=>document.getElementById(id);
    column('right',['movements','sanctions','promotions','training']));
  // Same three-column dossier system as Police; avoid the full-width empty footer.
  sheet.replaceChildren(overview);
-  const tile=document.createElement('section');tile.className='landscape-cell';
-  tile.dataset.sheetTile='diensturen';
+  const dutyTile=document.createElement('section');dutyTile.className='landscape-cell';
+  dutyTile.dataset.sheetTile='diensturen';
   const title=document.createElement('h3');title.textContent='Diensturen · BelgiëPD API';
   const note=document.createElement('p');note.id='fireDutySummary';note.className='muted';
   note.textContent='Alleen zichtbaar voor bevoegde dienstleiding.';
   const content=document.createElement('div');content.id='fireDutyRecords';content.className='sheet-records';
-  tile.append(title,note,content);
-  overview.querySelector('.dossier-column--right').prepend(tile);
+  dutyTile.append(title,note,content);
+  overview.querySelector('.dossier-column--right').prepend(dutyTile);
   installDossierTileCollapse($('overviewSection'));
 })();
 const copyFireHeader=async mode=>{
