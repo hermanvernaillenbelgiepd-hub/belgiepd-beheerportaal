@@ -30,3 +30,25 @@ test('fire dossier ES-module heeft geen dubbele declaraties',async()=>{
   {input:match[1],encoding:'utf8'});
  assert.equal(result.status,0,result.stderr);
 });
+
+test('leader can select a closed duty month without rewriting official activity states',async()=>{
+ const center=read('public/activiteitscentrum.html');
+ const view=read('public/dossier-duty-view.js');
+ const backend=read('src/bpd-duty-service-scope.js');
+ assert.match(center,/id="activityDutyMonth"/);
+ assert.match(center,/brusselsClosedMonth/);
+ assert.match(center,/URLSearchParams\(\{month:selectedMonth\}\)/);
+ assert.match(center,/geen geverifieerd maandtotaal/);
+ assert.match(center,/Maandcontrole kon niet worden uitgevoerd/);
+ assert.match(view,/serviceMonthlyObservationText/);
+ assert.match(view,/data-month-evidence/);
+ assert.match(view,/niet gebruiken voor 50\/50 of INACTIEF/);
+ assert.match(backend,/monthlyPreview:projectDutyMonthlyObservation/);
+ assert.doesNotMatch(backend,/set\(|update\(|sendMessage|sendDiscord|autoPing/);
+ const {spawnSync}=await import('node:child_process');
+ const inline=center.match(/<script type="module">([\s\S]*?)<\/script>/);
+ assert.ok(inline);
+ const valid=spawnSync(process.execPath,['--check','--input-type=module'],
+  {input:inline[1],encoding:'utf8'});
+ assert.equal(valid.status,0,valid.stderr);
+});

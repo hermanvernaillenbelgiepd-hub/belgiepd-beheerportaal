@@ -2,6 +2,7 @@
 import {validPersonnelKey,canViewPersonnel,canReadPersonnelSubject}
  from './personnel-editor-policy.js';
 import {readOwnDutyTimes} from './bpd-own-duty-times.js';
+import {previousClosedDutyMonth,closedDutyMonth,projectDutyMonthlyObservation} from './bpd-duty-monthly-preview.js';
 const MATCHED=new Set(['politie','brandweer','ambulance','depannage']);
 export function projectScopedDutyTimes(result,dept){
  if(!MATCHED.has(dept)||result?.status!=='verified_api'||!Array.isArray(result.shifts))
@@ -29,10 +30,13 @@ export function projectScopedDutyTimes(result,dept){
    startedAt:x.startedAt,endedAt:x.endedAt,ongoing:x.ongoing})),
   retrievedAt:result.retrievedAt||null,monthlyHoursVerified:false};
 }
-export function installScopedDutyTimesRoutes(app,{requireUser,getSnapshot,readDuty=readOwnDutyTimes}){
+export function installScopedDutyTimesRoutes(app,{requireUser,getSnapshot,readDuty=readOwnDutyTimes,now=()=>new Date()}){
  app.get('/api/duty-times/dossiers/:dept/:discordId',requireUser,async(req,res)=>{
   res.set('Cache-Control','private, no-store');
   const {dept,discordId}=req.params;
+  const month=req.query.month===undefined?previousClosedDutyMonth(now()):req.query.month;
+  if(!closedDutyMonth(month,now()))
+   return res.status(400).json({error:'Kies een afgesloten kalendermaand (JJJJ-MM)'});
   if(!validPersonnelKey(dept,discordId))
    return res.status(400).json({error:'Ongeldige personeelsreferentie'});
   if(!canViewPersonnel(req.bpd,dept))
@@ -49,7 +53,9 @@ export function installScopedDutyTimesRoutes(app,{requireUser,getSnapshot,readDu
    const result=await readDuty(discordId);
    if(result?.status!=='verified_api')
     return res.status(503).json({error:'API-diensturen tijdelijk niet beschikbaar'});
-   return res.json(projectScopedDutyTimes(result,dept));
+   const scoped=projectScopedDutyTimes(result,dept);
+   return res.json({...scoped,
+    monthlyPreview:projectDutyMonthlyObservation(result,dept,month)});
   }catch{return res.status(503).json({error:'Diensturencontrole tijdelijk mislukt'})}
  });
 }
