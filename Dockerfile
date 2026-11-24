@@ -95,6 +95,7 @@ RUN node --test tests/activity-charts.test.js
 RUN node --test tests/activity-dashboard-redesign.test.js
 RUN node --test tests/activity-status-drilldown.test.js
 RUN node --test tests/activity-ping-review-flow.test.js
+RUN node --test tests/activity-recovery-snapshots.test.js
 RUN node --test tests/bpd-player-activity-scope.test.js
 RUN node --test tests/request-provenance-flow.test.js
 RUN node --test tests/leave-dual-recipient-notices.test.js

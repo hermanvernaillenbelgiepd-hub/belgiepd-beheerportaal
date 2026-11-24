@@ -28,6 +28,7 @@ import {installTechnicalIntegrationStatusRoutes} from './technical-integration-s
 import {installOwnDutyTimesRoutes} from './bpd-own-duty-times.js';
 import {installScopedDutyTimesRoutes} from './bpd-duty-service-scope.js';
 import {installScopedPlayerActivityRoutes} from './bpd-player-activity-scope.js';
+import {installActivityRecoveryRoutes} from './activity-recovery-routes.js';
 import {installActivityPingReviewRoutes} from './activity-ping-review-routes.js';
 import {installVisualDesignRoutes} from './visual-design-routes.js';
 import {installVisualDesignPageRoutes} from './visual-design-page-routes.js';
@@ -1072,6 +1073,7 @@ installTechnicalIntegrationStatusRoutes(app,{requireUser});
 installOwnDutyTimesRoutes(app,{requireUser});
 installScopedDutyTimesRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installScopedPlayerActivityRoutes(app,{requireUser:requireDossierUser,getSnapshot});
+installActivityRecoveryRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installActivityPingReviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installVisualDesignRoutes(app,{requireUser});
 installVisualDesignPageRoutes(app,{requireUser});
