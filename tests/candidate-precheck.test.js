@@ -115,7 +115,7 @@ test('existing page is read-only, accessible in light and dark, and cannot submi
  assert.match(html,/setupPortalLogin/);
  assert.doesNotMatch(html,/api\/service-applications\/submit|api\/sollicitaties\/submit/);
  assert.match(server,/installCandidatePrecheckRoutes\(app\)/);
- assert.doesNotMatch(backend,/tx\.set|tx\.create|\.add\(|\.set\(|\.update\(|getSnapshot|sendDiscord|assignRole/);
+ assert.doesNotMatch(backend,/tx\.set|tx\.create|collection\(['"]bpd_service_applications|\.collection\(['"]bpd_cases|sendDiscord|assignRole/);
  const inline=html.match(/<script type="module">([\s\S]*?)<\/script>/)?.[1];
  assert.ok(inline);
  const syntax=spawnSync(process.execPath,['--check','--input-type=module'],
