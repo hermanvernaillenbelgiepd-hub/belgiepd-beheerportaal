@@ -180,6 +180,7 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 <label>Opvolging<select id="filter"><option value="">Alles</option><option value="beoordelen">60+ dagen</option><option value="inactief">30+ dagen</option><option value="50/50">15+ dagen</option><option value="checking">CHECKING na verlof</option><option value="verlof_nazien">Verlof nazien</option><option value="verouderd">Bron verouderd</option><option value="geen_data">Geen gegevens</option><option value="ok">Geen actie</option></select></label>
 <label>Zoeken<input id="search" type="search" placeholder="Naam, roepnummer of Discord ID"></label>
 <label class="priority-toggle"><input id="attentionOnly" type="checkbox"> Alleen prioritaire opvolging</label>
+<label>Maand diensturen <input id="activityDutyMonth" type="month" min="2020-01" aria-label="Afgesloten kalendermaand voor individuele API-diensturen"></label>
 <button id="resetActivityFilters" type="button" class="secondary-action">Filters wissen</button>
 <button id="refresh" type="button">↻ Vernieuwen</button></div></section>
 <section><h2>Opvolging in één oogopslag <small id="asof"></small></h2>
@@ -336,6 +337,14 @@ html[data-bpd-theme="dark"] body.bpd-shell .activity-group-row th{background:#20
 import {sortActivityLikePersonnel,activityRosterGroup,activityRosterGroupLabel,matchesActivityPoliceSeries,availableActivityPoliceSeries} from '/activity-roster-order.js';
 
 const $=id=>document.getElementById(id);
+const brusselsClosedMonth=()=>{
+ const current=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Brussels',
+  year:'numeric',month:'2-digit'}).format(new Date());
+ const [year,month]=current.split('-').map(Number);
+ return (month===1?year-1:year)+'-'+String(month===1?12:month-1).padStart(2,'0');
+};
+$('activityDutyMonth').max=brusselsClosedMonth();
+$('activityDutyMonth').value=$('activityDutyMonth').max;
 let auth,authSdk,records=[],asOf='',sources=null;
 let cadreConfig=null,cadreData=null;
 function label(kind){return ({checking:'⚠ CHECKING',beoordelen:'Beoordelen 60+',inactief:'INACTIEF-ping', '50/50':'50/50-ping',
@@ -665,16 +674,32 @@ function render(){
   button.type='button';button.className='secondary-action';
   button.textContent='Diensturen API';button.style.fontSize='11px';button.style.marginTop='5px';
   const output=el('small','');
+  const monthResult=el('small','');monthResult.className='activity-month-evidence';
   button.onclick=async()=>{
    button.disabled=true;output.textContent='Diensturen ophalen…';
+   monthResult.textContent='Afgesloten kalendermaand controleren…';
    try{
     const user=auth?.currentUser;if(!user)throw Error('Niet aangemeld');
     const token=await user.getIdToken();
+    const selectedMonth=$('activityDutyMonth').value;
+    const params=new URLSearchParams({month:selectedMonth});
     const response=await fetch('/api/duty-times/dossiers/'+
-     encodeURIComponent(p.department)+'/'+encodeURIComponent(p.discordId),{
+     encodeURIComponent(p.department)+'/'+encodeURIComponent(p.discordId)+'?'+params,{
      cache:'no-store',headers:{Authorization:'Bearer '+token}});
     if(!response.ok)throw Error('Geen rechten of API niet bereikbaar');
     const data=await response.json();
+    const m=data.monthlyPreview;
+    if(m&&m.status==='records_found'&&Number.isSafeInteger(m.recordedMinutes)){
+     monthResult.textContent=m.month+': '+playerApiHours(m.recordedMinutes)+
+      ' uit '+m.completedShiftCount+' binnen deze maand afgesloten diensten'+
+      ((m.excludedBoundary||0)+(m.excludedOngoing||0)?
+       ' · '+((m.excludedBoundary||0)+(m.excludedOngoing||0))+
+       ' grens-/lopende diensten overgeslagen':'')+
+      '. Indicatief, geen geverifieerd maandtotaal.';
+    }else{
+     monthResult.textContent=(m?.month||'Maand')+
+      ': geen volledige maandregistraties bevestigd. Niet als nul uur interpreteren.';
+    }
     if(data.status==='verified_service_shifts'){
      const mins=data.minutes;
      const hours=Number.isSafeInteger(mins)&&mins>=0?
@@ -693,11 +718,12 @@ function render(){
     }else if(data.status==='no_records'){
      output.textContent='Geen individuele dienstregistraties in het API-antwoord.';
     }else{output.textContent='Diensturen tijdelijk niet beschikbaar.'}
-   }catch{output.textContent='Diensturen niet beschikbaar voor deze dienst of functie.'}
+   }catch{output.textContent='Diensturen niet beschikbaar voor deze dienst of functie.';
+    monthResult.textContent='Maandcontrole kon niet worden uitgevoerd.'}
    finally{button.disabled=false}
   };
   const apiHours=el('small','');
-  hours.append(button,output,apiHours);
+  hours.append(button,output,monthResult,apiHours);
   playerVisibleRows.set(playerEvidenceKey(p),{apiConnection,apiHours});
   const cached=playerEvidenceCache.get(playerEvidenceKey(p));
   if(cached?.data?.status==='api_response'&&cached.expires>Date.now())
