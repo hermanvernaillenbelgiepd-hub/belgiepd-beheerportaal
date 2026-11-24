@@ -147,7 +147,9 @@ test('service reviews enforce independent duty leadership, no self-approval, rev
   assert.equal(result.status,200);assert.equal(result.data.cases.length,1);
   assert.equal(result.data.canDecide,true);
   result=await api('review?dept=ambulance');assert.equal(result.status,403);
-  reviewer={...leader,reportServiceRoles:{depannageAwv:false},role:'middenkader',
+  // A distinct MK without a linked AWV roster entry or verified AWV role.
+  reviewer={...leader,uid:'discord:'+other,discordId:other,
+   reportServiceRoles:{depannageAwv:false},role:'middenkader',
    departmentRoles:{depannage:'middenkader'}};
   result=await api('review?dept=depannage');assert.equal(result.status,403);
   reviewer={uid:'discord:'+id,discordId:id,role:'beheerder',departments:[],
