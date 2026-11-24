@@ -54,6 +54,19 @@ html[data-bpd-theme="light"] .action.secondary{color:#204462}
 html[data-bpd-theme="light"] .actions a{background:#234b84;color:white}
 @media(max-width:650px){main{padding:18px 12px 40px}.metrics{grid-template-columns:1fr}
  .panel{padding:14px}.steps{grid-template-columns:1fr}.services{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.application-field{display:block;font-weight:700;font-size:13px;margin:12px 0 7px}
+.application-note{width:100%;min-height:125px;resize:vertical;border:1px solid #57769b;
+ border-radius:9px;background:#0e2037;color:#eef5ff;font:inherit;font-size:13px;
+ padding:12px;max-width:100%}
+.application-entries{display:grid;gap:8px;margin:15px 0}
+.application-entry{border:1px solid #496485;border-radius:8px;background:#193553;
+ padding:11px;font-size:13px;overflow-wrap:anywhere}
+.application-entry strong{display:block;margin-bottom:6px}
+.application-entry button{margin-top:9px}
+.application-action-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+html[data-bpd-theme="light"] .application-entry{background:#f1f6fc;border-color:#c4d3e3}
+html[data-bpd-theme="light"] .application-note{background:white;color:#17304a;border-color:#91a6c2}
 </style><link rel="stylesheet" href="/bpd-navigation.css"></head>
 <body>
 <header><strong>BelgiëPD · Sollicitatiecentrum</strong>
@@ -86,6 +99,20 @@ html[data-bpd-theme="light"] .actions a{background:#234b84;color:white}
 <button class="service" type="button" data-dept="depannage" aria-pressed="false"><strong>Depannage</strong><small>Toelating en basisopleiding</small></button>
 <button class="service" type="button" data-dept="burger" aria-pressed="false"><strong>Burger</strong><small>Afzonderlijke burgerprocedure</small></button>
 </div>
+<section id="applicationFormPanel" class="panel" aria-labelledby="applicationFormTitle" hidden>
+<h2 id="applicationFormTitle">Solliciteren bij deze dienst</h2>
+<p id="applicationAvailability" class="status" role="status" aria-live="polite">Aanvragen zijn nog niet opengesteld.</p>
+<label class="application-field" for="applicationMotivation">Waarom wil je deze hulpdienst versterken? (40–3000 tekens)</label>
+<textarea id="applicationMotivation" class="application-note" minlength="40" maxlength="3000"
+ placeholder="Schrijf je persoonlijke motivatie voor deze hulpdienst. Vermeld geen medische of andere gevoelige privégegevens."></textarea>
+<div class="application-action-row">
+<button id="applicationSubmit" class="action" type="button" disabled>Aanvraag indienen</button>
+<button id="applicationRefresh" class="action secondary" type="button">Mijn aanvragen controleren</button>
+<a href="/sollicitatiebeheer.html">Voor bevoegde leiding: beoordelingswachtrij</a>
+</div>
+<div id="myApplications" class="application-entries" aria-live="polite"></div>
+<p class="muted">Een aanvraag blijft een afzonderlijk sollicitatiedossier. Ook bij goedkeuring worden roepnummer, personeelsrechten, Discord-rollen en opleidingstraject niet automatisch toegekend.</p>
+</section>
 <section class="panel" aria-live="polite" aria-labelledby="departmentTitle">
 <h2 id="departmentTitle">Politie · toekomstige instroom</h2>
 <p id="departmentNote">Beoordeling door het politioneel bevoegde kader. Toekenning van roepnummer, rechten of Discord-rollen gebeurt nooit automatisch door de sollicitatie.</p>
@@ -106,11 +133,16 @@ const notes={
  depannage:'Bevoegde depannageleiding beoordeelt de aanvraag; FAST- en AWV-bevoegdheden worden niet automatisch toegekend.',
  burger:'De afzonderlijke burgerprocedure blijft gesloten totdat de eigen toegangs- en beslissingsrechten actief zijn.'
 };
+let selectedDept='politie';
+let workflow={enabled:false,proof:{verified:false},cases:[]};
+let workflowAuthenticated=false;
 document.querySelectorAll('[data-dept]').forEach(button=>button.addEventListener('click',()=>{
  const dept=button.dataset.dept;
+ selectedDept=dept;
  for(const peer of document.querySelectorAll('[data-dept]'))peer.setAttribute('aria-pressed',String(peer===button));
  $('departmentTitle').textContent=names[dept]+' · toekomstige instroom';
  $('departmentNote').textContent=notes[dept];
+ renderServiceWorkflow();
 }));
 const status=(message,state='verification_required')=>{
  $('precheckStatus').textContent=message;$('precheckStatus').dataset.state=state;
@@ -127,6 +159,101 @@ const fmtDate=value=>typeof value==='string'&&Number.isFinite(Date.parse(value))
   day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):
  'Niet beschikbaar';
 let auth=null,authSdk=null;
+const applicationDepts=['brandweer','ambulance','depannage'];
+const applicationName=dept=>names[dept]||dept;
+function renderServiceWorkflow(){
+ const enabled=applicationDepts.includes(selectedDept);
+ $('applicationFormPanel').hidden=!enabled;
+ if(!enabled)return;
+ $('applicationFormTitle').textContent='Solliciteren bij '+applicationName(selectedDept);
+ const own=workflow.cases?.find(x=>x.department===selectedDept);
+ const canSubmit=Boolean(workflowAuthenticated&&workflow.enabled&&workflow.proof?.eligible&&!own);
+ $('applicationSubmit').disabled=!canSubmit;
+ $('applicationRefresh').disabled=!workflowAuthenticated;
+ $('applicationMotivation').disabled=!canSubmit;
+ const ready=workflowAuthenticated&&workflow.enabled;
+ $('applicationAvailability').textContent=!workflowAuthenticated?
+  'Meld je aan met Discord om je eigen sollicitaties te bekijken.':
+  !ready?'Sollicitaties zijn nog gesloten. Je kunt de motivatie alvast voorbereiden. Er wordt niets ingediend.':
+  own?'Voor deze hulpdienst bestaat al een aanvraag.':
+  !workflow.proof?.eligible?
+   'Nog geen recent ondertekend FiveM-bewijs dat beide toelatingsvoorwaarden bevestigt. Je kunt nog niet indienen.':
+   'Beide toelatingsvoorwaarden zijn onafhankelijk bevestigd. Je kunt een gemotiveerde aanvraag indienen.';
+ const list=$('myApplications');list.replaceChildren();
+ if(!workflow.cases?.length)return;
+ for(const item of workflow.cases){
+  const card=document.createElement('div');card.className='application-entry';
+  const title=document.createElement('strong');
+  title.textContent=applicationName(item.department)+' · '+{
+   submitted:'Ingediend',reviewing:'In behandeling',accepted:'Aanvaard',
+   rejected:'Afgewezen',withdrawn:'Ingetrokken'
+  }[item.status];
+  const date=document.createElement('span');
+  date.textContent='Laatste wijziging: '+fmtDate(item.updatedAt);
+  card.append(title,date);
+  if(item.decisionReason){
+   const note=document.createElement('p');
+   note.textContent='Beslissing: '+item.decisionReason;card.append(note);
+  }
+  if(['submitted','reviewing'].includes(item.status)){
+   const withdraw=document.createElement('button');
+   withdraw.className='action secondary';withdraw.type='button';
+   withdraw.textContent='Aanvraag intrekken';
+   withdraw.onclick=()=>void withdrawApplication(item.department,withdraw);
+   card.append(withdraw);
+  }
+  list.append(card);
+ }
+}
+async function applicationApi(path,method='GET',body){
+ const current=auth?.currentUser;
+ if(!current?.uid?.startsWith('discord:'))throw Error('Eigen Discord-aanmelding vereist');
+ const token=await current.getIdToken();
+ const response=await fetch('/api/service-applications/'+path,{
+  method,cache:'no-store',headers:{Authorization:'Bearer '+token,
+   ...(body?{'Content-Type':'application/json'}:{})},
+  ...(body?{body:JSON.stringify(body)}:{})});
+ const data=await response.json().catch(()=>({}));
+ if(current!==auth?.currentUser)throw Error('Portaalsessie gewijzigd');
+ if(!response.ok)throw Error(data.error||'Sollicitatiecontrole niet beschikbaar');
+ return data;
+}
+async function loadWorkflow(){
+ const current=auth?.currentUser;
+ workflowAuthenticated=Boolean(current?.uid?.startsWith('discord:'));
+ workflow={enabled:false,proof:{verified:false},cases:[]};
+ renderServiceWorkflow();
+ if(!workflowAuthenticated)return;
+ try{
+  workflow=await applicationApi('me');
+ }catch(error){
+  $('applicationAvailability').textContent='Sollicitatiestatus kon niet worden gecontroleerd: '+error.message;
+ }
+ renderServiceWorkflow();
+}
+async function submitApplication(){
+ const motivation=$('applicationMotivation').value.trim();
+ if(!applicationDepts.includes(selectedDept)||motivation.length<40||motivation.length>3000){
+  $('applicationAvailability').textContent='Vul een persoonlijke motivatie van 40–3000 tekens in.';
+  return;
+ }
+ if(!workflow.enabled||!workflow.proof?.eligible)return;
+ const button=$('applicationSubmit');button.disabled=true;
+ try{
+  await applicationApi('submit','POST',{department:selectedDept,motivation});
+  $('applicationMotivation').value='';
+  await loadWorkflow();
+ }catch(error){$('applicationAvailability').textContent=error.message}
+ finally{renderServiceWorkflow()}
+}
+async function withdrawApplication(department,button){
+ if(!confirm('Sollicitatie bij '+applicationName(department)+' intrekken?'))return;
+ button.disabled=true;
+ try{await applicationApi('withdraw','POST',{department});await loadWorkflow()}
+ catch(error){$('applicationAvailability').textContent=error.message;button.disabled=false}
+}
+$('applicationSubmit').onclick=()=>void submitApplication();
+$('applicationRefresh').onclick=()=>void loadWorkflow();
 async function check(){
  const current=auth?.currentUser;
  if(!current){status('Meld je eerst met je eigen Discord-account aan.');return}
@@ -172,6 +299,7 @@ $('checkEligibility').onclick=()=>void check();
    onError:error=>status(error.message)});
   authSdk.onAuthStateChanged(auth,user=>{
    clear();$('checkEligibility').disabled=!user?.uid?.startsWith('discord:');
+   void loadWorkflow();
    status(user?.uid?.startsWith('discord:')?
     'Discord aangemeld. Klik op Mijn voorwaarden controleren om je eigen FiveM-gegevens te lezen.':
     user?'Google-aanmelding geeft geen kandidaatcontrole. Kies Aanmelden met Discord.':

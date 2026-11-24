@@ -29,6 +29,7 @@ import {installOwnDutyTimesRoutes} from './bpd-own-duty-times.js';
 import {installScopedDutyTimesRoutes} from './bpd-duty-service-scope.js';
 import {installScopedPlayerActivityRoutes} from './bpd-player-activity-scope.js';
 import {installCandidatePrecheckRoutes} from './candidate-precheck-routes.js';
+import {installServiceApplicationRoutes} from './service-applications-routes.js';
 import {installActivityRecoveryRoutes} from './activity-recovery-routes.js';
 import {installActivityPingReviewRoutes} from './activity-ping-review-routes.js';
 import {installVisualDesignRoutes} from './visual-design-routes.js';
@@ -139,7 +140,7 @@ app.disable('x-powered-by');
 app.use((_req,res,next)=>{applyPortalSecurityHeaders(res);next();});
 // Applicant intake has been retired from this deployment. Keep historical
 // Firestore data intact for audit; the retired public HTML cannot be served.
-app.get(['/burgerdossier.html','/solliciteren.html','/sollicitatiebeheer.html'],(_req,res)=>
+app.get(['/burgerdossier.html','/solliciteren.html'],(_req,res)=>
   res.status(410).type('text/plain').send('Deze pagina is buiten gebruik.'));
 // One canonical personnel entry. Keep the old read-only document available
 // ONLY as the sandboxed same-origin directory embedded in that entry.
@@ -205,6 +206,7 @@ app.use('/api/uniform-compositions',express.json({limit:'16kb',strict:true}));
 app.use('/api/visual-layers',express.json({limit:'4kb',strict:true}));
 app.use('/api/training',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-requests',express.json({limit:'4kb',strict:true}));
+app.use('/api/service-applications',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-pathway',express.json({limit:'4kb',strict:true}));
 app.use('/api/training-planning',express.json({limit:'8kb',strict:true}));
 app.use('/api/training-calendar',express.json({limit:'4kb',strict:true}));
@@ -1075,6 +1077,7 @@ installOwnDutyTimesRoutes(app,{requireUser});
 installScopedDutyTimesRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installScopedPlayerActivityRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installCandidatePrecheckRoutes(app);
+installServiceApplicationRoutes(app,{requireReviewer:requireDossierUser,getSnapshot});
 installActivityRecoveryRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installActivityPingReviewRoutes(app,{requireUser:requireDossierUser,getSnapshot});
 installVisualDesignRoutes(app,{requireUser});

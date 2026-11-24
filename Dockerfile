@@ -98,6 +98,8 @@ RUN node --test tests/activity-ping-review-flow.test.js
 RUN node --test tests/activity-recovery-snapshots.test.js
 RUN node --test tests/bpd-player-activity-scope.test.js
 RUN node --test tests/candidate-precheck.test.js
+RUN node --test tests/service-applications-policy.test.js
+RUN node --test tests/service-applications-routes.test.js
 RUN node --test tests/request-provenance-flow.test.js
 RUN node --test tests/leave-dual-recipient-notices.test.js
 RUN node --test tests/personnel-name-dossier-shortcuts.test.js
