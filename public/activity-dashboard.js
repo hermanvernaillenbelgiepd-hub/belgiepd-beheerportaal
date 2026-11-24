@@ -61,7 +61,10 @@ function initialize(){
  const filterLabel=document.createElement('div');filterLabel.className='activity-eyebrow';
  filterLabel.textContent='FILTERS · Dienst, reeks en opvolging';
  filter.prepend(filterLabel);
- priority.querySelector('h2').textContent='Wie heeft opvolging nodig?';
+ priority.querySelector('h2').textContent='Nieuwe activiteitsdrempels (geverifieerde bron vereist)';
+ const priorityHint=document.createElement('p');priorityHint.className='source-note';
+ priorityHint.textContent='Deze tellers tonen nieuwe opvolging op basis van recente, controleerbare verbindingsgegevens. De officiële statussen 50/50 en INACTIEF staan afzonderlijk in de grote tegels; daarom kunnen deze waarden nul zijn.';
+ priority.querySelector('h2').after(priorityHint);
  // Three tabs replace long initial scroll. No hidden panel gains access:
  // tabs only move the already-authorized DOM sections.
  const nav=document.createElement('nav');nav.id='activityDashboardTabs';
@@ -79,6 +82,10 @@ function initialize(){
  root.prepend(nav);
  root.append(tabs.overview,tabs.followup,tabs.history);
  for(const element of [filter,overview,graphs,ranking])tabs.overview.append(element);
+ const selected=document.createElement('section');
+ selected.id='activitySelectedStatusPanel';selected.className='activity-selected-status';
+ selected.setAttribute('aria-live','polite');selected.hidden=true;
+ tabs.followup.append(selected);
  for(const element of [priority,warning,roster])tabs.followup.append(element);
  tabs.history.append(records);
  selectTab(activeTab);
@@ -96,11 +103,60 @@ function selectTab(key){
   }
  }
 }
+// Directe, geautoriseerde namenlijst van exact dezelfde personen als de gekozen tegel.
+// Geen activiteitsoordeel of geverifieerde connectie afleiden uit oude Sheets.
+function formatActivityDate(value){
+ const text=String(value||'');
+ return /^\d{4}-\d{2}-\d{2}$/.test(text)?
+   text.slice(8,10)+'/'+text.slice(5,7)+'/'+text.slice(0,4):text||'Niet beschikbaar';
+}
+function renderSelectedStatus(people){
+ const root=$('activitySelectedStatusPanel');if(!root)return;
+ root.replaceChildren();root.hidden=!active;
+ if(!active)return;
+ const tile=TILES.find(([key])=>key===active);
+ const matched=people.filter(p=>belongs(p,active));
+ const h=document.createElement('h2');
+ h.textContent=(tile?.[1]||'Geselecteerde status')+' · '+matched.length+' personeelsleden';
+ const hint=document.createElement('p');hint.className='source-note';
+ hint.textContent='Dit zijn de personen uit de aangeklikte status, niet uitsluitend nieuwe activiteitspings. Uren en verbindingsdatums zijn alleen actueel wanneer de FiveM-bron dat bevestigt. Klik bij een medewerker in de volledige lijst op Diensturen API voor de afzonderlijke dienstregistraties.';
+ root.append(h,hint);
+ const list=document.createElement('div');list.className='activity-selected-list';list.setAttribute('role','list');
+ for(const p of matched){
+  const item=document.createElement('article');item.className='activity-selected-person';
+  item.setAttribute('role','listitem');
+  const title=document.createElement('strong');
+  title.textContent=(p.call||'—')+' · '+(p.name||'Onbekend')+' · '+(p.department||'—');
+  const status=document.createElement('small');
+  status.textContent='Officiële status: '+(p.currentStatus||'Niet bekend');
+  const connection=document.createElement('small');
+  connection.textContent='Laatste verbinding: '+formatActivityDate(p.lastConnection)+
+    (p.lastConnection?(p.verified?' · geverifieerde FiveM-bron':' · oudere bron (indicatief)'):
+      ' · geen actuele meting');
+  const hours=document.createElement('small');
+  hours.textContent=p.periodPlayHours===null||!Number.isFinite(p.periodPlayHours)?
+   'Speeluren: geen verifieerbare meting':
+   'Speeluren: '+p.periodPlayHours+' uur · '+
+    (p.verified?'geverifieerde afgesloten maand':'oude bron (niet geverifieerd)');
+  const actions=document.createElement('a');
+  actions.href='/dossiercentrum.html?'+new URLSearchParams({
+   dept:p.department,discordId:p.discordId}).toString();
+  actions.textContent='Dossier openen';
+  item.append(title,status,connection,hours,actions);list.append(item);
+ }
+ if(!matched.length){
+  const empty=document.createElement('p');
+  empty.textContent='Geen medewerkers in deze selectie. Controleer de ingestelde dienst, reeks en zoekterm.';
+  list.append(empty);
+ }
+ root.append(list);
+}
 export function renderActivityDashboard(people,sources,onSelect){
  initialize();verifiedLeave=sources?.approvedLeaveComplete===true;
  const safe=Array.isArray(people)?people:[];
  if($('filter').value||$('attentionOnly').checked)active='';
  $('activityAuthorizedTotal').textContent=String(safe.length);
+ renderSelectedStatus(safe);
  const container=$('activityStatusTiles');container.replaceChildren();
  for(const [key,name,note] of TILES){
   const count=safe.filter(p=>belongs(p,key)).length;

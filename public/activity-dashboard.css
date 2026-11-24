@@ -101,3 +101,23 @@ html[data-bpd-theme="dark"] body.bpd-shell main .activity-dashboard-tabs button{
 html[data-bpd-theme="dark"] body.bpd-shell main .activity-dashboard-tabs button[aria-selected=true]{background:#4675df;color:#fff}
 @media(max-width:500px){.activity-dashboard-tabs{gap:4px;padding:5px}
  .activity-dashboard-tabs button{min-width:0;flex:1 1 28%;padding:10px 6px;font-size:12px}}
+
+/* Aangeklikte status: toont onmiddellijk dezelfde cohort als de tegelteller. */
+.activity-selected-status{padding:14px 16px;border:1px solid #ccdbec;
+ border-radius:12px;background:#f7faff;scroll-margin-top:22px}
+.activity-selected-status[hidden]{display:none!important}
+.activity-selected-status h2{margin:0 0 5px;font-size:17px}
+.activity-selected-status .source-note{margin:0 0 10px;font-size:12px}
+.activity-selected-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;max-height:500px;overflow-y:auto;overflow-x:hidden}
+.activity-selected-person{display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+ padding:11px 13px;border:1px solid #d2dfee;border-radius:9px;background:#fff;min-width:0}
+.activity-selected-person strong{font-size:13px;overflow-wrap:anywhere}
+.activity-selected-person small{font-size:11px;line-height:1.45;color:#4c657e;overflow-wrap:anywhere}
+.activity-selected-person a{font-size:12px;font-weight:750}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-selected-status{
+ color:#f2f7ff;background:#132b45;border-color:#446485}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-selected-person{
+ color:#f3f8ff;background:#1d3955;border-color:#3f6388}
+html[data-bpd-theme="dark"] body.bpd-shell main .activity-selected-person small{color:#c9d9eb}
+@media(max-width:720px){.activity-selected-list{grid-template-columns:1fr;max-height:550px}}

@@ -392,7 +392,8 @@ function render(){
  if(activityDashboardModule)activityDashboardModule.renderActivityDashboard(scoped,sources,()=>{
   $('filter').value='';$('attentionOnly').checked=false;
   $('personnelDetails').open=true;render();
-  $('personnelDetails').scrollIntoView({block:'start'});
+  const selected=document.getElementById('activitySelectedStatusPanel');
+  (selected&&!selected.hidden?selected:$('personnelDetails')).scrollIntoView({block:'start'});
  });
  const visible=sortActivityLikePersonnel(scoped.filter(p=>
   (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))&&
@@ -468,7 +469,11 @@ function render(){
    p.pingDossier?.latestStatus==='GEEN_VERBETERING_NA_PING'?'⚠ Geen verbetering na eerdere ping':
    p.pingDossier?.latestStatus||'—');
   if(p.returnChecking)follow.className='state-checking';row.append(follow);
-  row.append(el('td',p.lastConnection||'Geen gegevens'));
+  const connect=el('td',p.lastConnection?belgianHistoricalDate(p.lastConnection):'Niet beschikbaar');
+  connect.append(el('small',p.lastConnection?
+   (p.verified?'✓ Actuele FiveM-bron':'Oude bron · indicatief'):
+   'Geen geverifieerde verbindingsdatum'));
+  row.append(connect);
   row.append(el('td',p.calendarInactiveDays===null?'—':p.calendarInactiveDays+' dagen'));
   row.append(el('td',p.effectiveInactiveDays===null?'—':p.effectiveInactiveDays+' dagen · '+p.excludedLeaveDays+' verlof'));
   const hours=el('td',p.periodPlayHours===null?'—':p.periodPlayHours+' uur');
@@ -493,9 +498,15 @@ function render(){
      const mins=data.minutes;
      const hours=Number.isSafeInteger(mins)&&mins>=0?
       Math.floor(mins/60)+' u '+String(mins%60).padStart(2,'0')+' min':'onbekend';
+     const last=typeof data.lastCompletedAt==='string'&&
+      Number.isFinite(Date.parse(data.lastCompletedAt))?
+      new Date(data.lastCompletedAt).toLocaleString('nl-BE',{
+       timeZone:'Europe/Brussels',day:'2-digit',month:'2-digit',
+       year:'numeric',hour:'2-digit',minute:'2-digit'}):null;
      output.textContent='Diensturen API: '+hours+' · '+data.shiftCount+
-      ' diensten'+(data.ongoingShifts?' · '+data.ongoingShifts+' lopend':'')+
-      ' · geen afgesloten maandmeting';
+      ' registraties'+(data.ongoingShifts?' · '+data.ongoingShifts+' lopend':'')+
+      (last?' · laatste afgeronde dienst '+last:' · geen afgeronde dienst bekend')+
+      ' · geen geverifieerde maandmeting';
     }else if(data.status==='unmapped'){
      output.textContent='Dienstcodes niet eenduidig aan deze hulpdienst toe te wijzen; geen nulurenconclusie.';
     }else if(data.status==='no_records'){
