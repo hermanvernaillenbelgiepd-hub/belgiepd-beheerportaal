@@ -57,7 +57,14 @@ function initialize(){
  const summary=document.createElement('summary');summary.textContent='Bronopvolging en datakwaliteit';
  diagnostics.append(summary,$('counts'),$('statisticsDetails'),$('sourceNote'));
  const existingNote=overview.querySelector(':scope > p.source-note');if(existingNote)existingNote.remove();
- overview.append(tiles,note,diagnostics);
+ const createPing=document.createElement('button');
+ createPing.type='button';createPing.id='activityQuickPingTop';
+ createPing.className='activity-mini-button activity-create-ping';
+ createPing.textContent='+ Activiteitenping registreren';
+ createPing.title='Manuele opvolging registreren in dossier en weekrapport; geen automatische Discord-DM';
+ createPing.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
+  detail:{key:active}}));
+ overview.append(createPing,tiles,note,diagnostics);
  const filterLabel=document.createElement('div');filterLabel.className='activity-eyebrow';
  filterLabel.textContent='FILTERS · Dienst, reeks en opvolging';
  filter.prepend(filterLabel);
@@ -176,11 +183,17 @@ function renderSelectedStatus(people,lookupPlayer){
   };
   query.onclick=()=>void run();
   tasks.push(run);
+  const ping=document.createElement('button');
+  ping.type='button';ping.className='activity-mini-button activity-ping-button';
+  ping.textContent='+ Activiteitenping';
+  ping.title='Leg voor deze medewerker een opvolging vast in dossier en weekrapport';
+  ping.onclick=()=>window.dispatchEvent(new CustomEvent('bpd-quick-activity-ping',{
+    detail:{person:{department:p.department,discordId:p.discordId},key:active}}));
   const actions=document.createElement('a');
   actions.href='/dossiercentrum.html?'+new URLSearchParams({
    dept:p.department,discordId:p.discordId}).toString();
   actions.textContent='Dossier openen';
-  item.append(title,status,connection,hours,api,query,actions);list.append(item);
+  item.append(title,status,connection,hours,api,query,ping,actions);list.append(item);
  }
  if(!matched.length){
   const empty=document.createElement('p');
