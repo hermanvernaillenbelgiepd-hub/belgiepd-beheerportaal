@@ -54,7 +54,7 @@ test('no data mutation or global API hours exposed by visual evidence',()=>{
  const dashboard=readFileSync(new URL('../public/activity-dashboard.js',import.meta.url),'utf8');
  const activity=readFileSync(new URL('../public/activiteitscentrum.html',import.meta.url),'utf8');
  const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
- assert.match(dashboard,/renderSelectedStatus\(safe,lookupPlayer\)/);
+ assert.match(dashboard,/renderSelectedStatus\(safe,lookupPlayer,observeRecovery\)/);
  assert.match(dashboard,/tasks\.slice\(0,25\)/);
  assert.match(dashboard,/Math\.min\(3,selected\.length\)/);
  assert.doesNotMatch(dashboard,/fetch\(|firebase|\/api\//);
