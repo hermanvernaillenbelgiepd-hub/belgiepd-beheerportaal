@@ -383,6 +383,53 @@ function renderVerifiedRecords(scoped){
  });
  renderHistoricalRecords(scoped);
 }
+const playerEvidenceCache=new Map();
+const playerVisibleRows=new Map();
+function playerEvidenceKey(p){return String(p.department)+':'+String(p.discordId)}
+function playerApiTime(value){
+ if(typeof value!=='string'||!Number.isFinite(Date.parse(value)))return 'Niet door API gemeld';
+ return new Date(value).toLocaleString('nl-BE',{timeZone:'Europe/Brussels',
+  day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function playerApiHours(minutes){
+ return Number.isSafeInteger(minutes)&&minutes>=0?
+  Math.floor(minutes/60)+' u '+String(minutes%60).padStart(2,'0')+' min':'Onbekend';
+}
+function showPlayerEvidenceInRow(p,data){
+ if(data?.status!=='api_response')return;
+ const row=playerVisibleRows.get(playerEvidenceKey(p));
+ if(!row)return;
+ row.apiConnection.textContent='API laatste verbinding: '+playerApiTime(data.lastConnectionAt);
+ row.apiHours.textContent='API totaal: '+playerApiHours(data.totalPlayMinutes)+
+  ' · cumulatief, geen afgesloten maand';
+}
+async function readPlayerEvidence(p){
+ const key=playerEvidenceKey(p),now=Date.now(),entry=playerEvidenceCache.get(key);
+ if(entry&&(entry.pending||entry.expires>now)){
+  const data=entry.pending?await entry.pending:entry.data;
+  showPlayerEvidenceInRow(p,data);
+  return data;
+ }
+ const pending=(async()=>{
+  const user=auth?.currentUser;
+  if(!user)return {status:'not_authenticated'};
+  try{
+   const token=await user.getIdToken();
+   const response=await fetch('/api/fivem-players/dossiers/'+
+    encodeURIComponent(p.department)+'/'+encodeURIComponent(p.discordId),{
+     cache:'no-store',headers:{Authorization:'Bearer '+token}});
+   const data=await response.json().catch(()=>({status:'invalid_response'}));
+   if(user!==auth?.currentUser)return {status:'session_changed'};
+   return response.ok?data:{status:String(data.status||'unavailable')};
+  }catch{return {status:'upstream_unavailable'}}
+ })();
+ playerEvidenceCache.set(key,{pending,expires:now+10_000});
+ const data=await pending;
+ playerEvidenceCache.set(key,{data,expires:Date.now()+
+  (data.status==='api_response'?120000:12000)});
+ showPlayerEvidenceInRow(p,data);
+ return data;
+}
 function render(){
  const dept=$('department').value,kind=$('filter').value,series=$('activitySeries').value;
  const query=$('search').value.trim().toLocaleLowerCase('nl');
@@ -394,7 +441,7 @@ function render(){
   $('personnelDetails').open=true;render();
   const selected=document.getElementById('activitySelectedStatusPanel');
   (selected&&!selected.hidden?selected:$('personnelDetails')).scrollIntoView({block:'start'});
- });
+ },readPlayerEvidence);
  const visible=sortActivityLikePersonnel(scoped.filter(p=>
   (!kind||p.kind===kind)&&(!$('attentionOnly').checked||priorityKinds.has(p.kind))&&
   (!activityDashboardModule||activityDashboardModule.activityStatusTileMatch(p))));
@@ -447,6 +494,7 @@ function render(){
  void import('/activity-expanded.js').then(mod=>
   mod.renderActivityExtension({people:scoped,asOf,sources})).catch(()=>{});
  const body=$('rows');body.replaceChildren();
+ playerVisibleRows.clear();
  if(!$('personnelDetails').open)return;
  let previousGroup=null;
  for(const p of visible){
@@ -473,6 +521,18 @@ function render(){
   connect.append(el('small',p.lastConnection?
    (p.verified?'✓ Actuele FiveM-bron':'Oude bron · indicatief'):
    'Geen geverifieerde verbindingsdatum'));
+  const apiConnection=el('small','');
+  const apiCheck=el('button','FiveM API','secondary-action');
+  apiCheck.type='button';apiCheck.style.fontSize='11px';
+  apiCheck.onclick=async()=>{
+   apiCheck.disabled=true;
+   apiConnection.textContent='FiveM-gegevens opvragen…';
+   const result=await readPlayerEvidence(p);
+   if(result.status!=='api_response')
+    apiConnection.textContent='FiveM API: '+String(result.status||'niet beschikbaar');
+   apiCheck.disabled=false;
+  };
+  connect.append(apiConnection,apiCheck);
   row.append(connect);
   row.append(el('td',p.calendarInactiveDays===null?'—':p.calendarInactiveDays+' dagen'));
   row.append(el('td',p.effectiveInactiveDays===null?'—':p.effectiveInactiveDays+' dagen · '+p.excludedLeaveDays+' verlof'));
@@ -515,7 +575,12 @@ function render(){
    }catch{output.textContent='Diensturen niet beschikbaar voor deze dienst of functie.'}
    finally{button.disabled=false}
   };
-  hours.append(button,output);
+  const apiHours=el('small','');
+  hours.append(button,output,apiHours);
+  playerVisibleRows.set(playerEvidenceKey(p),{apiConnection,apiHours});
+  const cached=playerEvidenceCache.get(playerEvidenceKey(p));
+  if(cached?.data?.status==='api_response'&&cached.expires>Date.now())
+   showPlayerEvidenceInRow(p,cached.data);
   row.append(hours);
   const leave=el('td',p.leave?.active?'Verlof '+belgianHistoricalDate(p.leave.startDate)+' – '+belgianHistoricalDate(p.leave.endDate):
    p.leave?.lastEnded?'Einde '+p.leave.lastEnded:'—');
@@ -778,6 +843,7 @@ $('refresh').addEventListener('click',load);
   setupPortalLogin({button:$('login'),auth,authModule:authSdk,config:cfg,
    onError:e=>{$('feedback').textContent=e.message}});
   authSdk.onAuthStateChanged(auth,()=>{
+    playerEvidenceCache.clear();playerVisibleRows.clear();
     void load();void loadCadreConfig();
    });
  }catch(e){$('feedback').textContent=e.message}

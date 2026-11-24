@@ -110,7 +110,19 @@ function formatActivityDate(value){
  return /^\d{4}-\d{2}-\d{2}$/.test(text)?
    text.slice(8,10)+'/'+text.slice(5,7)+'/'+text.slice(0,4):text||'Niet beschikbaar';
 }
-function renderSelectedStatus(people){
+function formatFiveMTime(value){
+ if(typeof value!=='string'||!Number.isFinite(Date.parse(value)))return 'niet gemeld door API';
+ return new Date(value).toLocaleString('nl-BE',{timeZone:'Europe/Brussels',
+  day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function formatFiveMHours(minutes){
+ if(!Number.isSafeInteger(minutes)||minutes<0)return 'onbekend';
+ return Math.floor(minutes/60)+' u '+String(minutes%60).padStart(2,'0')+' min';
+}
+let selectedStatusRender=0;
+// Callback lives in the authenticated page. This module has no network or secrets.
+function renderSelectedStatus(people,lookupPlayer){
+ const serial=++selectedStatusRender;
  const root=$('activitySelectedStatusPanel');if(!root)return;
  root.replaceChildren();root.hidden=!active;
  if(!active)return;
@@ -122,6 +134,7 @@ function renderSelectedStatus(people){
  hint.textContent='Dit zijn de personen uit de aangeklikte status, niet uitsluitend nieuwe activiteitspings. Uren en verbindingsdatums zijn alleen actueel wanneer de FiveM-bron dat bevestigt. Klik bij een medewerker in de volledige lijst op Diensturen API voor de afzonderlijke dienstregistraties.';
  root.append(h,hint);
  const list=document.createElement('div');list.className='activity-selected-list';list.setAttribute('role','list');
+ const tasks=[];
  for(const p of matched){
   const item=document.createElement('article');item.className='activity-selected-person';
   item.setAttribute('role','listitem');
@@ -138,11 +151,36 @@ function renderSelectedStatus(people){
    'Speeluren: geen verifieerbare meting':
    'Speeluren: '+p.periodPlayHours+' uur · '+
     (p.verified?'geverifieerde afgesloten maand':'oude bron (niet geverifieerd)');
+  const api=document.createElement('small');
+  api.textContent='FiveM API: nog niet opgevraagd';
+  const query=document.createElement('button');query.type='button';
+  query.className='activity-lookup-button';query.textContent='FiveM-gegevens controleren';
+  const apply=data=>{
+   if(serial!==selectedStatusRender||!item.isConnected)return;
+   if(data?.status==='api_response'){
+    connection.textContent='Laatste FiveM-verbinding (API): '+formatFiveMTime(data.lastConnectionAt);
+    hours.textContent='Totale FiveM-speeltijd (API): '+formatFiveMHours(data.totalPlayMinutes)+
+      ' · cumulatief, geen geverifieerde maanduren';
+    api.textContent='API-antwoord opgehaald · geen automatische statuswijziging';
+   }else{
+    api.textContent='FiveM API: geen bruikbaar antwoord ('+
+      String(data?.status||'niet beschikbaar')+'). Bestaande status blijft behouden.';
+   }
+  };
+  const run=async()=>{
+   if(typeof lookupPlayer!=='function')return;
+   query.disabled=true;
+   api.textContent='FiveM-gegevens opvragen…';
+   try{apply(await lookupPlayer(p))}catch{apply({status:'upstream_unavailable'})}
+   finally{query.disabled=false}
+  };
+  query.onclick=()=>void run();
+  tasks.push(run);
   const actions=document.createElement('a');
   actions.href='/dossiercentrum.html?'+new URLSearchParams({
    dept:p.department,discordId:p.discordId}).toString();
   actions.textContent='Dossier openen';
-  item.append(title,status,connection,hours,actions);list.append(item);
+  item.append(title,status,connection,hours,api,query,actions);list.append(item);
  }
  if(!matched.length){
   const empty=document.createElement('p');
@@ -150,13 +188,26 @@ function renderSelectedStatus(people){
   list.append(empty);
  }
  root.append(list);
+ // Limit API load: 3 simultaneous calls, max 25 automatically per selection.
+ // Every additional card retains its own manual button.
+ let cursor=0;
+ const selected=tasks.slice(0,25);
+ for(let n=0;n<Math.min(3,selected.length);n++){
+  void(async()=>{
+   while(serial===selectedStatusRender){
+    const index=cursor++;
+    if(index>=selected.length)break;
+    await selected[index]();
+   }
+  })();
+ }
 }
-export function renderActivityDashboard(people,sources,onSelect){
+export function renderActivityDashboard(people,sources,onSelect,lookupPlayer){
  initialize();verifiedLeave=sources?.approvedLeaveComplete===true;
  const safe=Array.isArray(people)?people:[];
  if($('filter').value||$('attentionOnly').checked)active='';
  $('activityAuthorizedTotal').textContent=String(safe.length);
- renderSelectedStatus(safe);
+ renderSelectedStatus(safe,lookupPlayer);
  const container=$('activityStatusTiles');container.replaceChildren();
  for(const [key,name,note] of TILES){
   const count=safe.filter(p=>belongs(p,key)).length;
