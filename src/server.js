@@ -35,6 +35,7 @@ import {DESIGN_GRANTS_COLLECTION} from './visual-design-grants.js';
 import {isDesignOnlyApiPath,developerDesignActor} from './visual-design-developer-policy.js';
 import {developerViewerEligible,readOnlyDeveloperActor,readOnlyDeveloperRequestAllowed}
  from './developer-readonly-profile.js';
+import {DEVELOPER_VIEWER_COLLECTION} from './developer-viewer-grants.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
@@ -355,8 +356,9 @@ async function requireUser(req,res,next){
       // modules, but may save ONLY validated visual-design settings.
       // Evaluate BEFORE any automatic role provisioning; do not create a staff
       // account or modify operational permissions for this identity.
+      const developerGrant=(await store.collection(DEVELOPER_VIEWER_COLLECTION).doc(id).get()).data();
       if(developerViewerEligible(verified,member,managed.data(),
-       process.env,Date.now())){
+       process.env,Date.now(),developerGrant)){
        req.bpd=readOnlyDeveloperActor(verified.uid,id);
        if(!readOnlyDeveloperRequestAllowed(req.method,req.path))
         return res.status(403).json({error:'Developer-profiel: alleen lezen. Uitsluitend Vormgeving mag worden opgeslagen.'});
