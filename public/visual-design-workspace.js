@@ -211,7 +211,11 @@ async function boot(){
    option.textContent=entry.label+' ('+entry.key+'.html)';select.append(option);
   }
   $('work').hidden=false;
-  notice('Vormgevingsrechten bevestigd. Je kunt alleen opmaak beheren, niet de personeelsgegevens of toegangsrechten.');
+  const onlyDesign=data.profile==='developer';
+  $('designMgmtLink').hidden=onlyDesign;
+  notice(onlyDesign?
+   'Developer-profiel actief · je kunt uitsluitend kleuren, thema’s en lay-out beheren. Personeelsdossiers, gegevens en beheerrechten zijn afgesloten.':
+   'Vormgevingsrechten bevestigd. Je kunt opmaak beheren; overige portaalrechten blijven afzonderlijk.');
   if(!initialized){
    initialized=true;
    globalEditor=setupVisualDesignEditor({api,$});

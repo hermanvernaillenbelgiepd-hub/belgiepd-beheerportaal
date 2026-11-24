@@ -4,12 +4,15 @@ export function setupVisualDesignGrantsEditor({api,$}){
  const section=document.createElement('section');
  section.id='visualGrantPanel';section.className='config-block';section.hidden=true;
  section.innerHTML=`
-  <h3>🔐 Machtigingen: alleen lay-out en vormgeving</h3>
+  <h3>🔐 Developer-profiel · alleen lay-out en vormgeving</h3>
   <p class="muted">Je geeft enkel het recht om vormgeving te wijzigen, geen inzage in personeelsdossiers,
-  sancties, Discord-rollen of andere beheerfuncties. Alleen Technisch Beheer mag dit aanpassen.</p>
+  sancties, Discord-rollen of andere beheerfuncties. Alleen Technisch Beheer mag dit aanpassen.
+  Een externe helper moet zich eerst met Discord aanmelden op <a href="/vormgeving.html">Vormgeving</a>.
+  Daarna kun je het Discord-ID machtigen, zonder personeelsaccount toe te kennen.
+  Bij een bestaande personeelsgebruiker blijven eerdere afzonderlijke rechten behouden.</p>
   <form id="visualGrantForm">
    <div class="form-grid">
-    <label>Discord-ID van een goedgekeurde portaalgebruiker
+    <label>Discord-ID van een geverifieerde BelgiëPD-gebruiker
      <input id="visualGrantId" required pattern="[0-9]{15,22}" minlength="15" maxlength="22"
       inputmode="numeric" placeholder="Discord-ID"></label>
     <label>Einddatum (optioneel)
@@ -18,7 +21,7 @@ export function setupVisualDesignGrantsEditor({api,$}){
    <label>Motivering (ook bij intrekken verplicht)
     <textarea id="visualGrantReason" rows="2" minlength="10" maxlength="240" required
      placeholder="Waarom wordt dit recht toegekend of ingetrokken?"></textarea></label>
-   <div class="buttons"><button type="submit" id="visualGrantSave">Vormgevingsrecht geven</button>
+   <div class="buttons"><button type="submit" id="visualGrantSave">Developer-profiel toekennen</button>
     <button type="button" id="visualGrantReload" class="secondary">Vernieuwen</button></div>
   </form>
   <p id="visualGrantStatus" class="muted" aria-live="polite"></p>
@@ -83,7 +86,7 @@ export function setupVisualDesignGrantsEditor({api,$}){
     action:'grant',reason:reason(),expiresOn:$('visualGrantExpires').value||null,
     expectedRevision:prior?.revision??0
    });
-   await load();status('Vormgevingsrecht toegewezen en gelogd.');
+   await load();status('Developer-profiel Vormgeving toegekend en gelogd.');
   }catch(e){status('Toegang niet gewijzigd: '+e.message,true)}
   finally{$('visualGrantSave').disabled=false}
  };

@@ -30,7 +30,7 @@ test('the verified dedicated grant protects edits without granting technical or 
  const routes=read('src/visual-design-routes.js'),server=read('src/server.js');
  assert.match(routes,/if\(!await canEditVisualDesign\(dbFactory\(\),req.bpd\)\)/);
  assert.match(routes,/mayDelegateVisualDesign\(req.bpd\)/);
- assert.match(routes,/approvedManagedEntry\(account.data\(\),input.discordId\)/);
+ assert.match(routes,/mayIssueDeveloperDesignGrant\(input.discordId,account.data\(\)/);
  assert.match(routes,/db.runTransaction\(async tx=>/);
  assert.match(routes,/tx.create\(audit,/);
  assert.match(routes,/app.put\('\/api\/visual-design\/grants\/:discordId',requireUser/);
