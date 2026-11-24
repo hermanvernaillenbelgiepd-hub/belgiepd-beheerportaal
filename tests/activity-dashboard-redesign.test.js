@@ -61,6 +61,6 @@ test('maandcontrole is eerste t/m laatste kalenderdag en oude reset blijft histo
  assert.match(ui,/Te beoordelen afgesloten kalendermaand/);
  const html=read('public/activiteitscentrum.html');
  assert.match(html,/detail\.presetStatus==='ACTIEF'/);
- assert.match(ui,/\\['half','inactive','checking'\\]\.includes\(active\)/);
+ assert.ok(ui.includes("['half','inactive','checking'].includes(active)"));
  assert.match(ui,/Voorstel ACTIEF/);
 });
