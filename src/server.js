@@ -31,6 +31,8 @@ import {installScopedPlayerActivityRoutes} from './bpd-player-activity-scope.js'
 import {installActivityPingReviewRoutes} from './activity-ping-review-routes.js';
 import {installVisualDesignRoutes} from './visual-design-routes.js';
 import {installVisualDesignPageRoutes} from './visual-design-page-routes.js';
+import {DESIGN_GRANTS_COLLECTION} from './visual-design-grants.js';
+import {isDesignOnlyApiPath,developerDesignActor} from './visual-design-developer-policy.js';
 import {installPortalLabelRoutes} from './portal-labels.js';
 import {basicObservationTargets,mayReadBasicInbox,basicObservationAccessChecks} from './basic-observation-policy.js';
 import { installCallsignRoutes } from './callsign-routes.js';
@@ -395,6 +397,15 @@ async function requireUser(req,res,next){
           console.warn('Automatische Basiskadertoegang niet beschikbaar:',
             typeof error?.code==='string'?error.code.slice(0,40):'controle');
         }
+      }
+      // Design-only helpers never pass normal personnel-role authorization.
+      // Always re-read the grant: revocation must be effective immediately.
+      if(isDesignOnlyApiPath(req.path)&&
+       !approvedManagedEntry(managed.data(),id)&&
+       managed.get('status')!=='blocked'){
+       const design=await store.collection(DESIGN_GRANTS_COLLECTION).doc(id).get();
+       const developer=developerDesignActor(verified.uid,id,design.data());
+       if(developer){req.bpd=developer;return next()}
       }
       if(managed.exists){
         manualRoleRecovery=managed.data()?.manualRoleRecovery||null;

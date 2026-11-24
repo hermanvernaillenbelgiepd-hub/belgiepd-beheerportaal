@@ -1,7 +1,8 @@
 // Central presentation configuration. Public GET returns only vetted tokens;
 // saving requires a verified management account and an audited transaction.
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
-import {USER_COLLECTION,approvedManagedEntry} from './user-access.js';
+import {USER_COLLECTION} from './user-access.js';
+import {mayIssueDeveloperDesignGrant} from './visual-design-developer-policy.js';
 import {DESIGN_GRANTS_COLLECTION,DESIGN_GRANTS_AUDIT,
  mayDelegateVisualDesign,isActiveVisualDesignGrant,validateVisualDesignGrantWrite}
  from './visual-design-grants.js';
@@ -120,9 +121,13 @@ export function installVisualDesignRoutes(app,{requireUser,dbFactory=getFirestor
   try{
    const db=dbFactory(),docRef=db.collection(DESIGN_GRANTS_COLLECTION).doc(input.discordId);
    if(input.action==='grant'){
-    const account=await db.collection(USER_COLLECTION).doc(input.discordId).get();
-    if(!approvedManagedEntry(account.data(),input.discordId))
-     return res.status(422).json({error:'Selecteer eerst een goedgekeurd portaalaccount met een geldige Discord-koppeling'});
+    const [account,identity]=await Promise.all([
+     db.collection(USER_COLLECTION).doc(input.discordId).get(),
+     db.collection('bpd_discord_auth').doc(input.discordId).get()
+    ]);
+    if(!mayIssueDeveloperDesignGrant(input.discordId,account.data(),
+     identity.data(),process.env.DISCORD_GUILD_ID))
+     return res.status(422).json({error:'Developer vereist een recente geverifieerde Discord-login binnen BelgiëPD. Laat de gebruiker eerst aanmelden via Vormgeving; geblokkeerde accounts zijn uitgesloten.'});
    }
    const audit=db.collection(DESIGN_GRANTS_AUDIT).doc();
    const result=await db.runTransaction(async tx=>{
@@ -132,11 +137,12 @@ export function installVisualDesignRoutes(app,{requireUser,dbFactory=getFirestor
     if(revision!==input.expectedRevision)
      throw Object.assign(Error('Rechtenlijst intussen gewijzigd; herlaad eerst'),{status:409});
     const enabled=input.action==='grant',expiresOn=enabled?input.expiresOn:null;
-    if(prev.enabled===enabled&&(prev.expiresOn||null)===expiresOn)
+    if(prev.enabled===enabled&&(prev.expiresOn||null)===expiresOn&&
+       (!enabled||prev.profile==='developer'))
      return {changed:false,revision};
     const at=FieldValue.serverTimestamp();
     tx.set(docRef,{discordId:input.discordId,enabled,expiresOn,
-     revision:revision+1,updatedAt:at,updatedBy:req.bpd.discordId});
+     profile:'developer',revision:revision+1,updatedAt:at,updatedBy:req.bpd.discordId});
     tx.create(audit,{actorUid:req.bpd.uid,actorDiscordId:req.bpd.discordId,
      targetDiscordId:input.discordId,action:input.action,reason:input.reason,
      before:{enabled:prev.enabled===true,expiresOn:prev.expiresOn||null},

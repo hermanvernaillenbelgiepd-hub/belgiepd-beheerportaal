@@ -12,7 +12,8 @@ export function installVisualDesignPageRoutes(app,{requireUser,dbFactory=getFire
   res.set('Cache-Control','private, no-store');
   if(!await canEditVisualDesign(dbFactory(),req.bpd))
    return res.status(403).json({error:'Geen toegang tot Vormgeving. Controleer jouw portaalprofiel of vraag een aparte machtiging.'});
-  return res.json({pages:DESIGN_PAGE_CATALOG,canDelegate:mayDelegateVisualDesign(req.bpd)});
+  return res.json({pages:DESIGN_PAGE_CATALOG,canDelegate:mayDelegateVisualDesign(req.bpd),
+   profile:req.bpd.portalDesignOnly===true?'developer':'operational'});
  });
  app.get('/api/visual-design/pages/:key',async(req,res)=>{
   res.set('Cache-Control','public, max-age=15');
