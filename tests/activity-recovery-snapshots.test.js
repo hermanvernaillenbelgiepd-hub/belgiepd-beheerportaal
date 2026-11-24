@@ -105,7 +105,7 @@ test('server scopes API and cannot mutate personnel data; frontend uses explicit
  assert.match(server,/installActivityRecoveryRoutes\(app,\{requireUser:requireDossierUser,getSnapshot\}\)/);
  assert.match(ui,/id='activityFiveHourRecoveryPolicy'/);
  assert.match(ui,/Hersteluren controleren/);
- assert.match(ui,/eligibleForActiveProposal/);
+ assert.match(ui,/Geen automatische statuswijziging/);
  assert.match(page,/observeRecoveryProgress\(p\)/);
  assert.match(page,/renderActivityDashboard\(scoped,sources/);
  assert.match(css,/activity-recovery-evidence/);
