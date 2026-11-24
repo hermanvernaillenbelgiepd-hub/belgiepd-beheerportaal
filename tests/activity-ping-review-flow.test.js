@@ -57,7 +57,7 @@ test('50/50, INACTIEF en CHECKING kunnen elk een ACTIEF-voorstel opleveren',()=>
  assert.equal(review.statusBeforeChecking,'50/50');
  const source=read('src/activity-ping-review-routes.js');
  assert.match(source,/tx\.update\(checkingRef,\{status:'ACTIEF'/);
- assert.match(source,/checking\.get\('status'\)!=='CHECKING'/);
+ assert.ok(source.includes("checking?.get('status')!=='CHECKING'"));
  assert.match(source,/persisted!==expected/);
  assert.match(source,/subject\.leaveReturnChecking!==true&&record\.checkingReturnId/);
 });
