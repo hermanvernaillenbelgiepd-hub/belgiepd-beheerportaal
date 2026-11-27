@@ -14,6 +14,10 @@ import {verifyGuildAuthorizationRoles} from './discord-guild-authorization.js';
 import {ROLE_CATALOG} from './role-catalog.js';
 import {USER_COLLECTION} from './user-access.js';
 import {personnelCallClaimId} from './personnel-editor-policy.js';
+import {prepareCallRelease,releasePreparedCallClaims,activeCallPersonnel,
+  sameServiceCall,inspectCallReservation,assignCallReservation}
+  from './personnel-call-ownership.js';
+import {policeCallGrade} from './personnel-rank-policy.js';
 import {identityArchiveSubjects,prepareIdentityArchive,writeIdentityArchive}
  from './global-personnel-archive.js';
 const fail=(status,message)=>Object.assign(new Error(message),{status});
@@ -469,11 +473,24 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      if(action==='archive'&&inGuild)
       throw fail(409,'Het Discord-account is nog aanwezig; kies ontslag door leiding of dienstverlating');
     }
+    // Returning members must choose a currently FREE call, not inherit an
+    // old number that can legally belong to someone else since departure.
+    const currentCalls=action==='activate'?
+      await getSnapshot({forceRefresh:true,includeArchived:true}):null;
+    if(currentCalls?.stale)throw fail(503,'Controle op vrije roepnummers is tijdelijk niet actueel');
+    if(currentCalls&&activeCallPersonnel(currentCalls.data).some(p=>
+      p.dept===dept&&p.personId!==discordId&&
+      sameServiceCall(dept,p.call,input.newCall)))
+      throw fail(409,'Dit roepnummer is inmiddels aan een actief personeelslid toegekend');
     const ref=store().doc(dept+'_'+discordId);
     const result=await db().runTransaction(async tx=>{
      const current=await tx.get(ref),prev=current.data()||{};
      const archivePlan=globalArchive?await prepareIdentityArchive(tx,db(),{
        subjects:archiveSubjects,primaryDept:dept,discordId}):null;
+     const releasedCalls=action==='archive'&&!globalArchive?
+       await prepareCallRelease(tx,db(),[person]):[];
+     const reservedCall=action==='activate'?
+       await inspectCallReservation(tx,db(),dept,input.newCall):null;
      const revision=Number.isSafeInteger(prev.revision)?prev.revision:0;
      if(revision!==input.expectedRevision)throw fail(409,'Fiche is intussen gewijzigd. Vernieuw eerst');
      if(action==='archive'&&prev.state==='archived')
@@ -489,6 +506,15 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      const state=action==='archive'?'archived':action==='restore'?'pending':'active';
      const historic=action==='archive'?lifecycleSourceSnapshot(person):prev.snapshot;
      if(!historic)throw fail(409,'Geen veilig bewaarbaar personeelsprofiel gevonden');
+     if(action==='activate'){
+       if(dept==='politie'){
+         const priorGrade=policeCallGrade(historic.call),newGrade=policeCallGrade(input.newCall);
+         if(priorGrade===null||priorGrade!==newGrade)
+           throw fail(409,'Kies een vrij politieroepnummer dat past bij de officieel geregistreerde rang');
+       }
+       if(reservedCall.blocked.length)
+         throw fail(409,'Het gekozen roepnummer is gereserveerd of al in gebruik');
+     }
      const departure=action==='archive'?
        departureEvidence(historic,archiveSubjects,input.cause,input.reason):null;
      const data={dept,discordId,state,revision:revision+1,
@@ -498,10 +524,16 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        // CMS/Discord have separate authority: explicitly queue role review.
        cmsRoleSyncPending:action!=='activate',
        restoreFromArchive:action!=='archive'||prev.restoreFromArchive===true,
+       ...(action==='archive'?{reentryCall:FieldValue.delete()}:
+         action==='activate'?{reentryCall:input.newCall}:{}),
        ...(action==='archive'?{archivedAt:FieldValue.serverTimestamp()}:
          action==='restore'?{reentryRequestedAt:FieldValue.serverTimestamp()}:
          {restoredAt:FieldValue.serverTimestamp()})};
      tx.set(ref,data,{merge:true});
+     if(action==='archive'&&!globalArchive)releasePreparedCallClaims(tx,releasedCalls);
+     if(action==='activate')
+       assignCallReservation(tx,db(),reservedCall,dept,input.newCall,discordId,
+         {updatedAt:FieldValue.serverTimestamp()});
      tx.create(ref.collection('audit').doc(),{
        action:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
        cause:input.cause,reason:input.reason,revision:revision+1,
@@ -530,7 +562,8 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
        subjectRankAtCreation:historic.rank||'',
        eventDate,movement,previousRank:historic.rank||'',
        newRank:action==='archive'?'Ontslag':historic.rank||'',
-       previousCall:historic.call||'',newCall:action==='archive'?'':historic.call||'',
+       previousCall:historic.call||'',newCall:action==='archive'?'':action==='activate'?
+         input.newCall:historic.call||'',
        ...(departure?{previousSeries:departure.previousSeries,
          previousSpecialties:departure.specialties,
          previousDepartments:departure.departments}:{}),
@@ -584,7 +617,7 @@ export function installPersonnelLifecycleRoutes(app,{requireUser,getSnapshot,inv
      tx.create(db().collection(PERSONNEL_ACTIVITY_COLLECTION).doc(),{
        dossierCaseLogged:true,eventDate,
        type:action==='archive'?'personnel_archived':action==='restore'?'personnel_reentry_pending':'personnel_restored',
-       dept,discordId,name:historic.name,call:historic.call,
+       dept,discordId,name:historic.name,call:action==='activate'?input.newCall:historic.call,
        before:action==='archive'?'Actief':action==='restore'?'Uit dienst':'Herintreding in controle',
        after:action==='archive'?'Uit dienst':action==='restore'?'Herintreding in controle':'Actief',
        cause:input.cause,reason:input.reason,actorDiscordId:req.bpd.discordId||null,
