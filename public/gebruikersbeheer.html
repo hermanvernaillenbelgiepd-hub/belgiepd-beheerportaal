@@ -420,8 +420,8 @@ header button{padding:7px 10px;font-size:12px}
 <p id="knownIdsWarning" class="muted"></p>
 </section></section>
 <section id="manualRoleSection" class="card" hidden>
-<h2>🔐 Handmatige kaderrollen via Discord-ID</h2>
-<p>Alleen voor een mislukte rolsynchronisatie. Een aanvraag geeft nog geen toegang. Een andere, bevoegde persoon moet de aanvraag goedkeuren. Bestuur kan een aanvraag voorstellen, maar kent hiermee geen operationele rol aan zichzelf toe. Voor een bestuursaanstelling gebruik je het afzonderlijke tabblad Bestuur.</p>
+<h2>🔐 Handmatige dienstfuncties via Discord-ID</h2>
+<p>Voor ontbrekende of foutief gesynchroniseerde portaaltoegang. Kies de <strong>juiste functie binnen de eigen hulpdienst</strong>, ook Agentenkader, Basiskader en de gewone functies van Brandweer, AZLS en Depannage. Een aanvraag geeft nog geen toegang: een tweede bevoegde persoon moet deze beoordelen. De bestaande officiële rang, personeelsfiche en Discord-verificatie blijven doorslaggevend voor de toegestane acties. Bestuur en technisch beheer blijven afzonderlijke procedures.</p>
 <form id="manualRoleForm">
 <div class="grid">
 <div><label for="manualId">Discord-ID medewerker</label><input id="manualId" inputmode="numeric" autocomplete="off" maxlength="22" pattern="[0-9]{15,22}" required placeholder="Discord-ID"></div>
@@ -434,7 +434,7 @@ header button{padding:7px 10px;font-size:12px}
 </form>
 <p id="manualMessage" class="muted" role="status"></p>
 <div class="scroller"><table><thead><tr><th>Discord-ID</th><th>Hulpdienst / kader</th><th>Status</th><th>Aanvrager</th><th>Beslissing</th></tr></thead><tbody id="manualRecords"></tbody></table></div>
-<p class="muted">De keuzes herstellen het <strong>portaalkader</strong>. Voor <strong>Burger → Burgerraad</strong> geeft een onafhankelijk goedgekeurde en geauditeerde uitzondering toegang tot burgerpersoneelsdossiers en BIO-koppelritten, uitsluitend bij een geldige Discord-verificatie. Burgerraad mag registreren, maar geen dossierregistraties verwijderen. Andere diensten blijven afgeschermd. Er wordt geen Discord-rol gewijzigd.</p>
+<p class="muted">De keuzes herstellen de <strong>dienstgebonden portaalfunctie</strong>; de politie-beperkingen voor Agentenkader en Basiskader blijven gelden en geen keuze kent automatisch een officiële rang, specialisatie of Discord-rol toe. Voor <strong>Burger → Burgerraad</strong> geeft een onafhankelijk goedgekeurde en geauditeerde uitzondering toegang tot burgerpersoneelsdossiers en BIO-koppelritten, uitsluitend bij een geldige Discord-verificatie. Burgerraad mag registreren, maar geen dossierregistraties verwijderen. Andere diensten blijven afgeschermd. Er wordt geen Discord-rol gewijzigd.</p>
 </section>
 <section id="dossierGrantSection" class="card" hidden>
 <h2>🛡️ Beheertoegang hulpdiensten</h2>
@@ -1453,11 +1453,14 @@ function updateManualServiceRoleOptions(){
   const choices=manualRoleCatalog?.[$('manualDept').value]||[];
   for(const choice of choices){
     const item=document.createElement('option');
-    item.value=choice.role;item.textContent=choice.label;
+    // Use the exact service function key: Police Agentenkader and Basiskader
+    // both have the portal tier 'basiskader', but must not be conflated.
+    item.value=choice.functionId||choice.role;item.textContent=choice.label;
     select.append(item);
   }
   select.disabled=!choices.length;
-  if(choices.some(choice=>choice.role===previous))select.value=previous;
+  if(choices.some(choice=>(choice.functionId||choice.role)===previous))
+    select.value=previous;
 }
 $('manualDept').onchange=updateManualServiceRoleOptions;
 updateManualServiceRoleOptions();
@@ -1465,9 +1468,13 @@ $('manualRoleForm').onsubmit=async event=>{
   event.preventDefault();
   const btn=$('manualRequest');btn.disabled=true;
   try{
+    const selected=manualRoleCatalog?.[$('manualDept').value]?.find(choice=>
+      (choice.functionId||choice.role)===$('manualRole').value);
+    if(!selected)throw Error('Selecteer een geldige functie binnen de hulpdienst');
     const result=await api('/api/users/manual-role-requests',{method:'POST',body:{
       discordId:$('manualId').value.trim(),dept:$('manualDept').value,
-      role:$('manualRole').value,reason:$('manualReason').value.trim()
+      role:selected.role,...(selected.functionId?{functionId:selected.functionId}:{}),
+      reason:$('manualReason').value.trim()
     }});
     $('manualReason').value='';
     notice(result.status==='pending'?'Rolherstel voorgesteld. Goedkeuring is nodig; geverifieerd technisch beheer mag een eigen ingediend verzoek voor een ander lid zelf behandelen.':'Aanvraag verwerkt.');
