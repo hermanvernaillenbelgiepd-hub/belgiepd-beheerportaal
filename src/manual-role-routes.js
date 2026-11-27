@@ -8,6 +8,8 @@ import {BOARD_COLLECTION,activeBoardAppointment} from './board-appointment-polic
 import {verifyBoardDiscordRole} from './dossier-grants.js';
 import {isVerifiedTechnicalRoleApprover,manualRoleDecisionScope} from './manual-role-decision-policy.js';
 import {MANUAL_ROLE_CATALOG,manualRoleChoice,manualRoleLabel} from './manual-role-catalog.js';
+import {choiceFor} from './service-function-policy.js';
+import {policeKader} from './normalize.js';
 import {verifiedCitizenCorpsReader,activeManualCitizenCouncil} from './citizen-dossier-policy.js';
 
 const STORE='bpd_manual_role_requests';
@@ -27,12 +29,21 @@ const safeReason=value=>{
 };
 function payload(body){
   if(!body||typeof body!=='object'||Array.isArray(body)||
-    Object.keys(body).some(k=>!['discordId','dept','role','reason'].includes(k)))
+    Object.keys(body).some(k=>!['discordId','dept','role','functionId','reason'].includes(k)))
     throw error(400,'Ongeldige aanvraag');
   const discordId=String(body.discordId||'');
-  if(!VALID_ID.test(discordId)||!USER_DEPTS.includes(body.dept)||!manualRoleChoice(body.dept,body.role))
-    throw error(400,'Gebruik een geldige Discord-ID, hulpdienst en kaderrol');
-  return {discordId,dept:body.dept,role:body.role,reason:safeReason(body.reason)};
+  // Low-tier service roles must select the precise function, not only
+  // 'basiskader': Police Agentenkader and Basiskader have different limits.
+  if(body.dept!=='burger'&&body.role==='basiskader'&&
+     typeof body.functionId!=='string')
+    throw error(400,'Selecteer de concrete basisfunctie binnen de hulpdienst');
+  const choice=manualRoleChoice(body.dept,body.role,body.functionId);
+  if(!VALID_ID.test(discordId)||!USER_DEPTS.includes(body.dept)||!choice||
+     (choice.functionId&&!choiceFor(body.dept,choice.functionId)))
+    throw error(400,'Gebruik een geldige Discord-ID, hulpdienst en dienstfunctie');
+  return {discordId,dept:body.dept,role:choice.role,
+    ...(body.functionId?{functionId:choice.functionId}:{}),
+    reason:safeReason(body.reason)};
 }
 const safeIdentity=actor=>VALID_ID.test(String(actor?.discordId||''))&&
   actor?.uid==='discord:'+actor.discordId;
@@ -56,9 +67,55 @@ async function rights(actor,db){
   return {propose:boardAccess||manager,board:boardAccess,manager};
 }
 const brief=d=>({discordId:d.discordId,dept:d.dept,role:d.role,
-  roleLabel:manualRoleLabel(d.dept,d.role),status:d.status,
+  functionId:d.functionId||null,
+  roleLabel:d.roleLabel||manualRoleLabel(d.dept,d.role,d.functionId),status:d.status,
   reason:d.reason,requestedBy:d.requestedBy,decidedBy:d.decidedBy||null});
 export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
+  // A lower service recovery is permissible only for an existing, unique,
+  // active personnel identity. This does NOT establish an operational
+  // qualification or grant any higher dossiers/Discord role.
+  async function confirmBasicPersonnel(request){
+    if(request?.role!=='basiskader'||request.dept==='burger')return;
+    const snapshot=await getSnapshot({includeArchived:true});
+    if(snapshot?.stale||!Array.isArray(snapshot?.data))
+      throw error(503,'De actuele personeelsbron is niet beschikbaar');
+    const matches=snapshot.data.filter(p=>p.dept===request.dept&&
+      p.personId===request.discordId);
+    if(matches.length!==1)
+      throw error(409,'De medewerker moet een unieke personeelsfiche in deze hulpdienst hebben');
+    const staff=matches[0];
+    const stopped=['ONTSLAG','VERWIJDERD','BLACKLISTED','GESCHORST','INACTIEF'];
+    if(['archived','pending'].includes(String(staff.lifecycleState||'').toLowerCase())||
+       stopped.includes(String(staff.status||'').trim().toUpperCase()))
+      throw error(409,'Een uitdienstgesteld of geschorst lid kan niet via rolherstel worden geactiveerd');
+    if(request.dept==='politie'){
+      const cadre=policeKader(staff.rank,staff.call);
+      const expected=request.functionId==='agentenkader'?'Agentenkader':
+        request.functionId==='basiskader'?'Basiskader':null;
+      if(!expected||cadre!==expected)
+        throw error(409,'De gekozen politie-functie komt niet overeen met de officiële personeelsrang');
+    }
+    // Never label a higher service leader as ordinary staff by mistake.
+    if(request.dept==='brandweer'&&
+       /zonechef|kolonel|majoor|kapitein|luitenant|adjudant|sergeant|leiding/i
+         .test(String(staff.rank||'')))
+      throw error(409,'Brandweerleiding kan niet als Basiskader worden hersteld');
+    if(request.dept==='ambulance'){
+      const rank=String(staff.rank||'')+' '+String(staff.call||'');
+      if(/dir.?med|\bharts\b|\bhvpk\b|\bhamb\b|leiding|instructeur/i.test(rank))
+        throw error(409,'Ambulanceleiding moet via de bijbehorende kaderfunctie worden hersteld');
+      if(request.functionId==='arts'&&!/arts/i.test(rank)||
+         request.functionId==='verpleegkundige'&&!/verpleeg|\bvpk\b/i.test(rank))
+        throw error(409,'De gekozen AZLS-functie komt niet overeen met de personeelsfiche');
+    }
+    if(request.dept==='depannage'){
+      const rank=String(staff.rank||'')+' '+String(staff.call||'');
+      if(/\bawv\b|\banwv\b|leiding/i.test(rank))
+        throw error(409,'AWV-leiding kan niet als gewone Depannage worden hersteld');
+      if(request.functionId==='fast'&&!/\bfast\b|f\.a\.s\.t/i.test(rank))
+        throw error(409,'F.A.S.T moet aantoonbaar in de officiële Depannage-fiche staan');
+    }
+  }
   async function confirmCitizenPersonnel(request){
     if(!isCitizenCouncilRequest(request))return;
     const snapshot=await getSnapshot();
@@ -92,6 +149,7 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
       if(isCitizenCouncilRequest(data)&&!access.board&&!canConfirmCitizenCouncil(req.bpd))
         throw error(403,'Burgerraad moet door Bestuur, geverifieerde Korpsleiding of technisch beheer worden voorgedragen');
       await confirmCitizenPersonnel(data);
+      await confirmBasicPersonnel(data);
       if(data.discordId===req.bpd.discordId)
         return res.status(403).json({error:'Eigen rolherstel aanvragen of goedkeuren is niet mogelijk'});
       const subjectRef=db.collection(USER_COLLECTION).doc(data.discordId);
@@ -111,13 +169,13 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
       await db.runTransaction(async tx=>{
         const current=await tx.get(ref);
         if(current.get('status')==='pending')throw error(409,'Voor deze medewerker en dienst loopt al een verzoek');
-        tx.set(ref,{...data,roleLabel:manualRoleLabel(data.dept,data.role),status:'pending',
+        tx.set(ref,{...data,roleLabel:manualRoleLabel(data.dept,data.role,data.functionId),status:'pending',
           requestedBy:req.bpd.uid,requestedAt:FieldValue.serverTimestamp(),
           expiresAt:new Date(Date.now()+30*86400000)});
         tx.create(ref.collection('audit').doc(),{action:'requested',
           actorUid:req.bpd.uid,reason:data.reason,role:data.role,
-          roleLabel:manualRoleLabel(data.dept,data.role),
-          at:FieldValue.serverTimestamp()});
+          roleLabel:manualRoleLabel(data.dept,data.role,data.functionId),
+          functionId:data.functionId||null,at:FieldValue.serverTimestamp()});
       });
       return res.status(201).json({status:'pending',roleGranted:false});
     }catch(e){return respond(res,e)}
@@ -139,12 +197,26 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
         const user=db.collection(USER_COLLECTION).doc(discordId);
         const member=db.collection('bpd_discord_auth').doc(discordId);
         if(dept==='burger')await confirmCitizenPersonnel({dept,role:'basiskader',discordId});
+        // Check the exact pending request against the live roster before
+        // changing any access. A change to the request while checking is rejected.
+        const priorRequest=(await ref.get()).data();
+        if(decision==='approved'&&priorRequest){
+          if(!manualRoleChoice(dept,priorRequest.role,priorRequest.functionId))
+            throw error(409,'Onbekende of verouderde dienstfunctie in de aanvraag');
+          await confirmBasicPersonnel(priorRequest);
+        }
         await db.runTransaction(async tx=>{
           const [pending,subject,verified]=await Promise.all([
             tx.get(ref),tx.get(user),tx.get(member)
           ]);
           const request=pending.data();
           if(!request||request.status!=='pending')throw error(409,'Geen openstaand verzoek');
+          if(request.dept!==dept||request.discordId!==discordId||
+             !manualRoleChoice(dept,request.role,request.functionId)||
+             (decision==='approved'&&request.role==='basiskader'&&dept!=='burger'&&
+               (!priorRequest||priorRequest.role!==request.role||
+                priorRequest.functionId!==request.functionId)))
+            throw error(409,'De aanvraag is gewijzigd of de dienstfunctie is ongeldig');
           if(isCitizenCouncilRequest(request)&&!canConfirmCitizenCouncil(req.bpd))
             throw error(403,'Burgerraad vereist geverifieerde Korpsleiding of technisch beheer als goedkeurder');
           const scope=manualRoleDecisionScope(req.bpd,request,discordId);
@@ -175,10 +247,14 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
             const departments=approved?[...new Set([...approved.departments,dept])]:[dept];
             const departmentRoles=approved?{...approved.departmentRoles} : {};
             departmentRoles[dept]=request.role;
+            const serviceFunctions=approved&&current?.serviceFunctions&&
+              typeof current.serviceFunctions==='object'&&!Array.isArray(current.serviceFunctions)
+              ?{...current.serviceFunctions}:{};
+            if(request.functionId)serviceFunctions[dept]=request.functionId;
             const top=Object.values(departmentRoles).reduce((role,next)=>
               RANK[next]>RANK[role]?next:role,'basiskader');
             tx.set(user,{discordId,status:'approved',role:top,
-              departments,departmentRoles,
+              departments,departmentRoles,serviceFunctions,
               username:String(current?.username||verified.get('username')||'Discord-lid').slice(0,80),
               approvedBy:req.bpd.uid,approvedAt:FieldValue.serverTimestamp(),
               ...(isCitizenCouncilRequest(request)?{
@@ -188,7 +264,8 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
                   approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'}
               }:{
                 manualRoleRecovery:{dept,role:request.role,
-                  roleLabel:manualRoleLabel(dept,request.role),approvedBy:req.bpd.uid,
+                  functionId:request.functionId||null,
+                  roleLabel:manualRoleLabel(dept,request.role,request.functionId),approvedBy:req.bpd.uid,
                   requestedBy:request.requestedBy,
                   approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent'}
               }),
@@ -196,17 +273,19 @@ export function installManualRoleRoutes(app,{requireUser,getSnapshot}){
             },{merge:true});
             tx.create(user.collection('audit').doc(),{
               action:'manual_role_recovery',dept,role:request.role,
-              roleLabel:manualRoleLabel(dept,request.role),
+              functionId:request.functionId||null,
+              roleLabel:manualRoleLabel(dept,request.role,request.functionId),
               actorUid:req.bpd.uid,requestedBy:request.requestedBy,reason,
               approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent',
               at:FieldValue.serverTimestamp()});
           }
           tx.update(ref,{status:decision,decidedBy:req.bpd.uid,
-            roleLabel:manualRoleLabel(dept,request.role),
+            roleLabel:manualRoleLabel(dept,request.role,request.functionId),
             decisionReason:reason,approvalMethod:scope.technicalOverride?
               'verified_technical_single_approver':'independent',
             decidedAt:FieldValue.serverTimestamp()});
           tx.create(ref.collection('audit').doc(),{action:decision,
+            functionId:request.functionId||null,
             actorUid:req.bpd.uid,requestedBy:request.requestedBy,reason,
             approvalMethod:scope.technicalOverride?'verified_technical_single_approver':'independent',
             at:FieldValue.serverTimestamp()});
