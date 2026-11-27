@@ -995,6 +995,7 @@ Andere accounts worden via Gebruikersbeheer beoordeeld. Vernieuw zo nodig je Dis
 <small>Bij een definitieve inschrijving met vast roepnummer wordt de status Actief. Zonder Discord-koppeling blijft de fiche In opleiding tot goedkeuring.</small></div>
 <div style="grid-column:1/-1"><label for="newReason">Motivering (minstens 10 tekens)</label><textarea id="newReason" required minlength="10" maxlength="500" rows="2" placeholder="Reden van inschrijving"></textarea></div>
 </div><div id="newDuplicateWarning" class="warn" role="status" aria-live="polite" hidden></div>
+<div id="newSaveFeedback" class="notice" role="status" aria-live="polite" hidden></div>
 <div class="controls" style="margin-top:16px"><button id="newSave" type="submit">Personeelsfiche aanmaken</button><span class="subtle">Firestore registratie; Google Sheets en Discord-rollen blijven ongewijzigd</span></div></form>
 </section>
 <section id="panel" class="card" hidden>
@@ -6749,6 +6750,10 @@ $('personnelQuickCreate').onclick=()=>{
   $('newBtn').click();
 };
 $('newBtn').onclick=()=>{
+  // A previous personnel-edit error must not masquerade as a new-registration failure.
+  $('notice').hidden=true;
+  $('newSaveFeedback').hidden=true;
+  $('newSaveFeedback').textContent='';
   $('panel').hidden=true;selected=null;
   $('newForm').reset();
   newCallManuallyEdited=false;newCallAutoValue='';++newCallSuggestionSeq;
@@ -6778,6 +6783,8 @@ $('newForm').onsubmit=async event=>{
   if(!createEnabled||!Object.keys(createRanks).length)return;
   const btn=$('newSave');btn.disabled=true;
   const person=newFormData();
+  $('newSaveFeedback').hidden=true;
+  $('newSaveFeedback').textContent='';
   try{
     const duplicate=updateNewDuplicateWarning();
     if(duplicate)throw Error(duplicate);
@@ -6797,7 +6804,14 @@ $('newForm').onsubmit=async event=>{
       const found=people.find(p=>p.discordId===result.discordId&&p.dept===result.dept);
       if(found)await showPerson(found);
     }
-  }catch(e){notice(e.message,true)}finally{btn.disabled=false}
+  }catch(e){
+    // Keep creation failures next to the form that produced them, not above the unrelated roster.
+    const feedback=$('newSaveFeedback');
+    feedback.textContent='Registratie niet opgeslagen: '+e.message;
+    feedback.classList.add('error');
+    feedback.hidden=false;
+    feedback.scrollIntoView({block:'nearest'});
+  }finally{btn.disabled=false}
 };
 async function loadPersonnelLifecycle(p){
  const key=p.dept+':'+p.discordId;
