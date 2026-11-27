@@ -87,6 +87,7 @@ import { USER_COLLECTION, approvedManagedEntry, verifiedDiscordIdentity } from '
 import {reconcileLegacyPoliceOfficer} from './legacy-officer-reconciliation.js';
 import {eligibleForTechnicalProfile,verifiedPoliceRank,verifiedPoliceMembership,technicalCookieIsValid,technicalActor} from './portal-profile-mode.js';
 import {installPersonnelEditorRoutes} from './personnel-editor-routes.js';
+import {requiresExistingPersonnelSubject} from './personnel-subject-route-policy.js';
 import {readPoliceSeriesAssignments} from './police-series-store.js';
 import {overlayPoliceSeriesAssignments} from './police-series-policy.js';
 import {installPersonnelLifecycleRoutes} from './personnel-lifecycle-routes.js';
@@ -1028,7 +1029,7 @@ const requireDossierUser=(req,res,next)=>requireUser(req,res,async()=>{
     }
     // Beveilig elk rechtstreeks geopend individueel dossier, ook met een
     // bekend Discord-ID. Een verborgen rij in de browser is geen toegangscontrole.
-    const subjectPath=/^\/api\/(?:personnel\/|staff-dossiers\/|training\/|registrations\/entries(?:\/|$)|management\/cases(?:\/|$)|dossiercentrum\/)/.test(req.path);
+    const subjectPath=requiresExistingPersonnelSubject(req.path);
     const subjectDept=req.params?.dept||req.query?.dept||req.body?.dept;
     const subjectId=req.params?.discordId||req.query?.discordId||req.body?.discordId;
     if(subjectPath&&subjectDept&&/^\d{15,22}$/.test(String(subjectId||''))){
