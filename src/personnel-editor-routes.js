@@ -31,6 +31,7 @@ import {fixedPoliceStartStatus,activateOnFixedCallLink} from './police-fixed-sta
 import {PERSONNEL_SPECIALIZATIONS_COLLECTION,INITIAL_POLICE_SPECIALTIES} from './specialization-policy.js';
 import {occupiedPoliceCalls,policeCallNumber} from './callsign-utils.js';
 import {readPoliceCallOccupation} from './police-call-availability.js';
+import {activeCallPersonnel,inspectCallReservation,assignCallReservation} from './personnel-call-ownership.js';
 import {canChangePoliceGrade,allowedPoliceGradeChoices,
   validatePoliceGradeChange,classifyPoliceGradeChange,policeOfficialRankLabel} from './personnel-rank-policy.js';
 
@@ -170,7 +171,7 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       return res.json({suggestedCall:null,automatic:false,
        message:'Voor deze hulpdienst of uitzonderlijke rang is geen automatische nummerreeks vastgesteld.'});
     try{
-      const snap=await getSnapshot({forceRefresh:true});
+      const snap=await getSnapshot({forceRefresh:true,includeArchived:true});
       if(snap.stale)return error(res,503,'De actuele personeelsbron is niet beschikbaar');
       const available=await readPoliceCallOccupation(snap.data);
       res.set('Cache-Control','no-store');
@@ -208,24 +209,20 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       }
       const enrollment=checkServiceEnrollment(snap.data,proposed.dept,proposed.discordId);
       if(!enrollment.allowed)return error(res,409,enrollment.reason);
-      try{uniqueNewPerson(snap.data,proposed)}
+      // History stays searchable; archived calls do not hold operational numbers.
+      // The separate Firestore locks are checked against archived owners below.
+      const activeRoster=activeCallPersonnel(snap.data);
+      try{uniqueNewPerson(activeRoster,proposed)}
       catch(e){return error(res,409,e.message)}
-      // Police calls formatted S250 and 250 refer to the same number.
       const numeric=proposed.dept==='politie'?policeCallNumber(proposed.call):null;
-      if(numeric!==null&&occupiedPoliceCalls({records:snap.data}).has(numeric))
+      if(numeric!==null&&occupiedPoliceCalls({records:activeRoster}).has(numeric))
        return error(res,409,'Roepnummer '+numeric+' is reeds toegekend in Politie');
       const store=getFirestore();
       const pending=!proposed.discordId;
       const ref=pending?store.collection(PENDING_PERSONNEL_COLLECTION).doc():
         store.collection(CREATED_PERSONNEL_COLLECTION).doc(proposed.dept+'_'+proposed.discordId);
-      const claim=store.collection('bpd_personnel_call_claims')
-        .doc(personnelCallClaimId(proposed.dept,proposed.call));
-      const canonicalClaim=numeric===null?null:store.collection('bpd_personnel_call_claims')
-        .doc(personnelCallClaimId('politie',String(numeric)));
-      const prefixedClaim=numeric===null?null:store.collection('bpd_personnel_call_claims')
-        .doc(personnelCallClaimId('politie','S'+numeric));
-      const fixedClaim=numeric===null?null:store.collection('bpd_callsign_reservations')
-        .doc(String(numeric));
+      // Treat all spellings as a single reservation family, without guessing
+      // whether a legacy lock still belongs to a live or an archived member.
       let assignedSeries=null;
       const startStatus=fixedPoliceStartStatus(proposed,{linked:!pending});
       const wantsFixedDefaults=proposed.dept==='politie'&&
@@ -234,15 +231,13 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
       const autoSpecialRef=wantsFixedDefaults?store.collection(PERSONNEL_SPECIALIZATIONS_COLLECTION)
         .doc('politie_'+proposed.discordId):null;
       await store.runTransaction(async tx=>{
-        const [existing,reserved,canonical,prefixed,fixed]=await Promise.all([
-         tx.get(ref),tx.get(claim),
-         canonicalClaim?tx.get(canonicalClaim):Promise.resolve(null),
-         prefixedClaim?tx.get(prefixedClaim):Promise.resolve(null),
-         fixedClaim?tx.get(fixedClaim):Promise.resolve(null)]);
+        const existing=await tx.get(ref);
+        const reservation=await inspectCallReservation(
+          tx,store,proposed.dept,proposed.call);
         const autoSpecialDoc=autoSpecialRef?await tx.get(autoSpecialRef):null;
         if(existing.exists)throw userError(409,'Deze personeelsfiche bestaat al');
-        if(reserved.exists||canonical?.exists||prefixed?.exists||fixed?.exists)
-         throw userError(409,'Roepnummer ondertussen gereserveerd. Vraag het volgende vrije nummer op');
+        if(reservation.blocked.length)
+         throw userError(409,'Roepnummer is al in gebruik of heeft een actieve reservering');
         if(wantsFixedDefaults){
          assignedSeries=await reservePoliceSeriesWithinTransaction(tx,store,snap.data,
           {dept:'politie',personId:proposed.discordId,call:proposed.call,series:'Instroom'},
@@ -284,15 +279,11 @@ export function installPersonnelEditorRoutes(app,{requireUser,requireDossierUser
           });
          }
         }
-        // Every spelling of a 200–299 manual CALL holds the same canonical
-        // Police lock, also checked by the fixed-call approval workflow.
-        if(canonicalClaim&&canonicalClaim.path!==claim.path)
-         tx.create(canonicalClaim,{dept:'politie',discordId:proposed.discordId,
-          internalId:pending?ref.id:null,call:String(numeric),
-          aliasOf:proposed.call,updatedAt:FieldValue.serverTimestamp()});
-        tx.create(claim,{dept:proposed.dept,discordId:proposed.discordId,
-          internalId:pending?ref.id:null,call:proposed.call,
-          updatedAt:FieldValue.serverTimestamp()});
+        // Reclaim ONLY locks belonging to a proven archived owner. Unknown
+        // and currently active claims remain hard conflicts.
+        assignCallReservation(tx,store,reservation,proposed.dept,
+          proposed.call,proposed.discordId,
+          {internalId:pending?ref.id:null,updatedAt:FieldValue.serverTimestamp()});
         tx.create(ref.collection('audit').doc(),{action:'create',
           next:{name:proposed.name,call:proposed.call,rank:proposed.rank,
             status:startStatus},revision:0,reason:proposed.reason,
