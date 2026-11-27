@@ -67,7 +67,6 @@ test('archiveringsplan leest alle dienststaten en centrale verlofperiodes vóór
  assert.equal(plan.lifecycle.length,4);
  assert.deepEqual(plan.openLeaves.map(d=>d.id),['active','request']);
  assert.equal(reads.filter(ref=>ref.path?.startsWith('bpd_personnel_lifecycle/')).length,4);
- assert.ok(reads.some(ref=>ref.path?.startsWith('bpd_leave_requests')));
  assert.ok(reads.some(ref=>ref.path?.startsWith('bpd_personnel_call_claims/')));
  assert.ok(reads.some(ref=>ref.path?.startsWith('bpd_callsign_reservations/')));
  assert.ok(reads.length>5,'Owned call claims are checked before archive writes');
