@@ -422,6 +422,10 @@ html[data-bpd-theme="light"] .staff-roster-table .roster-dossier-name:hover{colo
 .personnel-overview h1{font-size:18px;line-height:1.17;margin:0;letter-spacing:-.015em}
 .personnel-overview p{font-size:10.5px;line-height:1.25;margin:0;
  color:#a5b9d3;flex:1 1 520px}
+/* Direct intake shortcut; the permission check below keeps it hidden by default. */
+.personnel-quick-create{flex:0 0 auto;align-self:center;min-height:34px;
+ padding:7px 12px;font-size:12px;white-space:nowrap}
+.personnel-quick-create[hidden]{display:none!important}
 .staff-list-panel{padding:8px 10px;margin:6px 0 12px;border-radius:8px}
 .staff-list-head{margin-bottom:5px;gap:6px}
 .staff-list-head h2{font-size:14px;line-height:1.25;margin:0}
@@ -779,7 +783,7 @@ html:not([data-bpd-theme="dark"]) .siv-restriction-dossier-banner{
 html:not([data-bpd-theme="dark"]) .siv-restriction-dossier-banner a{color:#184d83}
 </style></head>
 <body class="bpd-unified-dossier"><header><div><strong>🛡️ BelgiëPD</strong> / Personeelsfiches</div><nav><a href="/">Dashboard</a><a href="/gebruikersbeheer.html" data-personnel-staff hidden>Gebruikersbeheer</a><a href="/rollen-opleidingen.html" data-personnel-staff hidden>Opleidingen</a><a href="/weekrapporten.html" data-personnel-staff hidden>Weekrapporten</a><a href="/dossiercentrum.html" data-personnel-staff hidden>Dossiercentrum</a><a href="/sanctieoverzicht.html" data-personnel-staff hidden>Sanctieoverzicht</a><a href="/bronnen.html" title="Bronnen en afbeeldingslicenties">Bronnen</a><button id="login" type="button">Aanmelden</button></nav></header>
-<main><div class="personnel-overview"><h1>Personeelslijst</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p></div>
+<main><div class="personnel-overview"><h1>Personeelslijst</h1><p>Beheer bestaande personeelsfiches per hulpdienst. Discord ID en officiële rang blijven beschermd. Google Sheets blijven als bron intact; wijzigingen worden afzonderlijk in Firestore bewaard.</p><button id="personnelQuickCreate" class="personnel-quick-create" type="button" hidden>＋ Nieuw personeelslid</button></div>
 <div id="notice" class="notice" role="status" aria-live="polite">Aanmeldstatus controleren…</div>
 <section id="accessHelp" class="card" hidden>
 <h2>Personeelskoppeling of portaaltoegang ontbreekt</h2>
@@ -3195,6 +3199,8 @@ function initializeRosterEditor(){
 
 let personnelOverviewLoadSerial=0;
 async function load(){
+  // Hide a previous session's shortcut until the new authenticated permission check finishes.
+  $('personnelQuickCreate').hidden=true;
   const loadSerial=++personnelOverviewLoadSerial;
   const viewerUid=auth?.currentUser?.uid||'';
   if(!auth?.currentUser){
@@ -3264,7 +3270,9 @@ async function load(){
     updatePersonnelServiceMode();
     pendingPeople=[];statuses=data.statuses||[];writesEnabled=data.writesEnabled;createEnabled=data.createEnabled===true;promotionsEnabled=data.promotionsEnabled===true;rankChangesEnabled=data.rankChangesEnabled===true;rankChoices=data.rankOptions||[];testMode=data.testMode===true;
     createRanks=data.createEnabled?data.createRanks||{}:{};
-    $('newBtn').hidden=!Object.keys(createRanks).length;
+    const canStartIntake=createEnabled&&personnelManagementAllowed&&Object.keys(createRanks).length>0;
+    $('newBtn').hidden=!canStartIntake;
+    $('personnelQuickCreate').hidden=dossierEmbedded||ficheMode||!canStartIntake;
     if($('newPanel').hidden===false&&!Object.keys(createRanks).length)$('newPanel').hidden=true;
     const prevDept=$('dept').value;
     $('dept').replaceChildren(option('all','Alle toegelaten diensten'));
@@ -6734,6 +6742,12 @@ function refreshNewRanks(){
  updateNewStartStatus();
  void proposeNewPersonnelCall();
 }
+$('personnelQuickCreate').onclick=()=>{
+  // Existing registration form and server-side service/rank checks remain authoritative.
+  if($('personnelQuickCreate').hidden||!createEnabled||!personnelManagementAllowed||
+     !Object.keys(createRanks).length)return;
+  $('newBtn').click();
+};
 $('newBtn').onclick=()=>{
   $('panel').hidden=true;selected=null;
   $('newForm').reset();
