@@ -91,7 +91,9 @@ export function validateLifecycleAction(body,action){
  if(!['archive','restore','activate'].includes(action)||!body||typeof body!=='object'||
     Array.isArray(body))throw Error('Ongeldige personeelsactie');
  const allowed=action==='archive'?
-  ['reason','cause','expectedRevision','scope']:['reason','expectedRevision'];
+  ['reason','cause','expectedRevision','scope']:
+   action==='activate'?['reason','expectedRevision','newCall']:
+   ['reason','expectedRevision'];
  if(Object.keys(body).some(k=>!allowed.includes(k)))throw Error('Onbekende personeelsactie');
  const reason=String(body.reason||'').trim();
  if(reason.length<10||reason.length>500||/[<>\x00-\x1f\x7f]/.test(reason))
@@ -104,7 +106,12 @@ export function validateLifecycleAction(body,action){
  const scope=action==='archive'?String(body.scope||'service'):'service';
  if(!['service','global'].includes(scope))
   throw Error('Kies een geldige archiveringsomvang');
- return {reason,cause,scope,expectedRevision:body.expectedRevision};
+ const newCall=action==='activate'?String(body.newCall||'').trim():null;
+ if(action==='activate'&&
+   (!newCall||newCall.length>24||/[<>\x00-\x1f\x7f]/.test(newCall)))
+  throw Error('Kies een nieuw, geldig en vrij roepnummer bij herintreding');
+ return {reason,cause,scope,expectedRevision:body.expectedRevision,
+   ...(action==='activate'?{newCall}:{})};
 }
 export function lifecycleSourceSnapshot(p){
  if(!p||!lifecycleKey(p.dept,p.personId))return null;
@@ -140,7 +147,9 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
    if(includeArchived)out.push({...p,lifecycleState:state.state,lifecycleRevision:state.revision,
      lifecycleCause:state.cause||'',lastPersonnelAction:'archived'});
   }else if(state){
-    const current=applyHonorableInpAssignment({...p,lifecycleState:'active',
+    const current=applyHonorableInpAssignment({...p,
+      ...(state.reentryCall?{call:state.reentryCall}:{}),
+      lifecycleState:'active',
       lifecycleRevision:state.revision,lastPersonnelAction:state.cause||'restored'},state);
     if(current)out.push(current);
   }else out.push(p);
@@ -154,6 +163,7 @@ export function overlayPersonnelLifecycle(records,docs,{includeArchived=false}={
   if(['archived','pending'].includes(d.state)&&!includeArchived)continue;
   if(d.state==='active'&&d.restoreFromArchive!==true)continue;
   const p={...d.snapshot,id:d.dept+':'+d.discordId,
+    ...(d.state==='active'&&d.reentryCall?{call:d.reentryCall}:{}),
     specialties:Array.isArray(d.snapshot.specialties)?d.snapshot.specialties:[],
     special:'Geen geregistreerde specialisaties',source:'firestore-lifecycle',
     lifecycleState:d.state,lifecycleRevision:d.revision,

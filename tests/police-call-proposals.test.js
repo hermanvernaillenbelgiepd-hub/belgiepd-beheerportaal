@@ -59,10 +59,11 @@ test('manual creation exposes an editable suggestion and revalidates collisions 
  assert.match(ui,/api\/personnel\/call-suggestion/);
  assert.match(ui,/newCallManuallyEdited=true/);
  assert.match(route,/app\.get\('\/api\/personnel\/call-suggestion'/);
- assert.match(route,/getSnapshot\(\{forceRefresh:true\}\)/);
- assert.match(route,/tx\.get\(fixedClaim\)/);
- assert.match(route,/tx\.create\(canonicalClaim/);
- assert.match(route,/tx\.create\(claim/);
+ assert.match(route,/getSnapshot\(\{forceRefresh:true,includeArchived:true\}\)/);
+ assert.match(route,/activeCallPersonnel\(snap\.data\)/);
+ assert.match(route,/inspectCallReservation\(/);
+ assert.match(route,/assignCallReservation\(/);
+ assert.match(read('src/personnel-call-ownership.js'),/archivedOwnerProof/);
 });
 test('automatic fixed-call requests use same order and reject manual cross-reservations',()=>{
  const route=read('src/callsign-routes.js');

@@ -7068,13 +7068,22 @@ $('refreshArchive').onclick=async()=>{
      if(reason===null)return;
      if(reason.trim().length<10||reason.trim().length>500)
       return notice('Motivering moet 10 tot 500 tekens zijn.',true);
-     if(!confirm('Definitief activeren? Verifieer vóór bevestiging dat uitsluitend goedgekeurde functies en rollen in CMS staan.'))return;
+     const entered=prompt('Nieuw vrij roepnummer voor '+p.name+
+      ' (oude CALL '+(p.call||'—')+' blijft uitsluitend in het archief):','');
+     if(entered===null)return;
+     const newCall=entered.trim();
+     if(!newCall||newCall.length>24)
+      return notice('Kies eerst een nieuw vrij roepnummer voor herintreding.',true);
+     if(!confirm('Herintreding activeren met roepnummer '+newCall+'? '+
+       'De oude CALL blijft in de historiek en wordt niet automatisch hersteld. '+
+       'Controleer eerst de goedgekeurde CMS-/Discord-rollen.'))return;
      button.disabled=true;
      try{
       await request('/api/personnel-lifecycle/'+encodeURIComponent(dept)+'/'+
        encodeURIComponent(p.discordId)+'/activate',{method:'POST',
-       body:{reason:reason.trim(),expectedRevision:p.revision}});
-      notice('Herintreding afgerond. Personeelslid opnieuw actief.');
+       body:{reason:reason.trim(),newCall,expectedRevision:p.revision}});
+      notice('Herintreding afgerond met '+newCall+
+        '. De oude CALL blijft uitsluitend historisch geregistreerd.');
       await load();await $('refreshArchive').onclick();
      }catch(e){notice('Activeren mislukt: '+e.message,true)}
      finally{button.disabled=false}

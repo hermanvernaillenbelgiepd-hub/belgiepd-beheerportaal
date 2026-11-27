@@ -4,6 +4,7 @@ import {PERSONNEL_LIFECYCLE_COLLECTION,lifecycleSourceSnapshot} from './personne
 import {PERSONNEL_ACTIVITY_COLLECTION} from './personnel-activity.js';
 import {departureEvidence} from './personnel-departure-evidence.js';
 import {writeLeaveEvent} from './leave-event-log.js';
+import {prepareCallRelease,releasePreparedCallClaims} from './personnel-call-ownership.js';
 
 // One verified Discord identity can have several service dossiers. Preparing
 // every read before the first write makes archive + leave closure atomic.
@@ -49,10 +50,14 @@ export async function prepareIdentityArchive(tx,db,{subjects,primaryDept,discord
   if(state&&!['active','pending','archived'].includes(state))
    throw fail(409,'Onbekende archiefstatus in '+row.person.dept);
  }
- return {subjects,primaryDept,discordId,lifecycle,openLeaves,today};
+ // Read all call ownership records BEFORE any writes. Only owned locks are
+ // retired; old roepnummers remain in the immutable service histories.
+ const releasedCalls=await prepareCallRelease(tx,db,subjects);
+ return {subjects,primaryDept,discordId,lifecycle,openLeaves,today,releasedCalls};
 }
 export function writeIdentityArchive(tx,db,plan,{actor,actorUid,reason,cause,source}){
  const {subjects,primaryDept,discordId,lifecycle,openLeaves,today}=plan;
+ releasePreparedCallClaims(tx,plan.releasedCalls);
  const at=FieldValue.serverTimestamp();
  const registeredBy={name:String(actor?.name||'Bevoegd kader').slice(0,120),
   call:String(actor?.call||'').slice(0,24),
